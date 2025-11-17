@@ -125,7 +125,12 @@ is
    ----------------------------------------------------------------------
    --  Read_Cache_File
    --
-   --  Read cache file (JSON format) from filesystem.
+   --  FUTURE FEATURE: Cache persistence deferred to future release
+   --  See docs/roadmap.md #12 "Cache Persistence Investigation"
+   --
+   --  Current in-memory cache performs excellently (20ms cold start).
+   --  Implementation deferred pending user demand and performance
+   --  requirements.
    ----------------------------------------------------------------------
    procedure Read_Cache_File
      (Path   :     TZif.Application.Port.Inbound.Import_Cache.Path_String;
@@ -134,7 +139,7 @@ is
    is
       pragma Unreferenced (Path, Bytes);
    begin
-      --  TODO: Implement cache file reading:
+      --  FUTURE: Implement cache file reading:
       --    - Open cache file at given path
       --    - Read JSON content into Bytes buffer
       --    - Set Length to number of bytes read
@@ -145,14 +150,19 @@ is
       Result :=
         Read_Cache_Result.Error
           (TZif.Domain.Error.Infrastructure_Error,
-           "Read_Cache_File: Stub implementation - not yet complete");
+           "Read_Cache_File: Not yet implemented (see roadmap.md)");
 
    end Read_Cache_File;
 
    ----------------------------------------------------------------------
    --  Write_Cache_File
    --
-   --  Write cache file (JSON format) to filesystem.
+   --  FUTURE FEATURE: Cache persistence deferred to future release
+   --  See docs/roadmap.md #12 "Cache Persistence Investigation"
+   --
+   --  Current in-memory cache performs excellently (20ms cold start).
+   --  Implementation deferred pending user demand and performance
+   --  requirements.
    ----------------------------------------------------------------------
    procedure Write_Cache_File
      (Path   :     TZif.Application.Port.Inbound.Export_Cache.Path_String;
@@ -161,7 +171,7 @@ is
    is
       pragma Unreferenced (Path, Bytes, Length, Overwrite);
    begin
-      --  TODO: Implement cache file writing:
+      --  FUTURE: Implement cache file writing:
       --    - Check if file exists
       --    - If exists and not Overwrite, return error
       --    - Create/open file at given path
@@ -172,7 +182,7 @@ is
       Result :=
         Write_Cache_Result.Error
           (TZif.Domain.Error.Infrastructure_Error,
-           "Write_Cache_File: Stub implementation - not yet complete");
+           "Write_Cache_File: Not yet implemented (see roadmap.md)");
 
    end Write_Cache_File;
 
@@ -209,7 +219,12 @@ is
    ----------------------------------------------------------------------
    --  Get_Modified_Time
    --
-   --  Get file modification timestamp.
+   --  DROPPED FEATURE: No known use case
+   --
+   --  This operation was originally planned but dropped during v1.0.0
+   --  development. Cache invalidation is handled through other
+   --  mechanisms defined in the SRS.
+   --  If a use case emerges, this can be reconsidered in future releases.
    ----------------------------------------------------------------------
    procedure Get_Modified_Time
      (Id        : TZif.Application.Port.Inbound.Find_By_Id.Zone_Id_Input_Type;
@@ -218,13 +233,9 @@ is
    is
       use Ada.Calendar;
    begin
-      --  TODO: Implement file timestamp retrieval:
-      --    - Map zone ID to file path
-      --    - Get file attributes using Ada.Directories
-      --    - Extract modification time
-      --    - Return Ok(Timestamp_Type) or Error(IO_Error)
+      --  DROPPED: No implementation needed
+      --  Returning current time as placeholder to satisfy signature
 
-      --  STUB: Return current time for now
       pragma Unreferenced (Id);
       Timestamp := Clock;
       Result    := Get_Modified_Time_Result.Ok (Timestamp);

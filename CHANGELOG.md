@@ -17,6 +17,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Enhanced
+- **ULID Infrastructure** - Complete rewrite with production-ready architecture:
+  - Generic RNG plugin pattern for SPARK compatibility (`TZif.Infrastructure.ULID_Generic`)
+  - Concrete instantiation with System.Random_Numbers (Mersenne Twister - high quality)
+  - Thread-safe generation via protected type with monotonic increment
+  - Safe ULID parsing with Result monad (`Parse_ULID`, `Is_Valid_ULID_String`)
+  - Null ULID handling (`Null_ULID` function, `Is_Null` check)
+  - Seed-based deterministic generation for reproducible testing
+  - Comprehensive test suite: 40 tests covering validation, parsing, generation, monotonic ordering, thread safety, and comparison
+  - SPARK Mode: Spec `On` (verifiable contracts), Body `Off` (RNG implementation)
+
+### Fixed
+- Code style compliance: All files now meet 80-character line limit (`-gnatyM80`)
+- Ada 2022 syntax: Array aggregates use `[]` instead of obsolescent `()`
+
 ---
 
 ## [1.0.0-rc1] - 2025-11-16

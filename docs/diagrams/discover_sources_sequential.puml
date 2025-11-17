@@ -1,0 +1,117 @@
+@startuml discover_sources_sequential
+title Discover Sources (Sequential Scan - v1.0.0)
+
+actor Developer
+participant "TZif.API" as API
+note right of API
+  Public API Facade
+end note
+participant "Source_Scanner" as Scanner
+participant "Path_Tracker" as Tracker
+note right of Tracker
+  Infinite Loop Protection:
+  - Visited directory set
+  - Canonical path deduplication
+  - Depth limit: 15 levels
+end note
+participant "Validator" as Val
+participant "File_System" as FS
+
+Developer -> API: Discover_Sources(["/usr/share/zoneinfo", "/opt/tzdata"])
+activate API
+note right
+  Developer provides explicit
+  list of paths to scan
+  (not system-wide automatic scan)
+end note
+
+API -> Scanner: Scan_Directories(search_paths)
+activate Scanner
+
+Scanner -> Tracker: Initialize_Visited_Set()
+activate Tracker
+Tracker --> Scanner: Empty_Set
+deactivate Tracker
+
+loop For each path in Search_Paths
+  Scanner -> Scanner: Check path is not symlink
+  note right
+    Directory symlinks are NEVER followed
+    during discovery (security/loop protection)
+  end note
+
+  Scanner -> FS: Get_Canonical_Path(path)
+  activate FS
+  note right
+    Ada.Directories.Full_Name
+    resolves to absolute path
+  end note
+  FS --> Scanner: Canonical_Path
+  deactivate FS
+
+  Scanner -> Tracker: Is_Visited(canonical_path)?
+  activate Tracker
+  Tracker --> Scanner: No
+  deactivate Tracker
+
+  Scanner -> Tracker: Mark_Visited(canonical_path)
+  activate Tracker
+  Tracker --> Scanner: OK
+  deactivate Tracker
+
+  Scanner -> Val: Validate_Source_Structure(path)
+  activate Val
+
+  Val -> FS: Directory_Exists(path)?
+  activate FS
+  FS --> Val: Yes
+  deactivate FS
+
+  Val -> FS: Read_VERSION_File(path & "/+VERSION")
+  activate FS
+  FS --> Val: "2024b"
+  deactivate FS
+
+  Val -> Scanner: Recursive_Count_Zones(path, depth=0)
+  activate Scanner
+  note right
+    Recursively traverse subdirectories
+    Track depth to enforce limit
+    Skip symlink directories
+  end note
+
+  Scanner -> Scanner: For each entry in directory
+  note right
+    If ordinary_file: count++
+    If directory:
+      - Get canonical path
+      - Check not visited
+      - Check depth < 15
+      - Recurse if all pass
+  end note
+
+  Scanner --> Val: Zone_Count = 599
+  deactivate Scanner
+
+  Val -> Val: Generate_ULID()
+  note right
+    Unique identifier for this source
+  end note
+
+  Val --> Scanner: Source_Info(ULID, path, "2024b", 599)
+  deactivate Val
+
+end
+
+Scanner --> API: Discovery_Result[sources=[Source1, Source2], errors=[]]
+deactivate Scanner
+
+API --> Developer: Result[Discovery_Data, Error]
+deactivate API
+
+note over Developer
+  All sources discovered sequentially
+  with infinite loop protection
+end note
+
+@enduml

@@ -15,28 +15,15 @@ This directory contains PlantUML diagrams documenting the TZif library architect
 
 ---
 
-## Use Case Sequence Diagrams
+## v1.0.0 Use Case Sequence Diagrams
 
-### [Discover Sources (Parallel)](discover_sources_parallel.svg)
-Parallel discovery of timezone sources from filesystem:
-- Multi-threaded source scanning
-- Platform-specific path detection
-- Source validation
-- [View Source](discover_sources_parallel.puml)
-
-### [Export Cache](export_cache.svg)
-Export timezone cache to JSON file:
-- Cache serialization
-- Zone data export
-- File I/O operations
-- [View Source](export_cache.puml)
-
-### [Import Cache](import_cache.svg)
-Import timezone cache from JSON file:
-- Cache deserialization
-- Zone data validation
-- Cache reconstruction
-- [View Source](import_cache.puml)
+### [Discover Sources (Sequential)](discover_sources_sequential.svg)
+Sequential discovery of timezone sources from dev-provided paths:
+- Developer-specified search paths
+- Recursive directory traversal
+- Infinite loop protection (canonical paths + depth limit)
+- Source validation and metadata collection
+- [View Source](discover_sources_sequential.puml)
 
 ### [Find Zone By ID](find_zone_by_id.svg)
 Look up timezone information by zone ID:
@@ -53,19 +40,46 @@ Select timezone source and enumerate available zones:
 - Zone listing
 - [View Source](select_source_and_list_zones.puml)
 
-### [Startup With Cache](startup_with_cache.svg)
-Application startup sequence using cached timezone data:
-- Cache initialization
-- Repository setup
-- Performance optimization
-- [View Source](startup_with_cache.puml)
-
 ### [Validate Source](validate_source.svg)
 Validate timezone source directory structure:
 - Directory existence checks
 - File format validation
 - Source metadata verification
 - [View Source](validate_source.puml)
+
+---
+
+## Future Features (See Roadmap)
+
+**Note**: The following diagrams represent potential future items under investigation. See [roadmap.md](../roadmap.md) for details.
+
+### [Discover Sources (Parallel)](discover_sources_parallel.svg)
+Parallel discovery of timezone sources from filesystem:
+- Multi-threaded source scanning
+- Platform-specific path detection
+- Source validation
+- [View Source](discover_sources_parallel.puml)
+
+### [Export Cache](export_cache.svg)
+Export timezone cache to persistent storage:
+- Cache serialization
+- Zone data export
+- File I/O operations
+- [View Source](export_cache.puml)
+
+### [Import Cache](import_cache.svg)
+Import timezone cache from persistent storage:
+- Cache deserialization
+- Zone data validation
+- Cache reconstruction
+- [View Source](import_cache.puml)
+
+### [Startup With Cache](startup_with_cache.svg)
+Application startup sequence using persisted cache:
+- Cache initialization
+- Repository setup
+- Performance optimization
+- [View Source](startup_with_cache.puml)
 
 ---
 

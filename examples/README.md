@@ -1,6 +1,6 @@
 # TZif Examples
 
-This directory contains 13 working examples demonstrating the TZif library's capabilities.
+This directory contains 11 working examples demonstrating the TZif library's capabilities.
 
 ## Building Examples
 
@@ -42,13 +42,11 @@ These examples provide working demonstrations with actual output:
 
 The following examples are executable but refer to the test suite for detailed usage patterns:
 
-- **cache_export_import** - Export and re-import timezone cache (JSON)
 - **discover_sources** - Scan filesystem for timezone source files
 - **find_by_pattern** - Find timezones matching a glob pattern
 - **find_by_region** - Find all timezones in a geographic region
 - **find_by_regex** - Find timezones matching a regular expression
 - **get_version** - Get TZif library version information
-- **import_cache** - Import timezone cache from JSON file
 - **list_all_zones** - List all available timezone IDs
 - **load_source** - Load and parse a TZif source file
 - **validate_source** - Validate TZif source file format

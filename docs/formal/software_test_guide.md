@@ -46,7 +46,7 @@ This document covers:
 - Validate real-world scenarios
 - Count: 13 examples
 
-**Total**: 217 tests (86 unit + 118 integration + 13 examples)
+**Total**: 257 tests (126 unit + 118 integration + 13 examples)
 
 ### 2.2 Testing Approach
 
@@ -66,6 +66,7 @@ test/
 ├── unit/              # Unit tests
 │   ├── test_zone_id.adb
 │   ├── test_iana_releases.adb
+│   ├── test_ulid.adb
 │   └── unit_runner.adb
 ├── integration/       # Integration tests
 │   ├── test_find_by_id.adb
@@ -576,7 +577,7 @@ make test-coverage
 
 ## 12. Known Issues
 
-None at this time. All 217 tests pass.
+None at this time. All 257 tests pass.
 
 ---
 

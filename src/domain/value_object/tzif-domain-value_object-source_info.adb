@@ -10,18 +10,70 @@ pragma Ada_2022;
 --
 --  ===========================================================================
 
+with TZif.Domain.Error;
+
 package body TZif.Domain.Value_Object.Source_Info is
 
    use ULID_Strings;
+   use TZif.Domain.Error;
 
    --  ========================================================================
-   --  Make_ULID
+   --  ULID Functions
    --  ========================================================================
+
+   function Is_Valid_ULID_String (S : String) return Boolean is
+   begin
+      --  Check length
+      if S'Length /= ULID_Length then
+         return False;
+      end if;
+
+      --  Check all characters are valid base32
+      for C of S loop
+         declare
+            Valid : Boolean := False;
+         begin
+            for Valid_Char of Base32_Alphabet loop
+               if C = Valid_Char then
+                  Valid := True;
+                  exit;
+               end if;
+            end loop;
+
+            if not Valid then
+               return False;
+            end if;
+         end;
+      end loop;
+
+      return True;
+   end Is_Valid_ULID_String;
 
    function Make_ULID (Value : String) return ULID_Type is
    begin
       return ULID_Strings.To_Bounded_String (Value);
    end Make_ULID;
+
+   function Parse_ULID (S : String) return ULID_Result.Result is
+   begin
+      if not Is_Valid_ULID_String (S) then
+         return
+           ULID_Result.Error
+             (Validation_Error,
+              "Invalid ULID string: must be " & ULID_Length'Image &
+              " characters of Crockford base32 alphabet");
+      end if;
+
+      return ULID_Result.Ok (Make_ULID (S));
+   end Parse_ULID;
+
+   function Null_ULID return ULID_Type is
+   begin
+      return Make_ULID ("00000000000000000000000000");
+   end Null_ULID;
+
+   function Is_Null (ID : ULID_Type) return Boolean is
+     (ID = Null_ULID);
 
    --  ========================================================================
    --  Make_Version

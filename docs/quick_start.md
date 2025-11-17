@@ -303,7 +303,7 @@ Available: `standard`, `embedded`, `concurrent`, `baremetal`, `stm32h7s78`, `stm
 
 ### Example Programs
 
-TZif includes 13 complete examples in `examples/`:
+TZif includes 11 complete examples in `examples/`:
 
 ```bash
 # Build all examples
@@ -314,10 +314,9 @@ make build-examples
 ./bin/examples/find_my_id
 ./bin/examples/discover_sources
 ./bin/examples/get_transition_at_epoch
-./bin/examples/cache_export_import
 ```
 
-**Available Examples:**  
+**Available Examples:**
 - `find_by_id` - Find timezone by exact ID
 - `find_my_id` - Detect local timezone
 - `find_by_pattern` - Search zones by substring
@@ -329,8 +328,6 @@ make build-examples
 - `load_source` - Load timezone data source
 - `validate_source` - Validate source integrity
 - `get_version` - Query database version
-- `import_cache` - Import zone cache from JSON
-- `cache_export_import` - Full cache round-trip
 
 ### API Reference
 
@@ -341,15 +338,16 @@ See the full API documentation in:
 ### Run Tests
 
 ```bash
-# Run all tests (204 tests)
+# Run all tests (257 tests)
 make test-all
 
 # Run specific test suites
-make test-unit          # 86 unit tests
+make test-unit          # 126 unit tests
 make test-integration   # 118 integration tests
+make test-examples      # 13 example tests
 ```
 
-**All 204 tests passing** ✅
+**All 257 tests passing** ✅
 
 ### Contributing
 

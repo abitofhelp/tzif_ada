@@ -23,7 +23,8 @@ project Unit_Tests is
       "test_iana_releases.adb",
       "test_zone_entity.adb",
       "test_source_cache.adb",
-      "test_json_serialization.adb");
+      "test_json_serialization.adb",
+      "test_ulid.adb");
 
    package Compiler is
       for Default_Switches ("Ada") use TZif_Config.Ada_Compiler_Switches;

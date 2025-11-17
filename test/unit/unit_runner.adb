@@ -19,6 +19,7 @@ with Test_IANA_Releases;
 with Test_Zone_Entity;
 with Test_Source_Cache;
 with Test_JSON_Serialization;
+with Test_ULID;
 procedure Unit_Runner is
    Overall_Failed : Boolean := False;
    Grand_Total    : Natural;
@@ -52,6 +53,7 @@ begin
    Run_Test ("Zone Entity Tests", Test_Zone_Entity'Access);
    Run_Test ("Source Cache Tests", Test_Source_Cache'Access);
    Run_Test ("JSON Serialization Tests", Test_JSON_Serialization'Access);
+   Run_Test ("ULID Tests", Test_ULID'Access);
    --  Get grand totals
    Grand_Total := Test_Framework.Grand_Total_Tests;
    Grand_Passed := Test_Framework.Grand_Total_Passed;

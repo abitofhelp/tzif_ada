@@ -117,25 +117,40 @@ TZif is a standalone Ada library implementing hexagonal (ports and adapters) arc
 ### 3.4 Source Management (FR-04)
 
 **Priority**: Medium
-**Description**: Discover and validate timezone data sources.
+**Description**: Discover and validate timezone data sources from developer-provided paths.
 
 **Requirements**:
-- FR-04.1: Scan filesystem paths for timezone sources
+- FR-04.1: Scan dev-provided list of filesystem paths for timezone sources (sequential recursive traversal)
 - FR-04.2: Validate source directory structure
 - FR-04.3: Check for required VERSION file
 - FR-04.4: Count available zone files
 - FR-04.5: Generate unique IDs for sources (ULID)
+- FR-04.6: Protect against infinite loops during recursive directory traversal using canonical path tracking and depth limits
+
+**Implementation Notes**:
+- v1.0.0 implements sequential recursive directory traversal
+- Developer explicitly provides list of paths to scan (not automatic system-wide discovery)
+- Infinite loop protection: canonical path deduplication + 15-level depth limit
+- Parallel discovery deferred to future release (see roadmap.md #13)
 
 ### 3.5 Cache Management (FR-05)
 
 **Priority**: Medium
-**Description**: Export and import zone caches for performance.
+**Status**: Deferred
+**Description**: In-memory zone caching with automatic invalidation.
 
 **Requirements**:
-- FR-05.1: Export zone cache to JSON format
-- FR-05.2: Import zone cache from JSON format
-- FR-05.3: Validate cache integrity
-- FR-05.4: Handle cache versioning
+- FR-05.1: High-performance in-memory caching (v1.0.0 implemented)
+- FR-05.2: Automatic cache invalidation on source changes (v1.0.0 implemented)
+- FR-05.3: Export zone cache to persistent storage (deferred - see roadmap.md #12)
+- FR-05.4: Import zone cache from persistent storage (deferred - see roadmap.md #12)
+- FR-05.5: Validate cache integrity (deferred)
+- FR-05.6: Handle cache versioning (deferred)
+
+**Implementation Notes**:
+- v1.0.0 implements high-performance in-memory caching only (20ms cold start)
+- Cache persistence (export/import) deferred pending user demand
+- Current performance is excellent without persistence
 
 ### 3.6 Error Handling (FR-06)
 

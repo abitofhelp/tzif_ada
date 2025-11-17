@@ -183,6 +183,45 @@ This roadmap outlines planned enhancements and features for future TZif library 
 
 **Rationale**: Current design doesn't need cleanup actions, but future enhancements might benefit from controlled types.
 
+#### 12. Cache Persistence Investigation
+**Status**: Proposed
+**Effort**: Medium
+**Impact**: Low
+
+- Investigate performance benefits of persisted cache vs in-memory
+- Evaluate SPARK compatibility of cache serialization
+- Consider JSON vs binary cache formats
+- Assess cache staleness and invalidation complexity
+- Benchmark startup time with/without persisted cache
+
+**Rationale**: Current in-memory cache performs excellently (20ms cold start). Persisted cache adds SPARK/I/O complexity. Implementation deferred pending user demand and performance requirements.
+
+#### 13. Parallel Source Discovery Investigation
+**Status**: Proposed
+**Effort**: Medium
+**Impact**: Low
+
+- Evaluate performance benefits of parallel vs sequential discovery
+- Design concurrent directory traversal architecture
+- Implement thread pool for parallel validation
+- Benchmark discovery time across different source counts
+- Consider task safety and synchronization requirements
+
+**Rationale**: Current sequential discovery is sufficient (5-15ms for typical sources). Parallel implementation adds concurrency complexity. Deferred pending user demand for faster discovery.
+
+#### 14. Improved Infinite Loop Detection
+**Status**: Proposed
+**Effort**: Low
+**Impact**: Low
+
+- Investigate inode-based cycle detection
+- Consider platform-specific implementations (POSIX stat, Windows file IDs)
+- Compare performance vs canonical path tracking
+- Evaluate portability trade-offs
+- Document detection strategy in architecture guide
+
+**Rationale**: Current canonical path + depth limit approach is portable and sufficient. Inode-based detection would be more robust but requires platform-specific code. Deferred pending evidence of issues with current approach.
+
 ---
 
 ## Future Considerations (Beyond v2.0.0)

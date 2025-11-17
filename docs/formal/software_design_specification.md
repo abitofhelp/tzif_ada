@@ -189,6 +189,35 @@ Each use case implements a single user operation:
 - Serialization to JSON
 - Version tracking
 
+#### 3.3.4 ULID Infrastructure
+
+**Responsibilities**:
+- Generate unique, sortable identifiers for timezone sources
+- Provide thread-safe ULID generation
+- Support ULID parsing and validation
+- Enable deterministic testing via seed-based generation
+
+**Design**:
+- **Generic RNG Plugin** (`TZif.Infrastructure.ULID_Generic`):
+  - SPARK-compatible architecture with formal RNG parameters
+  - Spec: `SPARK_Mode => On` (verifiable contracts)
+  - Body: `SPARK_Mode => Off` (RNG implementation)
+- **Concrete Instantiation** (`TZif.Infrastructure.ULID`):
+  - Uses System.Random_Numbers (Mersenne Twister - high quality)
+  - Thread-safe via protected type
+  - Monotonic increment for same-millisecond generation
+- **Domain Integration** (`TZif.Domain.Value_Object.Source_Info`):
+  - ULID parsing with Result monad (`Parse_ULID`)
+  - ULID validation (`Is_Valid_ULID_String`)
+  - Null ULID handling (`Null_ULID`, `Is_Null`)
+  - Crockford Base32 alphabet validation
+
+**ULID Format**:
+- 26 characters (Base32-encoded)
+- Lexicographically sortable (timestamp-based)
+- 10 bytes timestamp + 16 bytes randomness
+- Monotonically increasing within same millisecond
+
 ---
 
 ## 4. Design Patterns
@@ -268,11 +297,24 @@ All errors propagate up via Result monad:
 - **Application Layer**: Stateless → thread-safe
 - **Repository**: Protected operations → thread-safe
 
-### 6.2 Parallelism Support
+### 6.2 Source Discovery Implementation
 
+**v1.0.0 Implementation**:
+- Sequential recursive directory traversal
+- Single-threaded source scanning
+- Sufficient performance for typical use (5-15ms for standard sources)
+
+**Infinite Loop Protection**:
+- Canonical path deduplication using Ada.Directories.Full_Name
+- Visited directory tracking using Ada.Containers.Hashed_Sets
+- Depth limit of 15 levels (belt-and-suspenders approach)
+- Protection against directory symlink cycles (e.g., Dir_A → Dir_B → Dir_A)
+
+**Future Enhancements** (see roadmap.md):
+- Parallel source discovery (#13)
 - CPU detection: `Infrastructure.CPU.Get_CPU_Count`
-- Task count calculation: Optimal for current hardware
-- Parallel source discovery (future)
+- Task pool for concurrent directory traversal
+- Inode-based cycle detection (#14)
 
 ---
 

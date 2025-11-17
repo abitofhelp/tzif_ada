@@ -130,6 +130,13 @@ is
 
       ----------------------------------------------------------------------
       --  Import_Cache
+      --
+      --  FUTURE FEATURE: Cache persistence deferred to future release
+      --  See docs/roadmap.md #12 "Cache Persistence Investigation"
+      --
+      --  Current in-memory cache performs excellently (20ms cold start).
+      --  Implementation deferred pending user demand and performance
+      --  requirements.
       ----------------------------------------------------------------------
       procedure Import_Cache
         (Path : Import_Path_String; Result : out Import_Cache_Result_Type)
@@ -154,33 +161,40 @@ is
             return;
          end if;
 
-         --  TODO: Parse JSON cache format
-         --  TODO: Reconstruct zone cache from JSON
-         --  TODO: Map to Import_Cache_Result_Type
+         --  FUTURE: Parse JSON cache format
+         --  FUTURE: Reconstruct zone cache from JSON
+         --  FUTURE: Map to Import_Cache_Result_Type
 
          --  STUB: Return error for now
          Result :=
            Import_Cache_Result.Error
              (TZif.Domain.Error.Internal_Error,
-              "Import_Cache: Stub - JSON parsing not yet implemented");
+              "Import_Cache: Not yet implemented (see roadmap.md)");
 
       end Import_Cache;
 
       ----------------------------------------------------------------------
       --  Export_Cache
+      --
+      --  FUTURE FEATURE: Cache persistence deferred to future release
+      --  See docs/roadmap.md #12 "Cache Persistence Investigation"
+      --
+      --  Current in-memory cache performs excellently (20ms cold start).
+      --  Implementation deferred pending user demand and performance
+      --  requirements.
       ----------------------------------------------------------------------
       procedure Export_Cache
         (Path   :     Export_Path_String; Overwrite : Boolean;
          Result : out Export_Cache_Result_Type)
       is
-         --  TODO: Serialize zone cache to JSON
+         --  FUTURE: Serialize zone cache to JSON
          Bytes  : constant Byte_Array (1 .. 1_048_576) :=
            [others => 0];  --  Stub buffer
-         Length : constant Natural := 0;  --  TODO: actual length
+         Length : constant Natural := 0;  --  FUTURE: actual length
          IO_Res : Write_Cache_Result.Result;
       begin
-         --  TODO: Get current zone cache
-         --  TODO: Serialize to JSON bytes
+         --  FUTURE: Get current zone cache
+         --  FUTURE: Serialize to JSON bytes
 
          --  Step: Write cache bytes to file
          Write_Cache_File (Path, Bytes, Length, Overwrite, IO_Res);
@@ -201,7 +215,7 @@ is
          Result :=
            Export_Cache_Result.Error
              (TZif.Domain.Error.Internal_Error,
-              "Export_Cache: Stub - JSON serialization not yet implemented");
+              "Export_Cache: Not yet implemented (see roadmap.md)");
 
       end Export_Cache;
 

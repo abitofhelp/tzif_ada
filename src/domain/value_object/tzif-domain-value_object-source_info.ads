@@ -26,8 +26,10 @@ pragma Ada_2022;
 --
 --  ===========================================================================
 
+with Ada.Strings;
 with Ada.Strings.Bounded;
 with TZif_Config;
+with TZif.Domain.Error.Result;
 
 package TZif.Domain.Value_Object.Source_Info with
   Preelaborate
@@ -46,11 +48,50 @@ is
      (ULID_Length);
    subtype ULID_Type is ULID_Strings.Bounded_String;
 
-   function Make_ULID (Value : String) return ULID_Type with
-     Pre => Value'Length = ULID_Length;
+   --  Crockford's Base32 alphabet (for validation)
+   Base32_Alphabet : constant String := "0123456789ABCDEFGHJKMNPQRSTVWXYZ";
+
+   --  Null/zero ULID (all '0' characters)
+   function Null_ULID return ULID_Type
+     with Inline,
+          Post => To_String (Null_ULID'Result) = [1 .. ULID_Length => '0'];
+
+   --  Validate ULID string format
+   function Is_Valid_ULID_String (S : String) return Boolean
+     with Post =>
+       (if Is_Valid_ULID_String'Result then
+          S'Length = ULID_Length
+          and then
+          (for all C of S =>
+             (for some Valid of Base32_Alphabet => C = Valid)));
+
+   --  Unsafe constructor (precondition enforces validity)
+   function Make_ULID (Value : String) return ULID_Type
+     with Pre => Is_Valid_ULID_String (Value);
+
+   --  Safe ULID parser with Result monad
+   package ULID_Result is new TZif.Domain.Error.Result.Generic_Result
+     (T => ULID_Type);
+
+   function Parse_ULID (S : String) return ULID_Result.Result
+     with Post =>
+       (if ULID_Result.Is_Ok (Parse_ULID'Result) then
+          not Is_Null (ULID_Result.Value (Parse_ULID'Result)));
 
    function To_String (ULID : ULID_Type) return String is
-     (ULID_Strings.To_String (ULID));
+     (ULID_Strings.To_String (ULID))
+     with Post => To_String'Result'Length = ULID_Length,
+          Inline;
+
+   --  Check if ULID is null/zero
+   function Is_Null (ID : ULID_Type) return Boolean
+     with Inline;
+
+   --  ULID comparison (lexicographic)
+   function "=" (Left, Right : ULID_Type) return Boolean renames
+     ULID_Strings."=";
+   function "<" (Left, Right : ULID_Type) return Boolean renames
+     ULID_Strings."<";
 
    --  ========================================================================
    --  Version String Type

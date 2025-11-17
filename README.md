@@ -25,7 +25,7 @@ TZif brings comprehensive IANA timezone support to Ada 2022 with a unique combin
 
 - ✅ **SPARK-Compatible Architecture** - I/O plugin system enables formal verification of domain logic
 - ✅ **Railway-Oriented Programming** - Type-safe Result monads, NO EXCEPTIONS in business logic
-- ✅ **Extensively Validated** - 217 comprehensive tests + full-scale validation across 13,156 timezone calculations (598 zones × 22 test epochs)
+- ✅ **Extensively Validated** - 257 comprehensive tests + full-scale validation across 13,156 timezone calculations (598 zones × 22 test epochs)
 - ✅ **Hexagonal Architecture** - Clean separation enables easy testing and platform adaptation
 - ✅ **Embedded-Ready** - Six build profiles from bare metal (128KB RAM) to desktop (1GB+ RAM)
 - ✅ **Complete TZif Support** - Parse IANA timezone files (versions 1, 2, 3) including tzdb 2025b
@@ -42,8 +42,9 @@ TZif brings comprehensive IANA timezone support to Ada 2022 with a unique combin
 - **Timezone Queries** - Find by exact ID, region, pattern, or regex
 - **Transition Lookups** - Get UTC offset and timezone info for any epoch (±26 hour range for historical LMT)
 - **Source Discovery** - Scan filesystem for timezone data sources
-- **Cache Management** - High-performance in-memory caching with JSON export/import
+- **Cache Management** - High-performance in-memory caching with automatic invalidation
 - **Thread-Safe** - Safe concurrent operations for multi-threaded applications
+- **ULID Infrastructure** - Production-ready unique identifiers with generic RNG plugin, thread-safe generation, and comprehensive validation
 
 ### SPARK & Formal Verification
 
@@ -99,7 +100,7 @@ begin
 end Check_Meeting_Time;
 ```
 
-**13 API Operations**: `Find_By_Id`, `Find_My_Id`, `Get_Transition_At_Epoch`, `List_All_Zones`, `Find_By_Pattern`, `Find_By_Region`, `Find_By_Regex`, `Get_Version`, `Discover_Sources`, `Load_Source`, `Validate_Source`, `Import_Cache`, `Export_Cache`
+**11 API Operations**: `Find_By_Id`, `Find_My_Id`, `Get_Transition_At_Epoch`, `List_All_Zones`, `Find_By_Pattern`, `Find_By_Region`, `Find_By_Regex`, `Get_Version`, `Discover_Sources`, `Load_Source`, `Validate_Source`
 
 ---
 
@@ -163,7 +164,7 @@ make test-coverage
 make test-full-scale
 ```
 
-**Test Results**: ✅ All 217 tests passing (86 unit + 118 integration + 13 examples)
+**Test Results**: ✅ All 257 tests passing (126 unit + 118 integration + 13 examples)
 
 **Validation**: ✅ Full-scale validation across all 598 IANA timezone zones
 
@@ -203,7 +204,7 @@ TZif uses **Hexagonal Architecture** (Ports and Adapters) with SPARK-compatible 
 ```
 ┌─────────────────────────────────────────┐
 │         Application Layer               │  ← SPARK-Compatible
-│  (13 API Operations, Type-Safe Ports)   │     (I/O injected via generics)
+│  (11 API Operations, Type-Safe Ports)   │     (I/O injected via generics)
 │                                          │
 │  ┌────────────────────────────────────┐ │
 │  │      Domain Layer                  │ │  ← SPARK-Compatible
@@ -268,7 +269,7 @@ TZif v1.0.0 lays the foundation for **formal verification with SPARK**:
 
 ## Examples
 
-See `examples/` directory for **13 working examples** demonstrating all API operations:
+See `examples/` directory for **11 working examples** demonstrating all API operations:
 
 - `find_by_id.adb` - Find timezone by exact ID
 - `find_my_id.adb` - Detect local system timezone
@@ -281,8 +282,6 @@ See `examples/` directory for **13 working examples** demonstrating all API oper
 - `find_by_pattern.adb` - Pattern matching search
 - `find_by_region.adb` - Region-based search
 - `find_by_regex.adb` - Regex search
-- `import_cache.adb` / `export_cache.adb` - Cache serialization
-- `cache_export_import.adb` - Cache round-trip
 
 ```bash
 # Build and run examples
@@ -306,7 +305,7 @@ Contributions welcome! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for:
 
 **Status**: Production Ready (v1.0.0) - Released November 16, 2025
 
-- ✅ All 13 API operations implemented and tested
+- ✅ All 11 API operations implemented and tested
 - ✅ Comprehensive test coverage (217 tests + 13,156 validation checks)
 - ✅ Complete documentation (SRS, SDS, Test Guide, development guides)
 - ✅ Zero compiler warnings, zero style violations
