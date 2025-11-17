@@ -1,11 +1,11 @@
 # Changelog
 
-**Version:** 1.0.0
+**Version:** 1.0.0-rc1
 **Date:** November 16, 2025
 **SPDX-License-Identifier:** BSD-3-Clause
 **License File:** See the LICENSE file in the project root.
 **Copyright:** © 2025 Michael Gardner, A Bit of Help, Inc.
-**Status:** Released  
+**Status:** Release Candidate
 
 
 All notable changes to TZif - IANA Timezone Information Library for Ada 2022 will be documented in this file.
@@ -19,11 +19,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-## [1.0.0] - 2025-11-16
+## [1.0.0-rc1] - 2025-11-16
 
-_Initial production release with SPARK-compatible architecture._
+_First release candidate with SPARK-compatible architecture._
 
-This is the first release of TZif, a production-ready IANA timezone information library for Ada 2022. The library provides comprehensive support for parsing and working with IANA TZif format files using pure functional error handling with the Result monad pattern. This release features a SPARK-compatible I/O plugin architecture enabling formal verification of core domain logic.
+This is the first release candidate of TZif, a production-ready IANA timezone information library for Ada 2022. The library provides comprehensive support for parsing and working with IANA TZif format files using pure functional error handling with the Result monad pattern. This release features a SPARK-compatible I/O plugin architecture enabling formal verification of core domain logic.
 
 ### Features
 
@@ -161,6 +161,7 @@ Six pre-configured build profiles for different deployment targets:
 - API validation tests in `test/api/` directory
 - Formal package strategy resolves Result type ambiguity in generics
 - Full-scale validation test covering all 598 IANA zones
+- Companion project notice for ZoneInfo in README
 
 ### Fixed
 - **Critical**: File handle leak in `tzif_parser.adb` when `Parse_From_Stream` raises exception

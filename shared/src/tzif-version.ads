@@ -35,14 +35,14 @@ package TZif.Version is
 
    --  Pre-release identifier (e.g., "dev", "alpha.1", "beta.2", "rc.1")
    --  Empty string for stable releases
-   Prerelease : constant String := "";
+   Prerelease : constant String := "rc1";
 
    --  Build metadata (e.g., "build.123", "commit.abc123")
    --  Empty string if not specified
    Build_Metadata : constant String := "";
 
    --  Full version string (e.g., "0.1.0-dev", "1.2.3", "2.0.0-rc.1+build.456")
-   Version : constant String := "1.0.0";
+   Version : constant String := "1.0.0-rc1";
 
    --  Short version (no build metadata): "MAJOR.MINOR.PATCH[-PRERELEASE]"
    Short_Version : constant String :=

@@ -113,7 +113,7 @@ python3 scripts/release.py release X.X.X
   - Test purpose clearly documented
 
 - [ ] **Verify all markdown files (.md) have proper headers**
-  - **Version:** 1.0.0 current release version
+  - **Version:** 1.0.0-rc1 current release version
   - **Date:** November 16, 2025
   - **Status:** "Released" (not "Unreleased") for release builds
   - **Copyright:** © YYYY Name, Company
