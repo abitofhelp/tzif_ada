@@ -1,0 +1,20 @@
+--  ==========================================================================
+--  STM32MP135F-DK Profile (Linux) - Safety Restrictions
+--  ==========================================================================
+--  Target: STM32MP135F-DK running Linux (512 MB RAM)
+--
+--  Note: This is a Linux MPU with full Ada runtime. Restrictions are
+--        optional and primarily for memory safety rather than necessity.
+--
+--  Usage in your application:
+--    1. Copy to your project root as gnat.adc, OR
+--    2. In your GPR: for Local_Configuration_Pragmas use "path/to/restrictions.adc"
+--    3. Or use: alr exec -- gprbuild -gnatec=path/to/restrictions.adc
+--  ==========================================================================
+
+pragma Restrictions (No_Implicit_Heap_Allocations);
+pragma Restrictions (No_Recursion);
+pragma Restrictions (No_Access_Parameter_Allocators);
+pragma Restrictions (No_Coextensions);
+pragma Restrictions (No_Anonymous_Allocators);
+pragma Restrictions (No_Unchecked_Deallocation);

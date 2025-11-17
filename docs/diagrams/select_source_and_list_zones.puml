@@ -1,0 +1,69 @@
+@startuml select_source_and_list_zones
+title Select Source and List Zones
+
+actor Consumer
+participant "TZif.API" as API
+note right of API
+  Public API Facade
+end note
+participant "Source_Handle" as Handle
+participant "Zone_Repository" as Repo
+participant "Zone_Cache" as Cache
+participant "File_System" as FS
+
+Consumer -> API: Select_Source(ULID)
+activate Lib
+
+Lib -> API: Validate_Source_Exists(ULID)
+alt Source not found
+    API --> Consumer: Error("Source no longer exists")
+else Source valid
+    API -> Handle: Create_Handle(ULID, path)
+    activate Handle
+    API --> Consumer: Source_Handle
+    deactivate Lib
+
+    Consumer -> Handle: List_All_Zones(Sort_Order => Ascending)
+
+    Handle -> Cache: Get_Cached_Zones(ULID)
+    activate Cache
+    alt Cache HIT
+        Cache --> Handle: Zone_Id_List
+        Handle --> Consumer: Zone_Id_List
+    else Cache MISS
+        Cache --> Handle: NOT_FOUND
+        deactivate Cache
+
+        Handle -> Repo: Scan_Directory(path)
+        activate Repo
+
+        Repo -> FS: Recursive_Scan(path)
+        activate FS
+        FS --> Repo: Raw_Files
+        deactivate FS
+
+        Repo -> Repo: Filter_Metadata_Files()
+        note right
+          Exclude:
+          - +VERSION
+          - zone.tab
+          - leapseconds
+          - etc.
+        end note
+
+        Repo -> Repo: Sort(zones, Ascending)
+
+        Repo --> Handle: Zone_Id_List
+        deactivate Repo
+
+        Handle -> Cache: Cache_Zones(ULID, zones)
+        activate Cache
+        Cache --> Handle: OK
+        deactivate Cache
+
+        Handle --> Consumer: Zone_Id_List
+    end
+    deactivate Handle
+end
+
+@enduml

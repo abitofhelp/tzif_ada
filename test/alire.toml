@@ -1,0 +1,24 @@
+name = "tzif_tests"
+description = "Test suite for TZif library"
+version = "1.0.0"
+authors = ["Michael Gardner"]
+maintainers = ["Michael Gardner <mike@abitofhelp.com>"]
+maintainers-logins = ["abitofhelp"]
+licenses = "BSD-3-Clause"
+
+[build-switches]
+"*".Ada_Version = "Ada2022"
+
+# Pin to parent TZif crate (local development)
+[[depends-on]]
+tzif = "*"
+
+# Test-only dependencies
+[[depends-on]]
+gnatcov = "^22.0.1"
+
+[[depends-on]]
+gnatcoll = "^25.0.0"
+
+[[depends-on]]
+functional = "^2.0.0"

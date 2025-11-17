@@ -1,0 +1,59 @@
+@startuml validate_source
+title Validate Source Path
+
+actor Consumer
+participant "TZif.API" as API
+note right of API
+  Public API Facade
+end note
+participant "Validator" as Val
+participant "Platform" as Platform
+participant "File_System" as FS
+
+Consumer -> API: Validate_Source("/custom/zoneinfo")
+activate Lib
+
+Lib -> Val: Validate_Path("/custom/zoneinfo")
+activate Val
+
+Val -> Val: Check_Not_Empty()
+alt Path is empty
+    Val --> API: Error(Validation_Error, "Path is empty")
+else Path not empty
+    Val -> FS: Check_Exists()
+    activate FS
+    alt Path doesn't exist
+        FS --> Val: NOT_FOUND
+        Val --> API: Error(Infrastructure_Error, "Path does not exist")
+    else Path exists
+        FS --> Val: EXISTS
+        deactivate FS
+
+        Val -> FS: Check_Kind()
+        activate FS
+        alt Not a directory
+            FS --> Val: FILE
+            Val --> API: Error(Validation_Error, "Path is not a directory")
+        else Is a directory
+            FS --> Val: DIRECTORY
+            deactivate FS
+
+            Val -> Platform: Is_Symlink("/custom/zoneinfo")
+            activate Platform
+            alt Is symlink
+                Platform --> Val: TRUE
+                Val --> API: Error(Validation_Error, "Path is a symlink")
+            else Real directory
+                Platform --> Val: FALSE
+                deactivate Platform
+                Val --> API: OK(Valid_Path)
+            end
+        end
+    end
+end
+
+deactivate Val
+API --> Consumer: Validation_Result
+deactivate Lib
+
+@enduml

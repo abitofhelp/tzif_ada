@@ -1,0 +1,64 @@
+-- ===========================================================================
+-- tzif_internal.gpr - Internal Build (No Interface Restrictions)
+-- ===========================================================================
+-- Purpose:
+--   This project file is used for internal development and testing.
+--   Unlike tzif.gpr (which enforces Library_Interface), this exposes
+--   ALL packages including Application and Infrastructure layers.
+--
+-- Usage:
+--   - Unit tests that need to test internal Infrastructure packages
+--   - Integration tests that need direct access to Repository implementations
+--   - Internal development builds
+--
+-- External clients should NEVER depend on this project - use tzif.gpr instead.
+-- ===========================================================================
+
+with "config/tzif_config.gpr";
+
+library project TZif_Internal is
+
+   for Library_Name use "tzif_internal";
+   for Library_Kind use "static";
+   for Library_Dir use "lib";
+
+   -- Profile selection (standard profile for tests)
+   type Profile_Type is
+     ("standard",           -- Desktop/server (1+ GB RAM)
+      "embedded",           -- Ravenscar embedded (512KB+ RAM)
+      "concurrent",         -- Multi-threaded (1+ GB RAM)
+      "baremetal",          -- Zero footprint (128KB+ RAM)
+      "stm32h7s78",         -- STM32H7S78-DK (620KB + 32MB PSRAM)
+      "stm32mp135_linux");  -- STM32MP135F-DK Linux (512 MB)
+
+   Profile : Profile_Type := external ("TZIF_PROFILE", "standard");
+
+   -- Include all source directories (same as tzif.gpr)
+   case Profile is
+      when "standard" =>
+         for Source_Dirs use ("src/**", "config/profiles/standard");
+      when "embedded" =>
+         for Source_Dirs use ("src/**", "config/profiles/embedded");
+      when "concurrent" =>
+         for Source_Dirs use ("src/**", "config/profiles/concurrent");
+      when "baremetal" =>
+         for Source_Dirs use ("src/**", "config/profiles/baremetal");
+      when "stm32h7s78" =>
+         for Source_Dirs use ("src/**", "config/profiles/stm32h7s78");
+      when "stm32mp135_linux" =>
+         for Source_Dirs use ("src/**", "config/profiles/stm32mp135_linux");
+   end case;
+
+   for Object_Dir use "obj/internal";
+   for Create_Missing_Dirs use "True";
+
+   -- NO Library_Interface restriction - all packages are accessible
+   -- This allows unit tests to import and test Infrastructure packages directly
+
+   for Languages use ("Ada");
+
+   package Compiler is
+      for Default_Switches ("Ada") use TZif_Config.Ada_Compiler_Switches;
+   end Compiler;
+
+end TZif_Internal;

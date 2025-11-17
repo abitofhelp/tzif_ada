@@ -1,0 +1,81 @@
+@startuml export_cache
+title Export Cache to File
+
+actor Consumer
+participant "TZif.API" as API
+note right of API
+  Public API Facade
+end note
+participant "Cache_Manager" as Cache
+participant "Source_Cache" as SCache
+participant "Zone_Cache" as ZCache
+participant "Serializer" as Ser
+participant "File_System" as FS
+
+Consumer -> API: Export_Cache("/var/cache/tzif/cache.bin")
+activate API
+
+API -> Cache: Export_All_Caches()
+activate Cache
+
+Cache -> SCache: Get_All_Sources()
+activate SCache
+SCache --> Cache: Source_Info_List
+deactivate SCache
+
+Cache -> ZCache: Get_All_Cached_Zones()
+activate ZCache
+ZCache --> Cache: Zone_Data_Map
+note right
+  Map: (ULID, Zone_Id) -> TZif_Data
+end note
+deactivate ZCache
+
+Cache -> Ser: Serialize(sources, zones)
+activate Ser
+
+Ser -> Ser: Write_Header()
+note right
+  Magic: "TZIF_CACHE"
+  Version: 1
+  Created: timestamp
+  Platform: darwin/linux/windows
+end note
+
+Ser -> Ser: Write_Sources(source_list)
+note right
+  For each source:
+  - ULID
+  - Path
+  - Version
+  - Zone_Count
+end note
+
+Ser -> Ser: Write_Zones(zone_map)
+note right
+  For each zone:
+  - Source_ULID
+  - Zone_Id
+  - TZif_Data (binary)
+end note
+
+Ser --> Cache: Binary_Data
+deactivate Ser
+
+Cache -> FS: Write_File("/var/cache/tzif/cache.bin", data)
+activate FS
+FS --> Cache: OK
+deactivate FS
+
+Cache --> API: Success
+deactivate Cache
+
+API --> Consumer: OK
+deactivate API
+
+note over Consumer
+  Next session: Import this cache
+  for instant startup!
+end note
+
+@enduml

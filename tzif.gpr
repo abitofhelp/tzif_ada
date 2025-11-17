@@ -1,0 +1,263 @@
+-- ===========================================================================
+-- TZif.gpr - TZif Timezone Library (RFC 9636)
+-- ===========================================================================
+-- Copyright (c) 2025 Michael Gardner, A Bit of Help, Inc.
+-- SPDX-License-Identifier: BSD-3-Clause
+-- See LICENSE file in the project root.
+--
+-- Purpose:
+--   This crate contains the implementation of a timezone parser for the
+--   compiled tzdata files.
+--   This is a library-only crate (no executables) containing domain, 
+--   application, and infrastructure layers.
+--
+-- Produces: lib/libzif.a
+-- Publishable: YES - The library crates
+-- ===========================================================================
+
+with "config/tzif_config.gpr";
+
+project TZif is
+
+   for Library_Name use "tzif";
+   for Library_Version use Project'Library_Name & ".so." & TZif_Config.Crate_Version;
+
+   --  =======================================================================
+   --  Profile Selection (via TZif_Config package)
+   --  =======================================================================
+   type Profile_Type is
+     ("standard",           -- Desktop/server (1+ GB RAM)
+      "embedded",           -- Ravenscar embedded (512KB+ RAM)
+      "concurrent",         -- Multi-threaded (1+ GB RAM)
+      "baremetal",          -- Zero footprint (128KB+ RAM)
+      "stm32h7s78",         -- STM32H7S78-DK (620KB + 32MB PSRAM)
+      "stm32mp135_linux");  -- STM32MP135F-DK Linux (512 MB)
+
+   Profile : Profile_Type := external ("TZIF_PROFILE", "standard");
+
+   --  =======================================================================
+   --  Source Directories (Profile-Dependent)
+   --  =======================================================================
+   --  Include all source subdirectories + selected configuration profile.
+   --  Only ONE TZif_Config package will be visible to the compiler.
+   --  =======================================================================
+   case Profile is
+      when "standard" =>
+         for Source_Dirs use ("src/**", "config/profiles/standard");
+      when "embedded" =>
+         for Source_Dirs use ("src/**", "config/profiles/embedded");
+      when "concurrent" =>
+         for Source_Dirs use ("src/**", "config/profiles/concurrent");
+      when "baremetal" =>
+         for Source_Dirs use ("src/**", "config/profiles/baremetal");
+      when "stm32h7s78" =>
+         for Source_Dirs use ("src/**", "config/profiles/stm32h7s78");
+      when "stm32mp135_linux" =>
+         for Source_Dirs use ("src/**", "config/profiles/stm32mp135_linux");
+   end case;
+
+   for Object_Dir use "obj/" & TZif_Config.Build_Profile;
+   for Create_Missing_Dirs use "True";
+   for Library_Dir use "lib";
+
+   type Library_Type_Type is ("relocatable", "static", "static-pic");
+   Library_Type : Library_Type_Type :=
+     external ("FUNCTIONAL_LIBRARY_TYPE", external ("LIBRARY_TYPE", "static"));
+   for Library_Kind use Library_Type;
+
+   --  =======================================================================
+   --  Stand-Alone Library Configuration - PUBLIC API ENFORCEMENT
+   --  =======================================================================
+   --
+   --  Hybrid Library Architecture: Only Domain and API are public
+   --
+   --  PUBLIC (Publishable, Reusable):
+   --    - TZif.Domain.*        Pure domain logic, value objects, entities
+   --    - TZif.API             Stable public facade
+   --
+   --  PRIVATE (Application-specific, Hidden):
+   --    - TZif.Application.*   Application-specific use cases
+   --    - TZif.Infrastructure.*  Concrete adapters
+   --
+   --  ENFORCED BY:
+   --    - Library_Standalone: Enables stand-alone library mode
+   --    - Library_Interface: Explicitly lists ONLY public packages
+   --    - GPRbuild: Prevents clients from accessing non-listed packages
+   --
+   --  EXPECTED WARNINGS:
+   --    GPRbuild will warn that TZif.API needs Application.Port.* packages
+   --    that are not in the interface set. This is INTENTIONAL and CORRECT:
+   --      - TZif.API (public) uses Application.Port types internally
+   --      - External clients cannot access Application.Port.* directly
+   --      - This is the facade pattern working as designed
+   --    These warnings document that architectural isolation is enforced.
+   --
+   --  TODO: Review with GPT-5 if there's a way to eliminate these warnings
+   --        while maintaining proper architectural boundaries.
+   --  =======================================================================
+
+   for Library_Standalone use "standard";
+
+   --  Public Interface: Domain layer + API facade
+   --  Application and Infrastructure are deliberately EXCLUDED
+   --  TZif_Config is included as it's needed by Domain packages
+   for Library_Interface use
+     ("TZif_Config",
+      "TZif",
+      "TZif.API",
+      "TZif.Domain",
+      "TZif.Domain.Entity",
+      "TZif.Domain.Entity.Zone",
+      "TZif.Domain.Error",
+      "TZif.Domain.Error.Result",
+      "TZif.Domain.Service",
+      "TZif.Domain.Service.Timezone_Lookup",
+      "TZif.Domain.TZif_Data",
+      "TZif.Domain.Value_Object",
+      "TZif.Domain.Value_Object.Cache_Stats",
+      "TZif.Domain.Value_Object.Epoch_Seconds",
+      "TZif.Domain.Value_Object.IANA_Releases",
+      "TZif.Domain.Value_Object.Source_Info",
+      "TZif.Domain.Value_Object.Timezone_Type",
+      "TZif.Domain.Value_Object.Transition",
+      "TZif.Domain.Value_Object.Transition_Info",
+      "TZif.Domain.Value_Object.TZif_Header",
+      "TZif.Domain.Value_Object.Unit",
+      "TZif.Domain.Value_Object.UTC_Offset",
+      "TZif.Domain.Value_Object.Zone_Id");
+
+   -- ==========================================================================
+   -- Build Mode Configuration
+   -- ==========================================================================
+   type Mode_Type is ("debug", "release", "optimize");
+   Mode : Mode_Type := external ("mode", "debug");
+
+   -- ==========================================================================
+   -- Compiler Package: Ada 2022 Standards and Best Practices
+   -- ==========================================================================
+   package Compiler is
+
+      -- Common switches applied to all build modes
+      Common_Switches := (
+         "-gnat2022",        -- Ada 2022 mode
+         "-gnatwa",          -- All warnings
+         "-gnatw.Y",         -- Disable warnings from system units
+         "-gnatwl",          -- Elaboration warnings
+         "-gnatwu",          -- Unused entities warnings
+         "-gnatw.u",         -- Unreferenced entities
+         "-gnatw.r",         -- Redundant constructs
+         "-gnatw.k",         -- Variable could be constant
+         "-gnatw.m",         -- Variable assigned but never read
+         "-gnatw.o",         -- Modified but unreferenced out parameters
+         "-gnatw.X",         -- Disable warnings on local exception propagation
+         "-gnatf",           -- Full error messages
+
+         -- Style checks (Ada Quality and Style Guide)
+         "-gnatyy",          -- Enable default style checks
+         "-gnaty3",          -- Check indentation of 3 spaces
+         "-gnatya",          -- Check attribute casing
+         "-gnatyb",          -- Check blanks at end of lines
+         "-gnatyc",          -- Check comment format
+         "-gnatyd",          -- Check no DOS line terminators
+         "-gnatye",          -- Check end labels
+         "-gnatyf",          -- Check form feeds/vertical tabs
+         "-gnatyh",          -- Check horizontal tabs
+         "-gnatyi",          -- Check if-then layout
+         "-gnatyk",          -- Check keyword casing
+         "-gnatyl",          -- Check layout
+         "-gnatym",          -- Check line length <= 79 (overridden by -gnatyM120)
+         "-gnatyn",          -- Check casing of entities in Standard
+         "-gnatyp",          -- Check pragma casing
+         "-gnatyr",          -- Check references
+         "-gnatys",          -- Check separate specs
+         "-gnatyt",          -- Check token spacing
+         "-gnatyu",          -- Check unnecessary blank lines
+         "-gnatyx",          -- Check extra parentheses
+         "-gnatyM120",       -- Maximum line length of 120 characters
+         "-gnatyN",          -- Check casing of predefined identifiers
+         "-gnatyO",          -- Check overriding indicators
+         "-gnatyS",          -- Check no statements on same line as THEN or ELSE
+         "-gnatW8"           -- UTF-8 encoding
+      );
+
+      case Mode is
+         when "debug" =>
+            for Default_Switches ("Ada") use Common_Switches & (
+               "-g",            -- Debug info
+               "-gnatVa",       -- All validity checks
+               "-gnateE",       -- Extra info in exceptions
+               "-gnata",        -- Enable assertions and contracts
+               "-gnatU",        -- Tag uninitialized scalars
+               "-gnatd.n"       -- Activate front-end inlining
+            );
+
+         when "release" =>
+            for Default_Switches ("Ada") use Common_Switches & (
+               "-O2",           -- Optimization level 2
+               "-gnatn",        -- Enable inlining
+               "-gnatp"         -- Suppress all checks (release only)
+            );
+
+         when "optimize" =>
+            for Default_Switches ("Ada") use Common_Switches & (
+               "-O3",           -- Maximum optimization
+               "-gnatn",        -- Enable inlining
+               "-gnatp",        -- Suppress all checks
+               "-funroll-loops",
+               "-ffunction-sections",
+               "-fdata-sections"
+            );
+      end case;
+   end Compiler;
+
+   -- ==========================================================================
+   -- Binder Package: Runtime Configuration
+   -- ==========================================================================
+   package Binder is
+      case Mode is
+         when "debug" =>
+            for Default_Switches ("Ada") use (
+               "-Es",        -- Symbolic traceback
+               "-E"          -- Store tracebacks in exceptions
+            );
+         when others =>
+            for Default_Switches ("Ada") use ("-E");
+      end case;
+   end Binder;
+
+   -- ==========================================================================
+   -- Builder Package: Build Process Configuration
+   -- ==========================================================================
+   package Builder is
+      for Default_Switches ("Ada") use (
+         "-j0",           -- Use all available cores (0 = auto-detect)
+         "-s"             -- Recompile if compiler switches change
+      );
+   end Builder;
+
+   -- ==========================================================================
+   -- Format Package: Code Formatting Configuration
+   -- ==========================================================================
+   package Format is
+      for Configuration use ".gnatformat.yaml";
+   end Format;
+
+   -- ==========================================================================
+   -- Documentation Package: API Documentation
+   -- ==========================================================================
+   package Documentation is
+      for Documentation_Dir use "docs/api";
+   end Documentation;
+
+   -- ==========================================================================
+   -- Linker Package: Required Libraries
+   -- ==========================================================================
+   package Linker is
+      for Linker_Options use ("-lgnarl", "-lgnat");
+   end Linker;
+
+   package Install is
+      for Artifacts (".") use ("share");
+   end Install;
+
+end TZif;

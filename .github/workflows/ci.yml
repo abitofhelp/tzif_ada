@@ -1,0 +1,126 @@
+name: CI
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+jobs:
+  architecture-validation:
+    name: Architecture Guard
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Validate Hexagonal Architecture
+        run: |
+          python3 scripts/validate_architecture.py
+          if [ $? -ne 0 ]; then
+            echo "❌ Architecture validation failed!"
+            exit 1
+          fi
+          echo "✅ Architecture validation passed"
+
+  build-and-test:
+    name: Build and Test (Ubuntu)
+    runs-on: ubuntu-latest
+    needs: architecture-validation
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install Alire
+        run: |
+          wget -q https://github.com/alire-project/alire/releases/download/v2.0.1/alr-2.0.1-bin-x86_64-linux.zip
+          unzip -q alr-2.0.1-bin-x86_64-linux.zip
+          chmod +x bin/alr
+          echo "$PWD/bin" >> $GITHUB_PATH
+
+      - name: Setup Alire toolchain
+        run: |
+          alr toolchain --select gnat_native^13 --select gprbuild^22
+          alr build
+
+      - name: Run architecture validation
+        run: make check-arch
+
+      - name: Build library
+        run: alr build
+
+      - name: Build tests
+        run: make build-tests
+
+      - name: Run unit tests
+        run: make test-unit
+
+      - name: Run integration tests
+        run: make test-integration
+
+      - name: Run all tests
+        run: make test-all
+
+  build-macos:
+    name: Build and Test (macOS)
+    runs-on: macos-latest
+    needs: architecture-validation
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install Alire
+        run: |
+          wget -q https://github.com/alire-project/alire/releases/download/v2.0.1/alr-2.0.1-bin-x86_64-macos.zip
+          unzip -q alr-2.0.1-bin-x86_64-macos.zip
+          chmod +x bin/alr
+          echo "$PWD/bin" >> $GITHUB_PATH
+
+      - name: Setup Alire toolchain
+        run: |
+          alr toolchain --select gnat_native^13 --select gprbuild^22
+          alr build
+
+      - name: Run architecture validation
+        run: make check-arch
+
+      - name: Build library
+        run: alr build
+
+      - name: Build tests
+        run: make build-tests
+
+      - name: Run all tests
+        run: make test-all
+
+  style-check:
+    name: Code Style Check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install Alire
+        run: |
+          wget -q https://github.com/alire-project/alire/releases/download/v2.0.1/alr-2.0.1-bin-x86_64-linux.zip
+          unzip -q alr-2.0.1-bin-x86_64-linux.zip
+          chmod +x bin/alr
+          echo "$PWD/bin" >> $GITHUB_PATH
+
+      - name: Setup toolchain
+        run: |
+          alr toolchain --select gnat_native^13 --select gprbuild^22
+
+      - name: Check Ada style
+        run: |
+          alr build -- -gnatys
+          if [ $? -ne 0 ]; then
+            echo "❌ Style check failed!"
+            exit 1
+          fi
+          echo "✅ Style check passed"

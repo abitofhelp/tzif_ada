@@ -1,0 +1,52 @@
+-- ===========================================================================
+-- integration_tests.gpr - Integration Test Suite
+-- ===========================================================================
+-- Note: Uses tzif_internal.gpr (not tzif.gpr) to access internal packages
+--       that are tested by integration tests but not exposed in the public API.
+-- ===========================================================================
+
+with "../../config/tzif_config.gpr";
+with "../../tzif_internal.gpr";
+
+project Integration_Tests is
+
+   for Source_Dirs use (".", "../common", "../support");
+   for Object_Dir use "../../obj/test/integration";
+   for Exec_Dir use "../bin";
+
+   for Main use
+     ("integration_runner.adb",
+      "test_cache_export_import.adb",
+      "test_cache_validation_errors.adb",
+      "test_cache_with_zones.adb",
+      "test_discover_sources.adb",
+      "test_export_cache.adb",
+      "test_find_by_id.adb",
+      "test_find_by_pattern.adb",
+      "test_find_by_regex.adb",
+      "test_find_by_region.adb",
+      "test_find_my_id.adb",
+      "test_get_transition_at_epoch.adb",
+      "test_get_version.adb",
+      "test_import_cache.adb",
+      "test_list_all_order_by_id.adb",
+      "test_load_source.adb",
+      "test_platform_stubs.adb",
+      "test_query_timezone_info.adb",
+      "test_tzif_parser_errors.adb",
+      "test_validate_source.adb",
+      "test_zone_repository_errors.adb");
+
+   package Compiler is
+      for Default_Switches ("Ada") use TZif_Config.Ada_Compiler_Switches;
+   end Compiler;
+
+   package Binder is
+      for Switches ("Ada") use ("-Es");  -- Symbolic traceback
+   end Binder;
+
+   package Builder is
+      for Switches ("Ada") use ("-g");  -- Debug symbols
+   end Builder;
+
+end Integration_Tests;

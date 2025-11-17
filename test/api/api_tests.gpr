@@ -1,0 +1,43 @@
+-- ===========================================================================
+-- API_Tests - Public API Contract Validation
+-- ===========================================================================
+-- Purpose:
+--   Tests TZif's public API contract (TZif.API.*) with real filesystem I/O.
+--   Uses tzif_internal.gpr to avoid standalone library linking conflicts
+--   while still only accessing public interface packages.
+--
+-- Scope:
+--   - Only imports packages from TZif.API (public interface)
+--   - Validates public API contract and behavior
+--   - Uses real timezone files from /usr/share/zoneinfo
+-- ===========================================================================
+
+with "../../config/tzif_config.gpr";
+with "../../tzif_internal.gpr";
+
+project API_Tests is
+
+   for Source_Dirs use (".");
+   for Object_Dir use "../../obj/test/api";
+   for Exec_Dir use "../bin";
+
+   for Main use (
+      "test_find_by_id.adb",
+      "test_find_local_timezone.adb",
+      "test_get_offset_at_time.adb",
+      "test_error_handling.adb"
+   );
+
+   package Compiler is
+      for Default_Switches ("Ada") use TZif_Config.Ada_Compiler_Switches;
+   end Compiler;
+
+   package Binder is
+      for Switches ("Ada") use ("-Es");  -- Symbolic traceback
+   end Binder;
+
+   package Builder is
+      for Switches ("Ada") use ("-g");  -- Debug symbols
+   end Builder;
+
+end API_Tests;

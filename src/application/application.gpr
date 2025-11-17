@@ -1,0 +1,110 @@
+-- ===========================================================================
+-- Application.gpr - Application Layer Library
+-- ===========================================================================
+-- Copyright (c) 2025 Michael Gardner, A Bit of Help, Inc.
+-- SPDX-License-Identifier: BSD-3-Clause
+--
+-- Purpose:
+--   Application layer library containing use cases, commands (DTOs),
+--   and port interfaces. This layer orchestrates domain logic.
+--
+-- Dependencies: Domain layer only
+-- Publishable: NO - Application-specific
+-- ===========================================================================
+
+with "../../shared_config.gpr";
+
+library project Application is
+
+   for Library_Name use "application";
+   for Library_Kind use "static";
+
+   for Source_Dirs use (".", "model", "command", "port", "port/inbound", "port/outbound", "usecase");
+   for Object_Dir use "../../obj/application";
+   for Library_Dir use "../../lib/application";
+
+   --  =======================================================================
+   --  Stand-Alone Library Configuration - ARCHITECTURAL ENFORCEMENT
+   --  =======================================================================
+   --
+   --  WHY: Hexagonal/Clean Architecture requires that the Presentation layer
+   --       cannot access the Domain layer, even transitively through Application.
+   --
+   --  PROBLEM: By default, GPRbuild allows transitive dependencies. If
+   --           Presentation depends on Application, and Application depends on
+   --           Domain, then Presentation can "with Domain.*" packages transitively.
+   --
+   --  SOLUTION: Stand-Alone Library with explicit Library_Interface
+   --
+   --  HOW IT WORKS:
+   --    1. "Library_Standalone" enables stand-alone library mode
+   --    2. "Library_Interface" explicitly lists the public API packages
+   --    3. ONLY packages in Library_Interface get their .ali files copied
+   --       to the library directory
+   --    4. Clients (e.g., Presentation) can ONLY see packages listed in
+   --       Library_Interface
+   --    5. Domain.* packages are deliberately NOT listed in Library_Interface
+   --    6. GPRbuild enforces this at compile time - if Presentation tries to
+   --       "with Domain.*", compilation FAILS
+   --
+   --  ARCHITECTURAL RULE ENFORCED:
+   --    "Application MUST NOT transitively expose Domain to Presentation"
+   --
+   --  VALIDATED BY:
+   --    - scripts/arch_guard.py checks that Library_Interface exists and
+   --      contains no Domain.* packages (compile-time validation)
+   --    - GPRbuild enforces that Presentation cannot access Domain packages
+   --      (runtime prevention)
+   --
+   --  REFERENCES:
+   --    - docs/ARCHITECTURE_ENFORCEMENT.md for full explanation
+   --    - GPRbuild docs: Stand-Alone Libraries section
+   --  =======================================================================
+
+   for Library_Standalone use "standard";
+
+   --  Public Application Layer Interface (visible to Presentation/Bootstrap)
+   --  NOTE: Domain.* packages are deliberately EXCLUDED
+   for Library_Interface use
+     ("Application",
+      "Application.Command",
+      "Application.Model",
+      "Application.Model.Unit",
+      "Application.Port",
+      "Application.Port.Inbound",
+      "Application.Port.Inbound.Discover_Sources",
+      "Application.Port.Inbound.Export_Cache",
+      "Application.Port.Inbound.Find_By_Id",
+      "Application.Port.Inbound.Find_By_Pattern",
+      "Application.Port.Inbound.Find_By_Regex",
+      "Application.Port.Inbound.Find_By_Region",
+      "Application.Port.Inbound.Find_My_Id",
+      "Application.Port.Inbound.Get_Transition_At_Epoch",
+      "Application.Port.Inbound.Get_Version",
+      "Application.Port.Inbound.Import_Cache",
+      "Application.Port.Inbound.List_All_Order_By_Id",
+      "Application.Port.Inbound.Load_Source",
+      "Application.Port.Inbound.Validate_Source",
+      "Application.Port.Outbound",
+      "Application.Port.Outbound.Writer",
+      "Application.Port.Outbound.Zone_Repository",
+      "Application.Usecase",
+      "Application.Usecase.Discover_Sources",
+      "Application.Usecase.Export_Cache",
+      "Application.Usecase.Find_By_Id",
+      "Application.Usecase.Find_By_Pattern",
+      "Application.Usecase.Find_By_Regex",
+      "Application.Usecase.Find_By_Region",
+      "Application.Usecase.Find_My_Id",
+      "Application.Usecase.Get_Transition_At_Epoch",
+      "Application.Usecase.Get_Version",
+      "Application.Usecase.Import_Cache",
+      "Application.Usecase.List_All_Order_By_Id",
+      "Application.Usecase.Load_Source",
+      "Application.Usecase.Validate_Source");
+
+   package Compiler renames Shared_Config.Compiler;
+   package Binder renames Shared_Config.Binder;
+   package Builder renames Shared_Config.Builder;
+
+end Application;

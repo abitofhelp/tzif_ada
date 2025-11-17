@@ -1,0 +1,40 @@
+-- ===========================================================================
+-- unit_tests.gpr - Unit Test Suite
+-- ===========================================================================
+-- Note: Uses tzif_internal.gpr (not tzif.gpr) to access internal packages
+--       that are tested by unit tests but not exposed in the public API.
+-- ===========================================================================
+
+with "../../config/tzif_config.gpr";
+with "../../tzif_internal.gpr";
+
+project Unit_Tests is
+
+   for Source_Dirs use (".", "../common");
+   for Object_Dir use "../../obj/test/unit";
+   for Exec_Dir use "../bin";
+
+   for Main use
+     ("unit_runner.adb",
+      "test_timezone_lookup.adb",
+      "test_tzif_data.adb",
+      "test_zone_id.adb",
+      "test_value_object_accessors.adb",
+      "test_iana_releases.adb",
+      "test_zone_entity.adb",
+      "test_source_cache.adb",
+      "test_json_serialization.adb");
+
+   package Compiler is
+      for Default_Switches ("Ada") use TZif_Config.Ada_Compiler_Switches;
+   end Compiler;
+
+   package Binder is
+      for Switches ("Ada") use ("-Es");  -- Symbolic traceback
+   end Binder;
+
+   package Builder is
+      for Switches ("Ada") use ("-g");  -- Debug symbols
+   end Builder;
+
+end Unit_Tests;

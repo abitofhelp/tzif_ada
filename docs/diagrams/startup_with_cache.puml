@@ -1,0 +1,53 @@
+@startuml startup_with_cache
+title Startup with Cache Import
+
+actor Consumer
+participant "TZif_Builder" as Builder
+participant "Cache_Manager" as Cache
+participant "File_System" as FS
+participant "Background_Scanner" as Scanner
+
+Consumer -> Builder: Build()
+activate Builder
+
+Builder -> Cache: Import_Cache("cache.bin")
+activate Cache
+
+Cache -> FS: Read_File("cache.bin")
+activate FS
+FS --> Cache: Cache_Data
+deactivate FS
+
+Cache -> Cache: Validate_Cache()
+note right
+  Check cache version
+  Validate source paths
+end note
+
+Cache --> Builder: Cached_Sources
+deactivate Cache
+
+Builder -> Scanner: Start_Background_Scanner()
+activate Scanner
+note right
+  LOW PRIORITY
+  Validates cached sources
+  Discovers new sources
+end note
+
+Builder --> Consumer: TZif_Instance
+deactivate Builder
+
+... Later (async) ...
+
+Scanner -> FS: Scan_Paths()
+FS --> Scanner: New_Sources
+
+Scanner -> Cache: Update_Cache(new_sources)
+note right
+  Add new sources
+  Remove missing sources
+end note
+deactivate Scanner
+
+@enduml

@@ -1,0 +1,52 @@
+-- ===========================================================================
+-- Examples.gpr - TZif Example Programs
+-- ===========================================================================
+-- Copyright (c) 2025 Michael Gardner, A Bit of Help, Inc.
+-- SPDX-License-Identifier: BSD-3-Clause
+--
+-- Purpose:
+--   Example programs demonstrating TZif library usage.
+--   Shows tzif architecture in action.
+-- ===========================================================================
+
+with "../config/tzif_config.gpr";
+with "../tzif_internal.gpr";
+
+project Examples is
+
+   for Source_Dirs use (".");
+   for Object_Dir use "../obj/examples";
+   for Exec_Dir use "../bin/examples";
+
+   for Main use (
+      "find_by_id.adb",
+      "find_my_id.adb",
+      "get_transition_at_epoch.adb",
+      "discover_sources.adb",
+      "get_version.adb",
+      "validate_source.adb",
+      "load_source.adb",
+      "find_by_pattern.adb",
+      "find_by_region.adb",
+      "find_by_regex.adb",
+      "list_all_zones.adb",
+      "import_cache.adb",
+      "cache_export_import.adb"
+   );
+
+   package Compiler is
+      for Default_Switches ("Ada") use TZif_Config.Ada_Compiler_Switches;
+   end Compiler;
+
+   package Binder is
+      --  -Es: Symbolic traceback
+      for Switches ("Ada") use ("-Es");
+   end Binder;
+
+   package Builder is
+      for Switches ("Ada") use ("-g");  -- Debug symbols
+   end Builder;
+
+   --  Linker: use defaults; TZif_Client declares the pre-built libtzif.a.
+
+end Examples;

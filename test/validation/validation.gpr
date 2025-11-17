@@ -1,0 +1,39 @@
+-- ===========================================================================
+-- Validation.gpr - Comprehensive TZif Validation Test Suite
+-- ===========================================================================
+-- Copyright (c) 2025 Michael Gardner, A Bit of Help, Inc.
+-- SPDX-License-Identifier: BSD-3-Clause
+--
+-- Purpose:
+--   Build comprehensive validation tests for TZif.API across major
+--   timezones with extensive epoch coverage.
+-- ===========================================================================
+
+with "../../config/tzif_config.gpr";
+with "../../tzif_internal.gpr";
+
+project Validation is
+
+   for Source_Dirs use (".");
+   for Object_Dir use "../../obj/test/validation";
+   for Exec_Dir use "../bin";
+
+   for Main use (
+      "comprehensive_validation.adb",
+      "full_scale_validation.adb",
+      "check_errors.adb"
+   );
+
+   package Compiler is
+      for Default_Switches ("Ada") use TZif_Config.Ada_Compiler_Switches;
+   end Compiler;
+
+   package Binder is
+      for Switches ("Ada") use ("-Es");  -- Symbolic traceback
+   end Binder;
+
+   package Builder is
+      for Switches ("Ada") use ("-g");  -- Debug symbols
+   end Builder;
+
+end Validation;

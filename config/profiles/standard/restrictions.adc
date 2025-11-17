@@ -1,0 +1,15 @@
+--  ==========================================================================
+--  Standard Profile - No Restrictions for TZif Library
+--  ==========================================================================
+--  Target: Desktop/server environments (1+ GB RAM)
+--
+--  This profile has no restrictions for maximum development flexibility.
+--
+--  Usage in your application:
+--    1. Copy to your project root as gnat.adc, OR
+--    2. In your GPR: for Local_Configuration_Pragmas use "path/to/restrictions.adc"
+--    3. Or use: alr exec -- gprbuild -gnatec=path/to/restrictions.adc
+--  ==========================================================================
+
+--  No restrictions for desktop/server environments
+--  (This file intentionally has no pragmas for maximum flexibility)

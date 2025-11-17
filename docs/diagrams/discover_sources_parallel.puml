@@ -1,0 +1,85 @@
+@startuml discover_sources_parallel
+title Discover Sources (Parallel Scan)
+
+actor Consumer
+participant "TZif.API" as API
+note right of API
+  Public API Facade
+end note
+participant "Source_Scanner" as Scanner
+participant "Task_Pool" as Pool
+participant "Validator" as Val
+participant "File_System" as FS
+
+Consumer -> API: Discover_Sources(In_Parallel => True)
+activate Lib
+
+Lib -> Scanner: Scan_Standard_Paths()
+activate Scanner
+
+Scanner -> Pool: Create_Task_Pool(size => 4)
+activate Pool
+
+par Path 1: /usr/share/zoneinfo
+    Pool -> Val: Validate_And_Scan("/usr/share/zoneinfo")
+    activate Val
+    Val -> Val: Check_Not_Symlink()
+    Val -> FS: Check_Directory_Exists()
+    activate FS
+    FS --> Val: OK
+    deactivate FS
+    Val -> FS: Read_Version("+VERSION")
+    activate FS
+    FS --> Val: "2024b"
+    deactivate FS
+    Val -> FS: Count_Zones()
+    activate FS
+    FS --> Val: 599
+    deactivate FS
+    Val -> Val: Generate_ULID()
+    Val --> Pool: Source_Info(ULID, path, version, count)
+    deactivate Val
+else Path 2: /var/db/timezone/zoneinfo
+    Pool -> Val: Validate_And_Scan("/var/db/timezone/zoneinfo")
+    activate Val
+    Val -> Val: Check_Not_Symlink()
+    note right: SYMLINK DETECTED
+    Val --> Pool: Error("Path is a symlink")
+    deactivate Val
+else Path 3: /usr/lib/zoneinfo
+    Pool -> Val: Validate_And_Scan("/usr/lib/zoneinfo")
+    activate Val
+    Val -> FS: Check_Directory_Exists()
+    activate FS
+    FS --> Val: NOT_FOUND
+    deactivate FS
+    Val --> Pool: Error("Path does not exist")
+    deactivate Val
+else Path 4: /etc/zoneinfo
+    Pool -> Val: Validate_And_Scan("/etc/zoneinfo")
+    activate Val
+    Val -> FS: Check_Directory_Exists()
+    activate FS
+    FS --> Val: NOT_FOUND
+    deactivate FS
+    Val --> Pool: Error("Path does not exist")
+    deactivate Val
+end
+
+Pool --> Scanner: Results(sources=[Source1], errors=[Error1, Error2, Error3])
+deactivate Pool
+
+Scanner --> API: Discovery_Result
+deactivate Scanner
+
+API --> Consumer: Result(valid_sources=[1], errors=[3])
+note right
+  Valid: /usr/share/zoneinfo
+  Errors:
+   - /var/db/timezone/zoneinfo (symlink)
+   - /usr/lib/zoneinfo (not found)
+   - /etc/zoneinfo (not found)
+end note
+deactivate Lib
+
+@enduml

@@ -1,0 +1,89 @@
+@startuml find_zone_by_id
+title Find Zone By ID
+
+actor Consumer
+participant "TZif.API" as API
+participant "Source_Handle" as Handle
+participant "Zone_Repository" as Repo
+participant "Zone_Cache" as Cache
+participant "TZif_Parser" as Parser
+participant "File_System" as FS
+
+Consumer -> API: Find_Zone(Zone_Id)
+activate API
+note right
+  Public API Facade
+  Shields internal changes
+end note
+
+API -> Handle: Find_By_Id("America/Phoenix")
+activate Handle
+
+Handle -> Cache: Get_Cached_Zone(ULID, "America/Phoenix")
+activate Cache
+
+alt Cache HIT
+    Cache --> Handle: TZif_Data
+    Handle -> Handle: Create_Zone_Entity()
+    Handle --> API: Zone_Info
+    API --> Consumer: Zone_Result (Ok)
+else Cache MISS
+    Cache --> Handle: NOT_FOUND
+    deactivate Cache
+
+    Handle -> Repo: Find_Zone_File("America/Phoenix")
+    activate Repo
+
+    Repo -> FS: Locate_File(path + "America/Phoenix")
+    activate FS
+    alt File not found
+        FS --> Repo: NOT_FOUND
+        Repo --> Handle: Error("Zone not found")
+        Handle --> API: Error
+        API --> Consumer: Zone_Result (Err)
+    else File found
+        FS --> Repo: File_Path
+        deactivate FS
+
+        Repo -> Parser: Parse_TZif_File(file_path)
+        activate Parser
+
+        Parser -> FS: Read_Binary_File(file_path)
+        activate FS
+        FS --> Parser: Raw_Bytes
+        deactivate FS
+
+        Parser -> Parser: Parse_Header()
+        Parser -> Parser: Parse_Transitions()
+        Parser -> Parser: Parse_Types()
+        Parser -> Parser: Parse_Designations()
+
+        Parser --> Repo: TZif_Data
+        deactivate Parser
+
+        Repo --> Handle: TZif_Data
+        deactivate Repo
+
+        Handle -> Cache: Cache_Zone(ULID, "America/Phoenix", data)
+        activate Cache
+        Cache --> Handle: OK
+        deactivate Cache
+
+        Handle -> Handle: Create_Zone_Entity()
+        Handle --> API: Zone_Info
+        API --> Consumer: Zone_Result (Ok)
+        deactivate API
+        note right
+          Zone_Result contains:
+          - Zone_Id
+          - Source_ULID
+          - Version
+          - Transitions
+          - Types
+        end note
+    end
+end
+
+deactivate Handle
+
+@enduml

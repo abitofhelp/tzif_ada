@@ -1,0 +1,106 @@
+@startuml import_cache
+title Import Cache from File
+
+actor Consumer
+participant "TZif.API" as API
+note right of API
+  Public API Facade
+end note
+participant "Cache_Manager" as Cache
+participant "File_System" as FS
+participant "Deserializer" as Deser
+participant "Validator" as Val
+participant "Source_Cache" as SCache
+participant "Zone_Cache" as ZCache
+
+Consumer -> API: Import_Cache("/var/cache/tzif/cache.bin")
+activate API
+
+Lib -> Cache: Import_All_Caches()
+activate Cache
+
+Cache -> FS: Read_File("/var/cache/tzif/cache.bin")
+activate FS
+alt File not found
+    FS --> Cache: NOT_FOUND
+    Cache --> API: Error("Cache file not found")
+    API --> Consumer: Error
+else File exists
+    FS --> Cache: Binary_Data
+    deactivate FS
+
+    Cache -> Deser: Deserialize(binary_data)
+    activate Deser
+
+    Deser -> Deser: Read_Header()
+    alt Invalid magic or version
+        Deser --> Cache: Error("Invalid cache format")
+        Cache --> API: Error
+        API --> Consumer: Error
+    else Valid header
+        Deser -> Deser: Read_Sources()
+        note right
+          Extract:
+          - ULID
+          - Path
+          - Version
+          - Zone_Count
+        end note
+
+        Deser -> Deser: Read_Zones()
+        note right
+          Extract:
+          - Source_ULID
+          - Zone_Id
+          - TZif_Data
+        end note
+
+        Deser --> Cache: (Source_List, Zone_Map)
+        deactivate Deser
+
+        Cache -> Val: Validate_Sources(source_list)
+        activate Val
+        loop For each source
+            Val -> FS: Check_Path_Exists(path)
+            activate FS
+            alt Path missing
+                FS --> Val: NOT_FOUND
+                note right: Mark for removal
+            else Path exists
+                FS --> Val: EXISTS
+            end
+            deactivate FS
+        end
+        Val --> Cache: Valid_Sources
+        deactivate Val
+
+        Cache -> SCache: Store_Sources(valid_sources)
+        activate SCache
+        SCache --> Cache: OK
+        deactivate SCache
+
+        Cache -> ZCache: Store_Zones(zone_map)
+        activate ZCache
+        note right
+          Only store zones from
+          valid sources
+        end note
+        ZCache --> Cache: OK
+        deactivate ZCache
+
+        Cache --> API: Success(loaded_sources, loaded_zones)
+        deactivate Cache
+
+        API --> Consumer: Import_Result
+        note right
+          Result shows:
+          - Sources loaded
+          - Zones loaded
+          - Sources removed (if paths missing)
+        end note
+    end
+end
+
+deactivate Lib
+
+@enduml
