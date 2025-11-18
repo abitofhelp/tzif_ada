@@ -2,9 +2,9 @@ name: CI
 
 on:
   push:
-    branches: [main, develop, v1.0.0-polish]
+    branches: [main, develop, release/v1.0.0-polish]
   pull_request:
-    branches: [main, develop, v1.0.0-polish]
+    branches: [main, develop, release/v1.0.0-polish]
 
 jobs:
   architecture-validation:
