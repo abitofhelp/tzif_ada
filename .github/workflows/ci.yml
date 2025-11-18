@@ -58,6 +58,17 @@ jobs:
         run: |
           alr toolchain --select gnat_native^13 --select gprbuild^22
 
+      - name: Debug Alire environment
+        run: |
+          echo "=== Alire Version and Index Info ==="
+          alr version
+          echo ""
+          echo "=== Searching for functional ==="
+          alr search functional --solve || true
+          echo ""
+          echo "=== Showing functional details ==="
+          alr show functional^2.0.0 --system --solve || true
+
       - name: Build library (auto-fetches dependencies)
         run: alr -n build
 
@@ -95,6 +106,17 @@ jobs:
         run: |
           alr toolchain --select gnat_native^13 --select gprbuild^22
 
+      - name: Debug Alire environment
+        run: |
+          echo "=== Alire Version and Index Info ==="
+          alr version
+          echo ""
+          echo "=== Searching for functional ==="
+          alr search functional --solve || true
+          echo ""
+          echo "=== Showing functional details ==="
+          alr show functional^2.0.0 --system --solve || true
+
       - name: Build library (auto-fetches dependencies)
         run: alr -n build
 
@@ -120,6 +142,17 @@ jobs:
       - name: Setup Alire toolchain
         run: |
           alr toolchain --select gnat_native^13 --select gprbuild^22
+
+      - name: Debug Alire environment
+        run: |
+          echo "=== Alire Version and Index Info ==="
+          alr version
+          echo ""
+          echo "=== Searching for functional ==="
+          alr search functional --solve || true
+          echo ""
+          echo "=== Showing functional details ==="
+          alr show functional^2.0.0 --system --solve || true
 
       - name: Build library (auto-fetches dependencies)
         run: alr -n build
