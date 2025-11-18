@@ -24,7 +24,7 @@ pragma Ada_2022;
 --  ===========================================================================
 
 with TZif.Application.Operations;
-with TZif.Application.Port.Inbound.Find_By_Id;
+--  with TZif.Application.Port.Inbound.Find_By_Id;  -- Types from Operations
 with TZif.Application.Port.Inbound.Get_Version;
 with TZif.Application.Port.Inbound.Find_My_Id;
 with TZif.Application.Port.Inbound.Get_Transition_At_Epoch;
@@ -32,8 +32,11 @@ with TZif.Application.Port.Inbound.List_All_Order_By_Id;
 with TZif.Application.Port.Inbound.Find_By_Pattern;
 with TZif.Application.Port.Inbound.Find_By_Region;
 with TZif.Application.Port.Inbound.Find_By_Regex;
+--  with TZif.Application.Port.Inbound.Discover_Sources;  -- Types from Operations
 with TZif.Application.Port.Inbound.Load_Source;
 with TZif.Application.Port.Inbound.Validate_Source;
+--  with TZif.Application.Port.Inbound.Import_Cache;
+--  with TZif.Application.Port.Inbound.Export_Cache;
 with TZif.Domain.Value_Object.Source_Info;
 with TZif.Domain.Value_Object.Epoch_Seconds;
 
@@ -61,15 +64,18 @@ package TZif.API.Operations is
       subtype Discovery_Result_Type is
         TZif.Application.Operations.Discovery_Result_Type;
 
+      --  ====================================================================
+      --  NOTE: Deferred to post-1.0 pending user demand (see roadmap.md)
+      --  ====================================================================
       --  Import/Export Cache types
-      subtype Import_Path_String is
-        TZif.Application.Operations.Import_Path_String;
-      subtype Import_Cache_Result_Type is
-        TZif.Application.Operations.Import_Cache_Result_Type;
-      subtype Export_Path_String is
-        TZif.Application.Operations.Export_Path_String;
-      subtype Export_Cache_Result_Type is
-        TZif.Application.Operations.Export_Cache_Result_Type;
+      --  subtype Import_Path_String is
+      --    TZif.Application.Operations.Import_Path_String;
+      --  subtype Import_Cache_Result_Type is
+      --    TZif.Application.Operations.Import_Cache_Result_Type;
+      --  subtype Export_Path_String is
+      --    TZif.Application.Operations.Export_Path_String;
+      --  subtype Export_Cache_Result_Type is
+      --    TZif.Application.Operations.Export_Cache_Result_Type;
 
       --  Get_Version types
       subtype Version_String is
@@ -209,17 +215,19 @@ package TZif.API.Operations is
         (Path : Validate_Path_String) return Validation_Result;
 
       -------------------------------------------------------------------
+      --  NOTE: Deferred to post-1.0 pending user demand (see roadmap.md)
+      -------------------------------------------------------------------
       --  (*) Import_Cache - Delegated to All_Operations
       -------------------------------------------------------------------
-      function Import_Cache
-        (Path : Import_Path_String) return Import_Cache_Result_Type;
+      --  function Import_Cache
+      --    (Path : Import_Path_String) return Import_Cache_Result_Type;
 
       -------------------------------------------------------------------
       --  (*) Export_Cache - Delegated to All_Operations
       -------------------------------------------------------------------
-      function Export_Cache
-        (Path : Export_Path_String; Overwrite : Boolean := False)
-         return Export_Cache_Result_Type;
+      --  function Export_Cache
+      --    (Path : Export_Path_String; Overwrite : Boolean := False)
+      --     return Export_Cache_Result_Type;
 
    end Facade;
 

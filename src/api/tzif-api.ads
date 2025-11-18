@@ -35,8 +35,9 @@ with TZif.Application.Port.Inbound.List_All_Order_By_Id;
 with TZif.Application.Port.Inbound.Discover_Sources;
 with TZif.Application.Port.Inbound.Load_Source;
 with TZif.Application.Port.Inbound.Validate_Source;
-with TZif.Application.Port.Inbound.Import_Cache;
-with TZif.Application.Port.Inbound.Export_Cache;
+--  NOTE: Deferred to post-1.0 pending user demand (see roadmap.md)
+--  with TZif.Application.Port.Inbound.Import_Cache;
+--  with TZif.Application.Port.Inbound.Export_Cache;
 
 --  Import domain value objects and entities
 with TZif.Domain.Error;
@@ -248,24 +249,26 @@ package TZif.API is
      (Path : Validate_Path_String) return Validation_Result;
 
    --  ========================================================================
+   --  NOTE: Deferred to post-1.0 pending user demand (see roadmap.md)
+   --  ========================================================================
    --  Cache Management - Import and export timezone data caches
    --  ========================================================================
 
-   package Import_Port renames TZif.Application.Port.Inbound.Import_Cache;
+   --  package Import_Port renames TZif.Application.Port.Inbound.Import_Cache;
 
-   subtype Import_Path_String is Import_Port.Path_String;
-   subtype Import_Cache_Result is Import_Port.Import_Cache_Result;
+   --  subtype Import_Path_String is Import_Port.Path_String;
+   --  subtype Import_Cache_Result is Import_Port.Import_Cache_Result;
 
-   function Import_Cache
-     (Path : Import_Path_String) return Import_Cache_Result;
+   --  function Import_Cache
+   --    (Path : Import_Path_String) return Import_Cache_Result;
 
-   package Export_Port renames TZif.Application.Port.Inbound.Export_Cache;
+   --  package Export_Port renames TZif.Application.Port.Inbound.Export_Cache;
 
-   subtype Export_Path_String is Export_Port.Path_String;
-   subtype Export_Cache_Result is Export_Port.Export_Cache_Result;
+   --  subtype Export_Path_String is Export_Port.Path_String;
+   --  subtype Export_Cache_Result is Export_Port.Export_Cache_Result;
 
-   function Export_Cache
-     (Path : Export_Path_String; Overwrite : Boolean := False)
-      return Export_Cache_Result;
+   --  function Export_Cache
+   --    (Path : Export_Path_String; Overwrite : Boolean := False)
+   --     return Export_Cache_Result;
 
 end TZif.API;

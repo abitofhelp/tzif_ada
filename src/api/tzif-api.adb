@@ -138,22 +138,24 @@ package body TZif.API is
    end Validate_Source;
 
    --  ========================================================================
+   --  NOTE: Deferred to post-1.0 pending user demand (see roadmap.md)
+   --  ========================================================================
    --  Cache Management - Import and export timezone data caches
    --  ========================================================================
 
-   function Import_Cache
-     (Path : Import_Path_String) return Import_Cache_Result
-   is
-   begin
-      return TZif.API.Desktop.API.Import_Cache (Path);
-   end Import_Cache;
+   --  function Import_Cache
+   --    (Path : Import_Path_String) return Import_Cache_Result
+   --  is
+   --  begin
+   --     return TZif.API.Desktop.API.Import_Cache (Path);
+   --  end Import_Cache;
 
-   function Export_Cache
-     (Path : Export_Path_String; Overwrite : Boolean := False)
-      return Export_Cache_Result
-   is
-   begin
-      return TZif.API.Desktop.API.Export_Cache (Path, Overwrite);
-   end Export_Cache;
+   --  function Export_Cache
+   --    (Path : Export_Path_String; Overwrite : Boolean := False)
+   --     return Export_Cache_Result
+   --  is
+   --  begin
+   --     return TZif.API.Desktop.API.Export_Cache (Path, Overwrite);
+   --  end Export_Cache;
 
 end TZif.API;

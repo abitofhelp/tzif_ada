@@ -147,29 +147,31 @@ package body TZif.API.Operations is
       end Validate_Source;
 
       -------------------------------------------------------------------
+      --  NOTE: Deferred to post-1.0 pending user demand (see roadmap.md)
+      -------------------------------------------------------------------
       --  (*) Import_Cache - Delegated to All_Operations
       -------------------------------------------------------------------
-      function Import_Cache
-        (Path : Import_Path_String) return Import_Cache_Result_Type
-      is
-         Result : Import_Cache_Result_Type;
-      begin
-         Ops.Import_Cache (Path, Result);
-         return Result;
-      end Import_Cache;
+      --  function Import_Cache
+      --    (Path : Import_Path_String) return Import_Cache_Result_Type
+      --  is
+      --     Result : Import_Cache_Result_Type;
+      --  begin
+      --     Ops.Import_Cache (Path, Result);
+      --     return Result;
+      --  end Import_Cache;
 
       -------------------------------------------------------------------
       --  (*) Export_Cache - Delegated to All_Operations
       -------------------------------------------------------------------
-      function Export_Cache
-        (Path : Export_Path_String; Overwrite : Boolean := False)
-         return Export_Cache_Result_Type
-      is
-         Result : Export_Cache_Result_Type;
-      begin
-         Ops.Export_Cache (Path, Overwrite, Result);
-         return Result;
-      end Export_Cache;
+      --  function Export_Cache
+      --    (Path : Export_Path_String; Overwrite : Boolean := False)
+      --     return Export_Cache_Result_Type
+      --  is
+      --     Result : Export_Cache_Result_Type;
+      --  begin
+      --     Ops.Export_Cache (Path, Overwrite, Result);
+      --     return Result;
+      --  end Export_Cache;
 
    end Facade;
 
