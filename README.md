@@ -8,10 +8,10 @@
 
 > **📦 COMPANION PROJECT ALERT**
 >
-> **[ZoneInfo](https://github.com/abitofhelp/zoneinfo)** provides a comprehensive, application-ready API for the IANA timezone database, with automatic timezone detection, DST handling, and querying. It will be available around **November 21, 2025**.
+> **[ZoneInfo](https://github.com/abitofhelp/zoneinfo)** is a planned companion project that will provide a comprehensive, application-ready API for the IANA timezone database, with automatic timezone detection, DST handling, and querying.
 >
 > **Use TZif directly** if you need fine-grained control over TZif file parsing and caching.
-> **Use ZoneInfo** for most application development scenarios.
+> **Use ZoneInfo** (when available) for most application development scenarios.
 
 ---
 
@@ -23,13 +23,13 @@ TZif brings comprehensive IANA timezone support to Ada 2022 with a unique combin
 
 ## Why TZif?
 
-- ✅ **SPARK-Compatible Architecture** - I/O plugin system enables formal verification of domain logic
+- ✅ **Designed for SPARK Verification** - I/O plugin system and pure domain logic support formal verification
 - ✅ **Railway-Oriented Programming** - Type-safe Result monads, NO EXCEPTIONS in business logic
 - ✅ **Extensively Validated** - 257 comprehensive tests + full-scale validation across 13,156 timezone calculations (598 zones × 22 test epochs)
 - ✅ **Hexagonal Architecture** - Clean separation enables easy testing and platform adaptation
-- ✅ **Embedded-Ready** - Six build profiles from bare metal (128KB RAM) to desktop (1GB+ RAM)
+- ✅ **Build Profile Framework** - Configuration templates for desktop, embedded, and bare-metal targets
 - ✅ **Complete TZif Support** - Parse IANA timezone files (versions 1, 2, 3) including tzdb 2025b
-- ✅ **Cross-Platform** - POSIX (Linux, macOS, BSD) and Windows support
+- ✅ **Cross-Platform** - POSIX (Linux, macOS, BSD) with Windows stubs
 
 ---
 
@@ -48,18 +48,21 @@ TZif brings comprehensive IANA timezone support to Ada 2022 with a unique combin
 
 ### SPARK & Formal Verification
 
-- ✅ **SPARK-Compatible Core** - Domain layer designed for formal verification
+TZif is **designed to support SPARK formal verification**. The domain and application layers use SPARK-compatible constructs (no dynamic dispatch, bounded types, preconditions/postconditions), and I/O is isolated via the generic plugin pattern. **Formal verification with GNATprove is pending and may be performed by users or in future releases.**
+
+- ✅ **SPARK-Compatible Design** - Domain layer designed for formal verification
 - ✅ **I/O Plugin Architecture** - Generic operations with formal packages enable SPARK verification
 - ✅ **Pure Domain Logic** - Zero dependencies in domain layer, contracts with Ada 2022 aspects
-- ✅ **Memory Safe** - Bounded types, stack allocation, no dynamic memory in core logic
+- ✅ **Memory Safe Design** - Bounded types, stack allocation patterns, minimal heap usage
 
 ### Embedded & Resource-Constrained Systems
 
-- ✅ **Multiple Build Profiles** - Standard, Embedded (Ravenscar), Bare Metal, STM32 targets
-- ✅ **Ravenscar Profile** - Safety-critical embedded systems (512KB+ RAM)
-- ✅ **Zero Footprint** - Bare metal profile for microcontrollers (128KB+ RAM)
-- ✅ **STM32 Support** - Pre-configured profiles for STM32H7S78-DK and STM32MP135F-DK
+**Build profiles provided as starting point for embedded adaptation; full heap-free operation is future work.**
+
+- ✅ **Profile Templates** - Standard, Embedded (Ravenscar), Bare Metal, STM32 configurations
 - ✅ **Configurable Limits** - Memory bounds tunable via `TZif_Config` package
+- ✅ **Desktop/Server Ready** - Production-ready for POSIX systems (1GB+ RAM recommended)
+- 🔜 **Heap-Free Embedded** - Future: Bounded containers for true `No_Implicit_Heap_Allocations` compliance
 
 ### Architecture Highlights
 
@@ -229,14 +232,14 @@ TZif uses **Hexagonal Architecture** (Ports and Adapters) with SPARK-compatible 
 
 ## SPARK Formal Verification Support
 
-TZif v1.0.0 lays the foundation for **formal verification with SPARK**:
+TZif is **designed to support SPARK formal verification**. The domain and application layers use SPARK-compatible constructs (no dynamic dispatch, bounded types, preconditions/postconditions), and I/O is isolated via the generic plugin pattern. **Formal verification with GNATprove is pending and may be performed by users or in future releases.**
 
-- ✅ **Domain Layer** - 100% SPARK-compatible (pure functions, no I/O, no exceptions)
+- ✅ **Domain Layer** - SPARK-compatible design (pure functions, no I/O, no exceptions)
 - ✅ **Application Layer** - SPARK-compatible generic operations (I/O injected as parameters)
 - ✅ **I/O Plugin Architecture** - Generic formal packages enable type-safe dependency injection
-- 🔜 **Future** (v1.1.0) - Full SPARK verification with contracts and proofs
+- 🔜 **Future** - Full SPARK verification with GNATprove contracts and proofs
 
-**Why This Matters**: Safety-critical applications can formally prove correctness of timezone calculations while maintaining flexibility for different I/O backends (Desktop, Embedded, Mock for testing).
+**Why This Matters**: The SPARK-compatible architecture allows safety-critical applications to formally verify timezone calculation correctness while maintaining flexibility for different I/O backends (Desktop, Embedded, Mock for testing).
 
 ---
 
