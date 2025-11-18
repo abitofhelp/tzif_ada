@@ -15,9 +15,9 @@ This roadmap outlines planned enhancements and features for future TZif library 
 
 ---
 
-## v1.1.0 - Platform Expansion & Performance (Q1 2026)
+## v1.1.0 - Platform Expansion & Formal Methods (Q1 2026)
 
-**Focus**: Complete cross-platform support and add performance monitoring
+**Focus**: Complete cross-platform support, SPARK verification, and performance monitoring
 
 ### High Priority
 
@@ -61,9 +61,37 @@ This roadmap outlines planned enhancements and features for future TZif library 
 
 **Rationale**: Production deployments need visibility into cache performance for tuning and monitoring. Helps users optimize cache size and usage patterns.
 
+#### 4. SPARK Formal Verification
+**Status**: Proposed
+**Effort**: High
+**Impact**: High (Safety-Critical Applications)
+
+- Run GNATprove on domain and application layers
+- Add SPARK contracts and proof annotations
+- Verify absence of runtime errors
+- Document proof obligations and coverage
+- Achieve Silver or Gold level SPARK compliance
+- Publish formal verification results
+
+**Rationale**: TZif v1.0.0 is designed to support SPARK verification with pure domain logic, bounded types, and I/O isolation via generic plugins. Formal verification would enable adoption in safety-critical systems (avionics, medical devices, industrial control).
+
+#### 5. Heap-Free Embedded Support
+**Status**: Proposed
+**Effort**: High
+**Impact**: Medium (Embedded Systems)
+
+- Replace Ada.Containers.Vectors with bounded containers
+- Implement Ada.Containers.Bounded_Vectors for transitions/types
+- Verify No_Implicit_Heap_Allocations compliance
+- Test with embedded restriction pragmas
+- Validate on STM32 targets
+- Document memory footprint and limitations
+
+**Rationale**: TZif v1.0.0 provides embedded profile templates, but domain layer currently uses heap-allocating containers. Bounded containers would enable true heap-free operation for safety-critical embedded systems requiring static memory allocation.
+
 ### Medium Priority
 
-#### 4. Path Traversal Protection Audit
+#### 6. Path Traversal Protection Audit
 **Status**: Review Required
 **Effort**: Low
 **Impact**: High (Security)
@@ -76,7 +104,7 @@ This roadmap outlines planned enhancements and features for future TZif library 
 
 **Rationale**: Security hardening for production use. Path canonicalization must be proven secure against directory traversal attacks.
 
-#### 5. TZif File Size Limits (DOS Protection)
+#### 7. TZif File Size Limits (DOS Protection)
 **Status**: Proposed
 **Effort**: Low
 **Impact**: Medium (Security)
@@ -97,7 +125,7 @@ This roadmap outlines planned enhancements and features for future TZif library 
 
 ### Medium Priority
 
-#### 6. Property-Based Testing for Parser
+#### 8. Property-Based Testing for Parser
 **Status**: Proposed
 **Effort**: Medium
 **Impact**: Medium
@@ -110,7 +138,7 @@ This roadmap outlines planned enhancements and features for future TZif library 
 
 **Rationale**: Property-based testing excels at finding edge cases in parsers. Would significantly increase confidence in TZif parser correctness across all possible inputs.
 
-#### 7. Performance Benchmark Suite
+#### 9. Performance Benchmark Suite
 **Status**: Proposed
 **Effort**: Medium
 **Impact**: Medium
@@ -132,7 +160,7 @@ This roadmap outlines planned enhancements and features for future TZif library 
 
 ### Low Priority
 
-#### 8. Port Versioning Strategy
+#### 10. Port Versioning Strategy
 **Status**: Planning
 **Effort**: Medium
 **Impact**: Low (Future-proofing)
@@ -145,7 +173,7 @@ This roadmap outlines planned enhancements and features for future TZif library 
 
 **Rationale**: Establishes clear path for API evolution without breaking existing users. Important for long-term library stability.
 
-#### 9. Error Context Enrichment
+#### 11. Error Context Enrichment
 **Status**: Proposed
 **Effort**: Medium
 **Impact**: Low
@@ -158,7 +186,7 @@ This roadmap outlines planned enhancements and features for future TZif library 
 
 **Rationale**: Enhanced error diagnostics would aid production debugging. Useful for troubleshooting complex error scenarios.
 
-#### 10. Advanced Timezone Queries
+#### 12. Advanced Timezone Queries
 **Status**: Proposed
 **Effort**: High
 **Impact**: Low
@@ -171,7 +199,7 @@ This roadmap outlines planned enhancements and features for future TZif library 
 
 **Rationale**: Advanced queries would support more sophisticated timezone applications. Nice-to-have features for specialized use cases.
 
-#### 11. Controlled Types for Resource Management
+#### 13. Controlled Types for Resource Management
 **Status**: Consideration
 **Effort**: Low
 **Impact**: Low
@@ -183,7 +211,7 @@ This roadmap outlines planned enhancements and features for future TZif library 
 
 **Rationale**: Current design doesn't need cleanup actions, but future enhancements might benefit from controlled types.
 
-#### 12. Cache Persistence Investigation
+#### 14. Cache Persistence Investigation
 **Status**: Proposed
 **Effort**: Medium
 **Impact**: Low
@@ -196,7 +224,7 @@ This roadmap outlines planned enhancements and features for future TZif library 
 
 **Rationale**: Current in-memory cache performs excellently (20ms cold start). Persisted cache adds SPARK/I/O complexity. Implementation deferred pending user demand and performance requirements.
 
-#### 13. Parallel Source Discovery Investigation
+#### 15. Parallel Source Discovery Investigation
 **Status**: Proposed
 **Effort**: Medium
 **Impact**: Low
@@ -209,7 +237,7 @@ This roadmap outlines planned enhancements and features for future TZif library 
 
 **Rationale**: Current sequential discovery is sufficient (5-15ms for typical sources). Parallel implementation adds concurrency complexity. Deferred pending user demand for faster discovery.
 
-#### 14. Improved Infinite Loop Detection
+#### 16. Improved Infinite Loop Detection
 **Status**: Proposed
 **Effort**: Low
 **Impact**: Low
