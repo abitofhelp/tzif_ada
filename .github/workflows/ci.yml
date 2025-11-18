@@ -56,7 +56,10 @@ jobs:
 
       - name: Setup Alire toolchain
         run: |
-          alr toolchain --select gnat_native^14 --select gprbuild^22
+          alr toolchain --select gnat_native^13 --select gprbuild^22
+
+      - name: Fetch dependencies
+        run: alr update
 
       - name: Build library
         run: alr build
@@ -93,7 +96,10 @@ jobs:
 
       - name: Setup Alire toolchain
         run: |
-          alr toolchain --select gnat_native^14 --select gprbuild^22
+          alr toolchain --select gnat_native^13 --select gprbuild^22
+
+      - name: Fetch dependencies
+        run: alr update
 
       - name: Build library
         run: alr build
@@ -119,7 +125,10 @@ jobs:
 
       - name: Setup toolchain
         run: |
-          alr toolchain --select gnat_native^15 --select gprbuild^22
+          alr toolchain --select gnat_native^13 --select gprbuild^22
+
+      - name: Fetch dependencies
+        run: alr update
 
       - name: Check Ada style
         run: |
