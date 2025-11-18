@@ -54,10 +54,6 @@ jobs:
           chmod +x bin/alr
           echo "$PWD/bin" >> $GITHUB_PATH
 
-      - name: Setup Alire toolchain
-        run: |
-          alr toolchain --select gnat_native^13 --select gprbuild^22
-
       - name: Build library (auto-fetches dependencies)
         run: alr -n build
 
@@ -91,10 +87,6 @@ jobs:
           chmod +x bin/alr
           echo "$PWD/bin" >> $GITHUB_PATH
 
-      - name: Setup Alire toolchain
-        run: |
-          alr toolchain --select gnat_native^13 --select gprbuild^22
-
       - name: Build library (auto-fetches dependencies)
         run: alr -n build
 
@@ -116,10 +108,6 @@ jobs:
           unzip -q alr-2.0.1-bin-x86_64-linux.zip
           chmod +x bin/alr
           echo "$PWD/bin" >> $GITHUB_PATH
-
-      - name: Setup toolchain
-        run: |
-          alr toolchain --select gnat_native^13 --select gprbuild^22
 
       - name: Build library (auto-fetches dependencies)
         run: alr -n build
