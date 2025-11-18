@@ -6,7 +6,8 @@ pragma Ada_2022;
 --  SPDX-License-Identifier: BSD-3-Clause
 --
 --  Purpose:
---    Api interface and type definitions.
+--    Public API facade - delegates all operations through Desktop.API.Facade
+--    following the hexagonal architecture pattern.
 --
 --  Key Types:
 --    Zone_Id_Type
@@ -17,14 +18,10 @@ pragma Ada_2022;
 --    ... and 28 more
 --
 --  Dependencies:
---    TZif.Infrastructure.Adapter.File_System.Repository
---    TZif.Application.Port.Inbound.Find_By_Id
---    TZif.Application.Port.Inbound.Find_By_Pattern
+--    TZif.API.Desktop (canonical entry point via Facade)
+--    TZif.Application.Port.Inbound.* (canonical types)
 --
 --  ===========================================================================
-
---  Import infrastructure adapter (default implementation)
-with TZif.Infrastructure.Adapter.File_System.Repository;
 
 --  Import inbound ports for canonical types
 with TZif.Application.Port.Inbound.Find_By_Id;
@@ -49,9 +46,7 @@ with TZif.Domain.Value_Object.Epoch_Seconds;
 with TZif.Domain.Value_Object.Source_Info;
 with TZif.Domain.Entity.Zone;
 
-package TZif.API with
-  Elaborate_Body
-is
+package TZif.API is
 
    --  ========================================================================
    --  Core Value Objects (Re-exported from Domain)
@@ -106,8 +101,7 @@ is
      Find_By_Id_Port.Find_By_Id_Result.Value;
 
    --  Main operation: Find zone by ID
-   function Find_By_Id (Id : Zone_Id_Type) return Zone_Result renames
-     TZif.Infrastructure.Adapter.File_System.Repository.Find_By_Id;
+   function Find_By_Id (Id : Zone_Id_Type) return Zone_Result;
 
    --  ========================================================================
    --  Get Version - Query database version
@@ -119,8 +113,7 @@ is
    subtype Version_Result is Get_Version_Port.Version_Result;
 
    function Get_Version
-     (Source : Source_Info_Type) return Version_Result renames
-     TZif.Infrastructure.Adapter.File_System.Repository.Get_Version;
+     (Source : Source_Info_Type) return Version_Result;
 
    --  ========================================================================
    --  Find My ID - Discover local system timezone
@@ -140,8 +133,7 @@ is
    function Value (R : My_Zone_Result) return Zone_Id_Type renames
      Find_My_Id_Port.Result_Zone_Id.Value;
 
-   function Find_My_Id return My_Zone_Result renames
-     TZif.Infrastructure.Adapter.File_System.Repository.Find_My_Id;
+   function Find_My_Id return My_Zone_Result;
 
    --  ========================================================================
    --  Get Transition At Epoch - Query timezone offset at specific time
@@ -168,9 +160,7 @@ is
 
    function Get_Transition_At_Epoch
      (Id : Zone_Id_String; Epoch : Epoch_Seconds_Type)
-      return Transition_Result renames
-     TZif.Infrastructure.Adapter.File_System.Repository
-       .Get_Transition_At_Epoch;
+      return Transition_Result;
 
    --  ========================================================================
    --  List All Zones - Enumerate all available timezones
@@ -183,8 +173,7 @@ is
 
    function List_All_Zones
      (Source : Source_Info_Type; Descending : Boolean := False)
-      return Zone_List_Result renames
-     TZif.Infrastructure.Adapter.File_System.Repository.List_All_Zones;
+      return Zone_List_Result;
 
    --  ========================================================================
    --  Find By Pattern - Search zones by substring
@@ -199,8 +188,7 @@ is
 
    function Find_By_Pattern
      (Pattern : Pattern_String; Yield : Pattern_Callback)
-      return Pattern_Result renames
-     TZif.Infrastructure.Adapter.File_System.Repository.Find_By_Pattern;
+      return Pattern_Result;
 
    --  ========================================================================
    --  Find By Region - Search zones by geographic region
@@ -215,8 +203,7 @@ is
 
    function Find_By_Region
      (Region : Region_String; Yield : Region_Callback)
-      return Region_Result renames
-     TZif.Infrastructure.Adapter.File_System.Repository.Find_By_Region;
+      return Region_Result;
 
    --  ========================================================================
    --  Find By Regex - Search zones by regular expression
@@ -229,8 +216,7 @@ is
    subtype Regex_Result is Find_Regex_Port.Find_By_Regex_Result;
 
    function Find_By_Regex
-     (Regex : Regex_String; Yield : Regex_Callback) return Regex_Result renames
-     TZif.Infrastructure.Adapter.File_System.Repository.Find_By_Regex;
+     (Regex : Regex_String; Yield : Regex_Callback) return Regex_Result;
 
    --  ========================================================================
    --  Source Management - Discover, load, and validate timezone sources
@@ -243,8 +229,7 @@ is
    subtype Discovery_Result is Discover_Port.Discovery_Result;
 
    function Discover_Sources
-     (Search_Paths : Path_List) return Discovery_Result renames
-     TZif.Infrastructure.Adapter.File_System.Repository.Discover_Sources;
+     (Search_Paths : Path_List) return Discovery_Result;
 
    package Load_Port renames TZif.Application.Port.Inbound.Load_Source;
 
@@ -252,8 +237,7 @@ is
    subtype Load_Source_Result is Load_Port.Load_Source_Result;
 
    function Load_Source
-     (Path : Path_String) return Load_Source_Result renames
-     TZif.Infrastructure.Adapter.File_System.Repository.Load_Source;
+     (Path : Path_String) return Load_Source_Result;
 
    package Validate_Port renames TZif.Application.Port.Inbound.Validate_Source;
 
@@ -261,8 +245,7 @@ is
    subtype Validation_Result is Validate_Port.Validation_Result;
 
    function Validate_Source
-     (Path : Validate_Path_String) return Validation_Result renames
-     TZif.Infrastructure.Adapter.File_System.Repository.Validate_Source;
+     (Path : Validate_Path_String) return Validation_Result;
 
    --  ========================================================================
    --  Cache Management - Import and export timezone data caches
@@ -274,8 +257,7 @@ is
    subtype Import_Cache_Result is Import_Port.Import_Cache_Result;
 
    function Import_Cache
-     (Path : Import_Path_String) return Import_Cache_Result renames
-     TZif.Infrastructure.Adapter.File_System.Repository.Import_Cache;
+     (Path : Import_Path_String) return Import_Cache_Result;
 
    package Export_Port renames TZif.Application.Port.Inbound.Export_Cache;
 
@@ -284,7 +266,6 @@ is
 
    function Export_Cache
      (Path : Export_Path_String; Overwrite : Boolean := False)
-      return Export_Cache_Result renames
-     TZif.Infrastructure.Adapter.File_System.Repository.Export_Cache;
+      return Export_Cache_Result;
 
 end TZif.API;

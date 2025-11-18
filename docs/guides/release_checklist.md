@@ -10,7 +10,7 @@ This section documents **who does what and when** during the release process.
 **Who:** Developer  
 **What:** Update versions, dates, copyright years  
 ```bash
-Have git staged with commit msg AND COMMIT before the prep.  This gives us a return to point if something screws up running the prep script.
+Have git staged with commit msg AND COMMIT before the prep.  This gives us a return to point if something explodes running the prep script.
 DO NOT ADD CONTENT TO THE CHANGELOG FOR THE INITIAL RELEASE UNTIL AFTER PREPARE IS RUN.
 python3 scripts/release.py prepare X.X.X
 ```
