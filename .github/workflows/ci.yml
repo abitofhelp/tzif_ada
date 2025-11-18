@@ -56,7 +56,7 @@ jobs:
 
       - name: Setup Alire toolchain
         run: |
-          alr toolchain --select gnat_native^13 --select gprbuild^22 --force
+          alr --force toolchain --select gnat_native^13 --select gprbuild^22
 
       - name: Build library (auto-fetches dependencies)
         run: alr -n build
@@ -93,7 +93,7 @@ jobs:
 
       - name: Setup Alire toolchain
         run: |
-          alr toolchain --select gnat_native^13 --select gprbuild^22 --force
+          alr --force toolchain --select gnat_native^13 --select gprbuild^22
 
       - name: Build library (auto-fetches dependencies)
         run: alr -n build
@@ -119,7 +119,7 @@ jobs:
 
       - name: Setup Alire toolchain
         run: |
-          alr toolchain --select gnat_native^13 --select gprbuild^22 --force
+          alr --force toolchain --select gnat_native^13 --select gprbuild^22
 
       - name: Build library (auto-fetches dependencies)
         run: alr -n build
