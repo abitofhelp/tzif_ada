@@ -25,6 +25,7 @@ tags = [
 "*".Style_Checks = "yes"
 
 [[depends-on]]
+gnat = ">=13"
 
 [gpr-externals]
 TZIF_BUILD_MODE = ["dev", "release"]

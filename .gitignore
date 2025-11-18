@@ -34,11 +34,10 @@ bin/
 
 # Alire cache and dependencies
 alire/
-!alire/alire.lock
 .alire/
 
-# Alire lock file at root (not used - lock is in alire/ directory)
-# alire.lock
+# Alire lock file (not recommended for version control per Alire docs)
+# Lock file location: alire/alire.lock
 
 ###############################################################################
 # AI Agentic Assitants
