@@ -34,9 +34,10 @@ bin/
 
 # Alire cache and dependencies
 alire/
+!alire/alire.lock
 .alire/
 
-# Alire lock file (comment out if you want to commit it)
+# Alire lock file at root (not used - lock is in alire/ directory)
 # alire.lock
 
 ###############################################################################
