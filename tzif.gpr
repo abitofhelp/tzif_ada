@@ -8,10 +8,10 @@
 -- Purpose:
 --   This crate contains the implementation of a timezone parser for the
 --   compiled tzdata files.
---   This is a library-only crate (no executables) containing domain, 
+--   This is a library-only crate (no executables) containing domain,
 --   application, and infrastructure layers.
 --
--- Produces: lib/libzif.a
+-- Produces: lib/libtzif.a
 -- Publishable: YES - The library crates
 -- ===========================================================================
 

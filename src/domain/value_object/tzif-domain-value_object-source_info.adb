@@ -22,28 +22,27 @@ package body TZif.Domain.Value_Object.Source_Info is
    --  ========================================================================
 
    function Is_Valid_ULID_String (S : String) return Boolean is
+      --  O(1) lookup table for valid Base32 characters
+      --  Replaces O(n*m) nested loop with O(n) single pass
+      Valid_Chars : constant array (Character) of Boolean :=
+        ['0' .. '9' => True,  --  Digits 0-9
+         'A' .. 'H' => True,  --  Letters A-H (no I)
+         'J'        => True,  --  J (no I)
+         'K' .. 'N' => True,  --  K-N (no L)
+         'P' .. 'T' => True,  --  P-T (no O)
+         'V' .. 'Z' => True,  --  V-Z (no U)
+         others     => False];
    begin
       --  Check length
       if S'Length /= ULID_Length then
          return False;
       end if;
 
-      --  Check all characters are valid base32
+      --  Check all characters are valid base32 (O(n) with lookup table)
       for C of S loop
-         declare
-            Valid : Boolean := False;
-         begin
-            for Valid_Char of Base32_Alphabet loop
-               if C = Valid_Char then
-                  Valid := True;
-                  exit;
-               end if;
-            end loop;
-
-            if not Valid then
-               return False;
-            end if;
-         end;
+         if not Valid_Chars (C) then
+            return False;
+         end if;
       end loop;
 
       return True;
@@ -60,7 +59,8 @@ package body TZif.Domain.Value_Object.Source_Info is
          return
            ULID_Result.Error
              (Validation_Error,
-              "Invalid ULID string: must be " & ULID_Length'Image &
+              "Invalid ULID string: must be" &
+              Natural'Image (ULID_Length) &
               " characters of Crockford base32 alphabet");
       end if;
 
