@@ -58,11 +58,8 @@ jobs:
         run: |
           alr toolchain --select gnat_native^13 --select gprbuild^22
 
-      - name: Fetch dependencies
-        run: alr update
-
-      - name: Build library
-        run: alr build
+      - name: Build library (auto-fetches dependencies)
+        run: alr -n build
 
       - name: Run all tests
         run: make test-all
@@ -98,11 +95,8 @@ jobs:
         run: |
           alr toolchain --select gnat_native^13 --select gprbuild^22
 
-      - name: Fetch dependencies
-        run: alr update
-
-      - name: Build library
-        run: alr build
+      - name: Build library (auto-fetches dependencies)
+        run: alr -n build
 
       - name: Run all tests
         run: make test-all
@@ -127,12 +121,12 @@ jobs:
         run: |
           alr toolchain --select gnat_native^13 --select gprbuild^22
 
-      - name: Fetch dependencies
-        run: alr update
+      - name: Build library (auto-fetches dependencies)
+        run: alr -n build
 
       - name: Check Ada style
         run: |
-          alr build -- -gnatys
+          alr -n build -- -gnatys
           if [ $? -ne 0 ]; then
             echo "❌ Style check failed!"
             exit 1
