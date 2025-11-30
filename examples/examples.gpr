@@ -29,9 +29,7 @@ project Examples is
       "find_by_pattern.adb",
       "find_by_region.adb",
       "find_by_regex.adb",
-      "list_all_zones.adb",
-      "import_cache.adb",
-      "cache_export_import.adb"
+      "list_all_zones.adb"
    );
 
    package Compiler is

@@ -1,4 +1,4 @@
-# Software Design Specification
+# Software Design Specification (SDS)
 
 **Version:** 1.0.0<br>
 **Date:** 2025-11-29<br>
@@ -13,487 +13,409 @@
 
 ### 1.1 Purpose
 
-This Software Design Specification (SDS) describes the internal architecture, package structure, and design decisions for **Tzif**.
+This Software Design Specification (SDS) describes the architectural design and detailed design of the TZif library for parsing and querying IANA timezone information.
 
 ### 1.2 Scope
 
 This document covers:
-- 4-layer hexagonal architecture
-- Package hierarchy and dependencies
-- Type definitions and contracts
-- Static dependency injection via generics
-- SPARK verification boundaries
-
-### 1.3 References
-
-- Software Requirements Specification (SRS)
-- [All About Our API](../guides/all_about_our_api.md) - Detailed API architecture guide
-- Ada 2022 Reference Manual
-- SPARK 2014 Reference Manual
+- Architectural patterns and decisions
+- Layer organization and dependencies
+- Key components and their responsibilities
+- Data flow and error handling
+- Design patterns employed
 
 ---
 
-## 2. Architectural Overview
+## 2. Architectural Design
 
-### 2.1 Layer Architecture
+### 2.1 Architecture Style
 
-Tzif uses a **4-layer library architecture** (Domain, Application, Infrastructure, API):
+TZif uses **Hexagonal Architecture** (Ports and Adapters), also known as Clean Architecture.
+
+**Benefits**:
+- Clear separation of concerns
+- Testable business logic
+- Swappable infrastructure
+- Compiler-enforced boundaries
+
+### 2.2 Layer Organization
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│                        API Layer                             │
-│  Public facade + composition roots + SPARK operations        │
-│  src/api/                                                    │
-└─────────────────────────────┬───────────────────────────────┘
-                              │ depends on
-┌─────────────────────────────▼───────────────────────────────┐
-│                   Infrastructure Layer                       │
-│  Concrete adapters implementing ports                        │
-│  src/infrastructure/                                         │
-└─────────────────────────────┬───────────────────────────────┘
-                              │ implements
-┌─────────────────────────────▼───────────────────────────────┐
+│                         API Layer                            │
+│              (Public Facade - Stable Interface)              │
+├─────────────────────────────────────────────────────────────┤
+│  API.Operations     │     API.Desktop     │   (API.Embedded) │
+│  (Generic I/O)      │ (File System DI)    │   (Future)       │
+├─────────────────────┼─────────────────────┼──────────────────┤
 │                    Application Layer                         │
-│  Use cases, commands, ports                                  │
-│  src/application/                                            │
-└─────────────────────────────┬───────────────────────────────┘
-                              │ depends on
-┌─────────────────────────────▼───────────────────────────────┐
+│     Use Cases  │  Ports (Inbound/Outbound)  │  Operations    │
+├─────────────────────────────────────────────────────────────┤
+│                   Infrastructure Layer                       │
+│        Adapters (File System, Parser, Repository)            │
+├─────────────────────────────────────────────────────────────┤
 │                      Domain Layer                            │
-│  Pure business logic, value objects, errors                  │
-│  src/domain/                                                 │
+│   Entities (Zone) │ Value Objects │ Errors │ Result Monad    │
 └─────────────────────────────────────────────────────────────┘
 ```
 
-### 2.2 Dependency Rules
+### 2.3 Layer Responsibilities
 
-| Layer | May Depend On |
+#### Domain Layer
+- **Purpose**: Pure business logic, no dependencies
+- **Components**:
+  - Value Objects: Zone_Id, Epoch_Seconds, UTC_Offset, Source_Info, etc.
+  - Entities: Zone
+  - Error types and Result monads
+
+#### Application Layer
+- **Purpose**: Orchestrate domain logic, define interfaces
+- **Components**:
+  - Use Cases: Find_By_Id, Discover_Sources, Get_Transition_At_Epoch, etc.
+  - Inbound Ports: Interfaces for external actors
+  - Outbound Ports: Interfaces for infrastructure
+
+#### Infrastructure Layer
+- **Purpose**: Implement technical concerns, adapt external systems
+- **Components**:
+  - Adapters: File_System.Repository, TZif_Parser
+  - I/O: Desktop file system operations
+
+#### API Layer
+- **Purpose**: Public facade with stable interface
+- **Components**:
+  - TZif.API: Re-exports types and operations
+  - API.Operations: Generic operations
+  - API.Desktop: Desktop composition root
+
+---
+
+## 3. Detailed Design
+
+### 3.1 Domain Layer Design
+
+#### 3.1.1 Value Objects
+
+**Zone_Id**:
+- Immutable timezone identifier
+- Validates format (e.g., "America/New_York")
+- Maximum 64 characters
+- Case-sensitive
+
+**Epoch_Seconds**:
+- Signed 64-bit Unix timestamp
+- Represents seconds since 1970-01-01 00:00:00 UTC
+- Range: -2^63 to 2^63-1
+
+**Source_Info**:
+- Timezone source metadata
+- Contains: ULID, path, version, zone_count
+- Immutable after construction
+
+#### 3.1.2 Entities
+
+**Zone**:
+- Timezone entity with identity (Zone_Id)
+- Contains transition data and POSIX TZ string
+- Immutable after construction
+
+### 3.2 Application Layer Design
+
+#### 3.2.1 Use Cases
+
+Each use case implements a single user operation:
+
+| Use Case | Description |
+|----------|-------------|
+| Find_By_Id | Retrieve zone by exact ID |
+| Find_By_Region | Find zones in region |
+| Find_By_Pattern | Pattern matching search |
+| Find_By_Regex | Regex-based search |
+| Find_My_Id | Detect local timezone |
+| Get_Transition_At_Epoch | Lookup transition |
+| Get_Version | Get database version |
+| Discover_Sources | Scan filesystem |
+| Load_Source | Load timezone data |
+| Validate_Source | Validate source |
+| List_All_Order_By_Id | List all zones |
+
+#### 3.2.2 Port Design
+
+**Inbound Ports**:
+- Define use case interfaces
+- Input types and result types
+- No implementation
+
+**Outbound Ports**:
+- Define infrastructure interfaces
+- Repository operations
+- No implementation
+
+### 3.3 Infrastructure Layer Design
+
+#### 3.3.1 TZif Parser
+
+**Responsibilities**:
+- Read TZif binary files
+- Parse header, transitions, types
+- Handle format versions 2 and 3
+- Validate data integrity
+
+**Design**:
+- State machine for parsing
+- Sequential reading with validation
+- Error handling via Result monad
+
+#### 3.3.2 File System Repository
+
+**Responsibilities**:
+- Load zones from filesystem
+- Discover timezone sources
+- Navigate directory structure
+- Resolve symbolic links
+
+**Design**:
+- Platform abstraction for file operations
+- Lazy loading of zone data
+- Canonical path handling
+- Infinite loop protection via visited path tracking
+
+#### 3.3.3 ULID Infrastructure
+
+**Responsibilities**:
+- Generate unique, sortable identifiers for timezone sources
+- Provide thread-safe ULID generation
+- Support ULID parsing and validation
+
+**Design**:
+- Generic RNG plugin architecture
+- Thread-safe via protected type
+- Monotonic increment for same-millisecond generation
+- Crockford Base32 alphabet
+
+---
+
+## 4. Design Patterns
+
+### 4.1 Railway-Oriented Programming
+
+**Pattern**: Result monad for error handling
+**Purpose**: Avoid exceptions, explicit error handling
+**Implementation**: `Functional.Result` (external crate)
+
+**Usage**:
+```ada
+function Find_By_Id (Zone_Id) return Zone_Result;
+-- Returns: Ok(Zone) or Error(Error_Type)
+```
+
+### 4.2 Repository Pattern
+
+**Pattern**: Abstract data access
+**Purpose**: Decouple business logic from data storage
+**Implementation**: `Application.Port.Outbound.Zone_Repository`
+
+### 4.3 Adapter Pattern
+
+**Pattern**: Adapt external systems to ports
+**Purpose**: Implement infrastructure concerns
+**Implementation**: `Infrastructure.Adapter.File_System.*`
+
+### 4.4 Generic I/O Plugin Pattern
+
+**Pattern**: Platform abstraction via generics
+**Purpose**: Support multiple I/O backends (desktop, embedded)
+**Implementation**: `TZif.Application.Operations.All_Operations`
+
+---
+
+## 5. Data Flow
+
+### 5.1 Zone Lookup Flow
+
+```
+User Request
+    ↓
+TZif.API.Find_By_Id
+    ↓
+Use Case (Find_By_Id)
+    ↓
+Repository Port
+    ↓
+File System Adapter
+    ↓
+TZif Parser
+    ↓
+Zone Entity ← Domain Value Objects
+    ↓
+Result(Zone) ← Error Handling
+    ↓
+User Response
+```
+
+### 5.2 Error Propagation
+
+All errors propagate up via Result monad:
+1. Infrastructure error occurs
+2. Wrapped in domain error type
+3. Returned as Error variant
+4. Use case handles or propagates
+5. User receives descriptive error
+
+---
+
+## 6. Concurrency Design
+
+### 6.1 Thread Safety
+
+| Layer | Thread Safety |
 |-------|---------------|
-| Domain | Nothing (zero dependencies) |
-| Application | Domain only |
-| Infrastructure | Application, Domain |
-| API | All layers (composition root) |
+| Domain Layer | Pure, stateless → thread-safe |
+| Application Layer | Stateless → thread-safe |
+| Repository | Protected operations → thread-safe |
 
-### 2.3 Hexagonal Pattern
+### 6.2 Source Discovery Implementation
 
-```
-           ┌──────────────────────────────────────┐
-           │          Application Core            │
-           │                                      │
-    ┌──────┤  Domain ← Application               │
-    │      │                                      │
-    │      └──────────────────────────────────────┘
-    │                       │
-    │                       │ Ports
-    ▼                       ▼
-┌────────┐           ┌────────────┐
-│ Writer │◄──────────│ Greet Use  │
-│  Port  │           │   Case     │
-└────────┘           └────────────┘
-    ▲
-    │ Implements
-┌────────────────┐
-│ Console_Writer │ (Infrastructure)
-└────────────────┘
-```
+**v1.0.0 Implementation**:
+- Sequential recursive directory traversal
+- Single-threaded source scanning
+- Sufficient performance for typical use (5-15ms for standard sources)
+
+**Infinite Loop Protection**:
+- Canonical path deduplication using Ada.Directories.Full_Name
+- Visited directory tracking using Ada.Containers.Hashed_Sets
+- Depth limit of 15 levels (belt-and-suspenders approach)
+- Protection against directory symlink cycles
 
 ---
 
-## 3. Package Structure
+## 7. SPARK Verification Boundaries
 
-### 3.1 Directory Layout
+### 7.1 Overview
 
-```
-src/
-├── tzif.ads              # Root package
-│
-├── domain/
-│   ├── domain.ads                  # Domain layer root
-│   ├── error/
-│   │   ├── domain-error.ads        # Error type definition
-│   │   └── result/
-│   │       └── domain-error-result.ads  # Generic Result monad
-│   ├── unit/
-│   │   └── domain-unit.ads         # Unit type (void equivalent)
-│   └── value_object/
-│       └── person/
-│           └── domain-value_object-person.ads
-│
-├── application/
-│   ├── application.ads             # Application layer root
-│   ├── command/
-│   │   └── greet/
-│   │       └── application-command-greet.ads
-│   ├── port/
-│   │   └── outbound/
-│   │       └── writer/
-│   │           └── application-port-outbound-writer.ads
-│   └── usecase/
-│       └── greet/
-│           └── application-usecase-greet.ads
-│
-├── infrastructure/
-│   ├── infrastructure.ads          # Infrastructure layer root
-│   └── adapter/
-│       └── console_writer/
-│           └── infrastructure-adapter-console_writer.ads
-│
-└── api/
-    ├── tzif-api.ads      # Public facade
-    ├── tzif-api.adb
-    ├── operations/
-    │   └── tzif-api-operations.ads  # SPARK-safe
-    └── desktop/
-        └── tzif-api-desktop.ads     # Composition root
-```
+TZif uses SPARK 2014 for formal verification of core logic while excluding I/O operations that cannot be formally verified.
 
-### 3.2 Package Descriptions
-
-#### 3.2.1 Domain Layer
-
-| Package | Purpose | SPARK |
-|---------|---------|-------|
-| `Domain` | Layer root | On |
-| `Domain.Error` | Error type with Kind + Message | On |
-| `Domain.Error.Result` | Generic Result[T] monad | On |
-| `Domain.Unit` | Unit type for void operations | On |
-| `Domain.Value_Object.Person` | Person value object | On |
-
-#### 3.2.2 Application Layer
-
-| Package | Purpose | SPARK |
-|---------|---------|-------|
-| `Application` | Layer root | On |
-| `Application.Command.Greet` | Greet command DTO | On |
-| `Application.Port.Outbound.Writer` | Writer port definition | On |
-| `Application.Usecase.Greet` | Greet use case | On |
-
-#### 3.2.3 Infrastructure Layer
-
-| Package | Purpose | SPARK |
-|---------|---------|-------|
-| `Infrastructure` | Layer root | Off |
-| `Infrastructure.Adapter.Console_Writer` | Console output adapter | Off |
-
-#### 3.2.4 API Layer
-
-| Package | Purpose | SPARK |
-|---------|---------|-------|
-| `Tzif` | Library root | Off |
-| `Tzif.API` | Public facade | Off |
-| `Tzif.API.Operations` | SPARK-safe operations | On |
-| `Tzif.API.Desktop` | Desktop composition root | Off |
-
----
-
-## 4. Type Definitions
-
-### 4.1 Domain Types
-
-#### 4.1.1 Error_Kind
-
-```ada
-type Error_Kind is
-  (Validation_Error,    -- Input validation failed
-   IO_Error,            -- I/O operation failed
-   Not_Found_Error,     -- Resource not found
-   Already_Exists_Error,-- Resource exists
-   Config_Error,        -- Configuration error
-   Internal_Error);     -- Unexpected internal error
-```
-
-#### 4.1.2 Error_Type
-
-```ada
-type Error_Type is record
-   Kind    : Error_Kind;
-   Message : Error_String;  -- Bounded string
-end record;
-```
-
-#### 4.1.3 Result (Generic)
-
-```ada
-generic
-   type T is private;
-package Domain.Error.Result.Generic_Result is
-   type Result is private;
-
-   function Ok (Value : T) return Result;
-   function Error (Kind : Error_Kind; Message : String) return Result;
-
-   function Is_Ok (R : Result) return Boolean;
-   function Is_Error (R : Result) return Boolean;
-   function Value (R : Result) return T;
-   function Error_Info (R : Result) return Error_Type;
-end Generic_Result;
-```
-
-#### 4.1.4 Person
-
-```ada
-type Person is private;
-
-function Create (Name : String) return Person_Result.Result;
-function Get_Name (P : Person) return String;
-function Is_Valid_Person (P : Person) return Boolean;
-```
-
-### 4.2 Application Types
-
-#### 4.2.1 Greet_Command
-
-```ada
-type Greet_Command is private;
-
-function Create (Name : String) return Greet_Command;
-function Get_Name (Cmd : Greet_Command) return String;
-```
-
-#### 4.2.2 Writer Port
-
-```ada
-generic
-   with function Write (Message : String) return Unit_Result.Result;
-package Generic_Writer is
-   function Write_Message (Message : String) return Unit_Result.Result
-   renames Write;
-end Generic_Writer;
-```
-
-### 4.3 API Types
-
-All public types are re-exported from `Tzif.API`:
-
-```ada
-subtype Person_Type is Domain.Value_Object.Person.Person;
-subtype Greet_Command is Application.Command.Greet.Greet_Command;
-subtype Error_Type is Domain.Error.Error_Type;
-```
-
----
-
-## 5. Static Dependency Injection
-
-### 5.1 Overview
-
-Tzif uses Ada generics for static (compile-time) dependency injection:
-
-```ada
---  1. Port defines generic signature
-generic
-   with function Write (Message : String) return Unit_Result.Result;
-package Generic_Writer is ...
-
---  2. Use case is generic, parameterized by Writer
-generic
-   with function Writer (Message : String) return Unit_Result.Result;
-package Application.Usecase.Greet is ...
-
---  3. Composition root instantiates with concrete adapter
-package Console_Ops is new Tzif.API.Operations
-  (Writer => Infrastructure.Adapter.Console_Writer.Write);
-```
-
-### 5.2 Benefits
-
-| Benefit | Description |
-|---------|-------------|
-| Zero runtime overhead | Monomorphization at compile time |
-| SPARK compatible | No runtime dispatching |
-| Type safe | Compiler verifies contracts |
-| Testable | Mock writers for unit tests |
-
----
-
-## 6. Three-Package API Pattern
-
-### 6.1 Problem Statement
-
-How to provide:
-- SPARK-verifiable operations
-- Platform-specific wiring
-- Clean public facade
-
-### 6.2 Solution
-
-```
-┌─────────────────────────────────────────────────────────────┐
-│                      User Code                               │
-│   with Tzif.API;                                  │
-│   Result := API.Greet (Cmd);                                │
-└────────────────────────────┬────────────────────────────────┘
-                             │
-┌────────────────────────────▼────────────────────────────────┐
-│                  Tzif.API                          │
-│                  (Thin Facade)                               │
-│  - Re-exports types                                          │
-│  - Delegates Greet to Desktop                               │
-│  - SPARK_Mode: Off                                          │
-└────────────────────────────┬────────────────────────────────┘
-                             │ delegates
-┌────────────────────────────▼────────────────────────────────┐
-│              Tzif.API.Desktop                      │
-│              (Composition Root)                              │
-│  - Instantiates Operations with Console_Writer               │
-│  - SPARK_Mode: Off (I/O wiring)                             │
-│  - Located in api/desktop/ (arch_guard exception)           │
-└────────────────────────────┬────────────────────────────────┘
-                             │ instantiates
-┌────────────────────────────▼────────────────────────────────┐
-│            Tzif.API.Operations                     │
-│            (SPARK-Safe Operations)                           │
-│  - Generic, parameterized by Writer                          │
-│  - SPARK_Mode: On (formally verifiable)                     │
-│  - Depends ONLY on Application/Domain                        │
-└─────────────────────────────────────────────────────────────┘
-```
-
-### 6.3 SPARK Verification Boundary
+### 7.2 SPARK_Mode by Package
 
 | Package | SPARK_Mode | Reason |
 |---------|------------|--------|
-| API.Operations | On | Pure logic, verifiable |
-| API.Desktop | Off | I/O wiring |
-| API (facade) | Off | Delegates to Desktop |
-| Infrastructure.* | Off | I/O operations |
-| Application.* | On | Business logic |
-| Domain.* | On | Core domain |
+| `TZif.Domain.Parser` | **On** | Pure parsing logic, formally verifiable |
+| `TZif.Application.Operations` | **On** | Generic operations, no I/O dependencies |
+| `TZif.API.Operations` | **On** | Generic facade, formally verifiable |
+| `TZif.Infrastructure.ULID_Generic` | **On** (spec) | Structure/contracts verifiable |
+| `TZif.Infrastructure.ULID_Generic` | Off (body) | RNG is non-deterministic |
+| `TZif.Infrastructure.ULID` | Off | Uses GNAT-internal non-standard RNG |
+| `TZif.Infrastructure.IO.Desktop` | Off | File system I/O operations |
+| `TZif.API.Desktop` | Off | Composition root with I/O wiring |
 
-### 6.4 Platform-Specific Composition Roots
+### 7.3 Verification Strategy
 
-`API.Desktop` is the default composition root for desktop/server environments. For other platforms (embedded, web, testing), create additional composition roots:
+**Formally Verifiable (SPARK_Mode On)**:
+- Domain parsing logic with preconditions
+- Generic operations without infrastructure dependencies
+- Value object construction and validation
 
-| Platform | Composition Root | Writer Adapter |
-|----------|------------------|----------------|
-| Desktop | `API.Desktop` | Console_Writer |
-| Embedded | `API.Embedded` | UART_Writer, LCD_Writer |
-| Web | `API.Web` | DOM_Writer |
-| Testing | `API.Test` | Mock_Writer |
+**Excluded from Verification (SPARK_Mode Off)**:
+- File system operations (non-deterministic)
+- Random number generation (non-deterministic)
+- Platform-specific composition roots
 
-Each composition root:
-1. Implements the same interface as `API.Desktop`
-2. Instantiates `API.Operations` with a platform-specific adapter
-3. Lives under `src/api/<platform>/`
-4. Is recognized by arch_guard as a composition root
+### 7.4 Benefits
 
-**For detailed instructions on creating platform-specific composition roots, including step-by-step examples for embedded systems (STM32F769I), GPR configuration, and troubleshooting, see [All About Our API](../guides/all_about_our_api.md#creating-platform-specific-composition-roots).**
-
----
-
-## 7. Error Handling Strategy
-
-### 7.1 Result Monad Pattern
-
-All fallible operations return `Result[T]`:
-
-```ada
-function Create (Name : String) return Person_Result.Result;
---  Returns Ok(Person) or Error(Validation_Error, "message")
-
-function Greet (Cmd : Greet_Command) return Unit_Result.Result;
---  Returns Ok(Unit) or Error(IO_Error, "message")
-```
-
-### 7.2 Error Propagation
-
-Errors flow through use case orchestration:
-
-```ada
-function Execute (Cmd : Greet_Command) return Unit_Result.Result is
-   Person_Res : constant Person_Result.Result :=
-     Person.Create (Get_Name (Cmd));
-begin
-   if Person_Result.Is_Error (Person_Res) then
-      --  Propagate domain validation error
-      return Unit_Result.Error (...);
-   end if;
-
-   --  Write greeting via port
-   return Writer (Format_Greeting (Person_Result.Value (Person_Res)));
-end Execute;
-```
-
-### 7.3 No Exceptions Policy
-
-| Situation | Handling |
-|-----------|----------|
-| Validation failure | Return Error result |
-| I/O failure | Return Error result |
-| Unexpected error | Return Internal_Error result |
-| Programmer error | Assert/raise (debug only) |
+| Benefit | Description |
+|---------|-------------|
+| Absence of runtime errors | Proven for SPARK-verified code |
+| Contract verification | Preconditions/postconditions checked at proof time |
+| No exceptions | SPARK code cannot raise unexpected exceptions |
+| Portable core | Verified logic works across platforms |
 
 ---
 
-## 8. Build Configuration
+## 8. Performance Design
 
-### 8.1 GPR Projects
+### 8.1 Caching Strategy
 
-| Project | Purpose |
-|---------|---------|
-| `tzif.gpr` | Public library (restricted interfaces) |
-| `tzif_internal.gpr` | Internal (unrestricted, for tests) |
+- Parse zones once, cache in memory
+- Lazy loading of zone data
+- Automatic invalidation on source changes
 
-### 8.2 Build Profiles
+### 8.2 Optimization Techniques
 
-| Profile | Target | Features |
-|---------|--------|----------|
-| `standard` | Desktop/server | Full features |
-| `embedded` | Ravenscar embedded | Tasking safe |
-| `baremetal` | Zero footprint | Minimal runtime |
+- Bounded strings (no heap allocation in domain)
+- Stack allocation where possible
+- Minimal copying of data structures
 
 ---
 
-## 9. Design Decisions
+## 9. Security Design
 
-### 9.1 API.Operations as Child vs Sibling
+### 9.1 Input Validation
 
-**Decision:** `API.Operations` (child) instead of `API_Operations` (sibling)
+- Validate all zone IDs
+- Bounds checking on all inputs
+- Path canonicalization to prevent traversal attacks
 
-**Rationale:**
-- Clean hierarchy is more idiomatic Ada
-- SPARK works either way
-- Preelaborate adds minimal value for consumers
+### 9.2 Error Information
 
-### 9.2 No Heap Allocation
-
-**Decision:** All types use bounded strings and stack allocation
-
-**Rationale:**
-- Embedded system compatibility
-- SPARK compatibility
-- Deterministic behavior
-
-### 9.3 Static vs Dynamic Polymorphism
-
-**Decision:** Static polymorphism via generics
-
-**Rationale:**
-- SPARK compatible
-- Zero runtime overhead
-- Compile-time type safety
+- No sensitive data in error messages
+- Safe error types for external display
 
 ---
 
-## 10. Appendices
+## 10. Build and Deployment
 
-### A. Package Dependency Graph
+### 10.1 Build System
+
+| Tool | Purpose |
+|------|---------|
+| Alire | Ada Library Repository |
+| GPR | GNAT Project files |
+| Make | Build automation |
+
+### 10.2 Project Structure
 
 ```
-Tzif.API
-    ├── Tzif.API.Desktop
-    │       └── Infrastructure.Adapter.Console_Writer
-    │               └── Application.Port.Outbound.Writer
-    │                       └── Domain.Error.Result
-    │                               └── Domain.Error
-    │                                       └── Domain
-    └── Domain.Value_Object.Person
-            └── Domain.Error.Result
-                    └── Domain.Error
+tzif/
+├── src/
+│   ├── api/           # Public facade
+│   ├── application/   # Use cases, ports
+│   ├── domain/        # Value objects, entities
+│   └── infrastructure/# Adapters
+├── test/
+│   ├── unit/          # Unit tests
+│   └── integration/   # Integration tests
+├── examples/          # Working examples
+├── docs/              # Documentation
+└── scripts/           # Automation
 ```
 
-### B. Change History
+---
+
+## 11. Appendices
+
+### 11.1 Package Dependency Graph
+
+```
+TZif.API
+    ├── TZif.API.Desktop
+    │       └── TZif.Infrastructure.IO.Desktop
+    │               └── TZif.Application.Operations
+    │                       └── TZif.Domain.*
+    └── TZif.Domain.Value_Object.*
+            └── TZif.Domain.Error
+```
+
+### 11.2 Change History
 
 | Version | Date | Author | Changes |
 |---------|------|--------|---------|
 | 1.0.0 | 2025-11-29 | Michael Gardner | Initial release |
+
+---
+
+**Document Control**:
+- Version: 1.0.0
+- Last Updated: 2025-11-29
+- Status: Released
+- Copyright © 2025 Michael Gardner, A Bit of Help, Inc.
+- License: BSD-3-Clause

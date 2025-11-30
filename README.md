@@ -1,49 +1,49 @@
-# Enterprise Starter Library with Hybrid DDD/Clean/Hexagonal Architecture
+# TZif - IANA Timezone Information Library
 
-[![License](https://img.shields.io/badge/license-BSD--3--Clause-blue.svg)](LICENSE) [![Ada](https://img.shields.io/badge/Ada-2022-blue.svg)](https://ada-lang.io)
+[![License](https://img.shields.io/badge/license-BSD--3--Clause-blue.svg)](LICENSE) [![Ada](https://img.shields.io/badge/Ada-2022-blue.svg)](https://ada-lang.io) [![Alire](https://img.shields.io/badge/Alire-2.0+-blue.svg)](https://alire.ada.dev)
 
 **Version:** 1.0.0<br>
-**Date:** November 29, 2025<br>
+**Date:** 2025-11-29<br>
 **SPDX-License-Identifier:** BSD-3-Clause<br>
 **License File:** See the LICENSE file in the project root<br>
 **Copyright:** © 2025 Michael Gardner, A Bit of Help, Inc.<br>
 **Status:** Released
 
-> A canonical Ada 2022 library demonstrating hexagonal architecture with functional error handling, SPARK-compatible design, and embedded-safe patterns.
-
 ## Overview
 
-Hybrid Lib Ada is a demonstration library showcasing **hybrid DDD/Clean/Hexagonal architecture** with dependency inversion, ports & adapters, and Result monad error handling in Ada 2022. This is a library-only crate designed to be embedded in applications, with support for both desktop and embedded platforms.
+TZif is an Ada 2022 library for parsing and querying IANA's compiled timezone information (TZif format, RFC 9636). It provides a clean, functional API for timezone operations with Result monad error handling, hexagonal architecture, and embedded-safe patterns.
 
 ## Features
 
+- ✅ Parse IANA TZif binary files (version 2/3)
+- ✅ Query timezone transitions at any epoch time
+- ✅ Discover and validate timezone sources
+- ✅ Find zones by ID, pattern, region, or regex
+- ✅ Detect system's local timezone
 - ✅ 4-layer hexagonal architecture (Domain, Application, Infrastructure, API)
+- ✅ Result monad error handling (via `functional` crate)
 - ✅ Public API facade with stable interface
 - ✅ Generic I/O plugin pattern for platform portability
-- ✅ Result monad error handling (via `functional` crate)
-- ✅ Embedded safety restrictions (no implicit heap allocations)
-- ✅ Static dispatch via generics (zero runtime overhead)
-- ✅ Desktop platform support (Console I/O)
-- ✅ Library_Standalone with explicit Library_Interface
+- ✅ RFC 9636 compliant
 
 ## Architecture
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│                    Tzif.API                       │
+│                       TZif.API                              │
 │              (Public Facade - Stable Interface)             │
 ├─────────────────────────────────────────────────────────────┤
 │  API.Operations     │     API.Desktop     │   (API.Embedded)│
-│  (Generic I/O)      │ (Console_Writer DI) │   (Future UART) │
+│  (Generic I/O)      │ (File System DI)    │   (Future)      │
 ├─────────────────────┼─────────────────────┼─────────────────┤
 │                    Application Layer                        │
-│     Use Cases  │  Ports (Writer)  │  Commands (Greet)       │
+│     Use Cases  │  Ports (Inbound/Outbound)  │  Operations   │
 ├─────────────────────────────────────────────────────────────┤
 │                   Infrastructure Layer                      │
-│              Adapters (Console_Writer)                      │
+│        Adapters (File System, Parser, Repository)           │
 ├─────────────────────────────────────────────────────────────┤
 │                      Domain Layer                           │
-│   Value Objects (Person) │ Errors │ Unit │ Result Monad    │
+│   Entities (Zone) │ Value Objects │ Errors │ Result Monad   │
 └─────────────────────────────────────────────────────────────┘
 ```
 
@@ -52,10 +52,10 @@ Hybrid Lib Ada is a demonstration library showcasing **hybrid DDD/Clean/Hexagona
 ### Building
 
 ```bash
-# Build debug library
+# Build the library
 make build
 
-# Build release library
+# Build release version
 make build-release
 
 # Using Alire directly
@@ -68,104 +68,119 @@ Add to your `alire.toml`:
 
 ```toml
 [[depends-on]]
-tzif = "*"
+tzif = "^1.0.0"
 ```
 
-In your Ada code:
+## Usage
+
+### Find System Timezone
 
 ```ada
-with Tzif.API;
+with TZif.API;
 
 procedure Main is
-   use Tzif.API;
+   use TZif.API;
 
-   --  Create a greet command
-   Cmd : constant Greet_Command := Create_Greet_Command ("World");
-
-   --  Execute the greeting operation
-   Result : constant Unit_Result.Result := Greet (Cmd);
+   Result : constant My_Zone_Result := Find_My_Id;
 begin
-   if Unit_Result.Is_Ok (Result) then
-      --  Success! Message was printed to console
+   if Is_Ok (Result) then
+      Put_Line ("System timezone: " & To_String (Value (Result)));
+   else
+      Put_Line ("Could not detect timezone");
+   end if;
+end Main;
+```
+
+### Query Timezone Transition
+
+```ada
+with TZif.API;
+
+procedure Main is
+   use TZif.API;
+
+   Zone_Id : constant Zone_Id_String := Make_Zone_Id_String ("America/New_York");
+   Epoch   : constant Epoch_Seconds_Type := 1700000000;  -- Nov 2023
+   Result  : constant Transition_Result :=
+     Get_Transition_At_Epoch (Zone_Id, Epoch);
+begin
+   if Is_Ok (Result) then
+      --  Access transition info (offset, DST status, etc.)
       null;
    else
-      --  Handle error
+      Put_Line ("Error: " & Error_Strings.To_String (Error_Info (Result)));
+   end if;
+end Main;
+```
+
+### List All Timezones
+
+```ada
+with TZif.API;
+
+procedure Main is
+   use TZif.API;
+
+   --  First load a timezone source
+   Source_Result : constant Load_Source_Result :=
+     Load_Source (Make_Path_String ("/usr/share/zoneinfo"));
+begin
+   if Load_Port.Load_Source_Result_Package.Is_Ok (Source_Result) then
       declare
-         Err : constant Error_Type := Unit_Result.Error_Info (Result);
+         Source : constant Source_Info_Type :=
+           Load_Port.Load_Source_Result_Package.Value (Source_Result);
+         Zones : constant Zone_List_Result := List_All_Zones (Source);
       begin
-         --  Process error...
+         --  Process zone list...
          null;
       end;
    end if;
 end Main;
 ```
 
-## Usage
-
-### Creating a Person
-
-```ada
-with Tzif.API;
-
-declare
-   use Tzif.API;
-
-   --  Create a person (validated)
-   Person_Res : constant Person_Result.Result := Create_Person ("Alice");
-begin
-   if Person_Result.Is_Ok (Person_Res) then
-      declare
-         P : constant Person_Type := Person_Result.Value (Person_Res);
-      begin
-         --  Use the person
-         Put_Line ("Name: " & Get_Name (P));
-      end;
-   end if;
-end;
-```
-
-### Custom I/O Adapter
-
-For embedded or custom platforms, instantiate `API.Operations` with your own writer:
-
-```ada
-with Tzif.API.Operations;
-with Application.Port.Outbound.Writer;
-
---  Your custom writer function
-function UART_Write (Message : String)
-   return Application.Port.Outbound.Writer.Unit_Result.Result;
-
---  Instantiate operations with your writer
-package My_Ops is new Tzif.API.Operations
-  (Writer => UART_Write);
-```
-
 ## Testing
 
 ```bash
-# Run all tests (98 tests: 88 unit + 10 integration)
+# Run all tests
 make test-all
 
-# Build tests
-make build-tests
-
 # Run unit tests only
-./test/bin/unit_runner
+make test-unit
 
 # Run integration tests only
-./test/bin/integration_runner
+make test-integration
 ```
+
+**Test Results**: All 126 tests passing
 
 ## Documentation
 
-- 📚 **[Documentation Index](docs/index.md)** - Full documentation
+- 📚 **[Documentation Index](docs/index.md)** - Complete documentation overview
 - 🚀 **[Quick Start Guide](docs/quick_start.md)** - Get started in minutes
 - 🏗️ **[All About Our API](docs/guides/all_about_our_api.md)** - API architecture and platform customization
-- 📋 **[Software Requirements](docs/formal/software_requirements_specification.md)** - Formal requirements
-- 📐 **[Software Design](docs/formal/software_design_specification.md)** - Architecture details
-- 🧪 **[Software Test Guide](docs/formal/software_test_guide.md)** - Testing strategy
+- 📖 **[Software Requirements Specification](docs/formal/software_requirements_specification.md)**
+- 🏗️ **[Software Design Specification](docs/formal/software_design_specification.md)**
+- 🧪 **[Software Test Guide](docs/formal/software_test_guide.md)**
+- 🗺️ **[Roadmap](docs/roadmap.md)** - Future plans
 - 📝 **[CHANGELOG](CHANGELOG.md)** - Release history
+
+### Examples
+
+The `examples/` directory contains working programs demonstrating each API operation:
+
+| Example | Description |
+|---------|-------------|
+| `find_my_id` | Detect system's local timezone |
+| `find_by_id` | Look up zone by exact identifier |
+| `find_by_pattern` | Search zones by substring |
+| `find_by_region` | Search zones by geographic region |
+| `find_by_regex` | Search zones by regular expression |
+| `get_transition_at_epoch` | Query offset at specific time |
+| `get_version` | Query timezone database version |
+| `list_all_zones` | Enumerate all available timezones |
+| `discover_sources` | Find timezone data locations |
+| `load_source` | Load timezone source |
+| `validate_source` | Validate source integrity |
 
 ## Code Standards
 
@@ -173,7 +188,6 @@ This project follows:
 - **Ada Agent** (`~/.claude/agents/ada.md`) - Ada 2022 standards
 - **Architecture Agent** (`~/.claude/agents/architecture.md`) - DDD/Clean/Hexagonal
 - **Functional Agent** (`~/.claude/agents/functional.md`) - Result/Option patterns
-- **SPARK Agent** (`~/.claude/agents/spark.md`) - Embedded safety patterns
 
 ## Contributing
 
@@ -208,12 +222,11 @@ https://github.com/abitofhelp
 
 **Status**: Released (v1.0.0)
 
-- ✅ Core library structure
+- ✅ TZif v2/v3 binary parsing (RFC 9636)
 - ✅ 4-layer hexagonal architecture
-- ✅ Public API facade with three-package pattern
-- ✅ Desktop platform support (Console_Writer)
-- ✅ Full test suite (98 tests)
+- ✅ Public API facade with stable interface
+- ✅ Desktop platform support (file system)
+- ✅ Full test suite (126 tests)
 - ✅ Comprehensive documentation
-- ✅ SPARK_Mode boundaries defined
-- ⬜ Embedded platform composition roots (documented, not yet implemented)
-- ⬜ Alire publication
+- ✅ 11 example programs
+- ✅ Alire publication

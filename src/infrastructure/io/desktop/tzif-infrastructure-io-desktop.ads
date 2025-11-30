@@ -12,9 +12,7 @@ pragma Ada_2022;
 --    Byte_Array
 --    TZif_Byte_Buffer
 --    Read_Info
---    Read_Cache_Info
---    Write_Cache_Info
---    ... and 1 more
+--    Timestamp_Type
 --
 --  Dependencies:
 --    Interfaces
@@ -29,8 +27,6 @@ with Ada.Calendar;
 with TZif.Domain.Error.Result;
 with TZif.Application.Port.Inbound.Find_By_Id;
 with TZif.Application.Port.Inbound.Discover_Sources;
-with TZif.Application.Port.Inbound.Import_Cache;
-with TZif.Application.Port.Inbound.Export_Cache;
 
 package TZif.Infrastructure.IO.Desktop with
   SPARK_Mode => Off
@@ -67,24 +63,6 @@ is
    --  Result package for Read_File operation
    package Read_File_Result is new TZif.Domain.Error.Result.Generic_Result
      (T => Read_Info);
-
-   --  Info type for cache reads
-   type Read_Cache_Info is record
-      Bytes_Read : Natural;
-   end record;
-
-   --  Result package for Read_Cache_File operation
-   package Read_Cache_Result is new TZif.Domain.Error.Result.Generic_Result
-     (T => Read_Cache_Info);
-
-   --  Info type for cache writes
-   type Write_Cache_Info is record
-      Success : Boolean;
-   end record;
-
-   --  Result package for Write_Cache_File operation
-   package Write_Cache_Result is new TZif.Domain.Error.Result.Generic_Result
-     (T => Write_Cache_Info);
 
    --  Discovery: List_Directory_Sources uses the Result package from
    --  the inbound port directly (no separate I/O Result package needed)
@@ -123,39 +101,6 @@ is
      (Id     :     TZif.Application.Port.Inbound.Find_By_Id.Zone_Id_Input_Type;
       Bytes  : out Byte_Array; Length : out Natural;
       Result : out Read_File_Result.Result);
-
-   -------------------------------------------------------------------------
-   --  Read_Cache_File
-   --
-   --  Reads a cache file from the given path.
-   --
-   --  Parameters:
-   --    Path   : Filesystem path to cache file
-   --    Bytes  : Output buffer for cache data
-   --    Length : Number of bytes read
-   --    Result : Ok(Read_Cache_Info) or Error(IO_Error)
-   -------------------------------------------------------------------------
-   procedure Read_Cache_File
-     (Path   :     TZif.Application.Port.Inbound.Import_Cache.Path_String;
-      Bytes  : out Byte_Array; Length : out Natural;
-      Result : out Read_Cache_Result.Result);
-
-   -------------------------------------------------------------------------
-   --  Write_Cache_File
-   --
-   --  Writes cache data to a file.
-   --
-   --  Parameters:
-   --    Path      : Filesystem path for output file
-   --    Bytes     : Data to write
-   --    Length    : Number of bytes to write
-   --    Overwrite : If True, overwrite; if False, fail if exists
-   --    Result    : Ok(Write_Cache_Info) or Error(IO_Error)
-   -------------------------------------------------------------------------
-   procedure Write_Cache_File
-     (Path   :     TZif.Application.Port.Inbound.Export_Cache.Path_String;
-      Bytes  :     Byte_Array; Length : Natural; Overwrite : Boolean;
-      Result : out Write_Cache_Result.Result);
 
    -------------------------------------------------------------------------
    --  List_Directory_Sources

@@ -45,8 +45,6 @@ with TZif.Application.Port.Inbound.List_All_Order_By_Id;
 with TZif.Application.Port.Inbound.Discover_Sources;
 with TZif.Application.Port.Inbound.Load_Source;
 with TZif.Application.Port.Inbound.Validate_Source;
-with TZif.Application.Port.Inbound.Import_Cache;
-with TZif.Application.Port.Inbound.Export_Cache;
 
 package TZif.Infrastructure.Adapter.File_System.Repository is
 
@@ -126,10 +124,6 @@ package TZif.Infrastructure.Adapter.File_System.Repository is
    --      Application.Port.Inbound.Load_Source.Load_Source_Result
    --    Validate_Source â
    --      Application.Port.Inbound.Validate_Source.Validation_Result
-   --    Import_Cache â
-   --      Application.Port.Inbound.Import_Cache.Import_Cache_Result
-   --    Export_Cache â
-   --      Application.Port.Inbound.Export_Cache.Export_Cache_Result
    --
    --  Note: Exists_By_Id deleted (obsolete), Get_Transition_At_Epoch
    --  & List_All_Order_By_Id ports need to be created before their
@@ -223,17 +217,5 @@ package TZif.Infrastructure.Adapter.File_System.Repository is
    function Validate_Source
      (Path : Application.Port.Inbound.Validate_Source.Path_String)
       return TZif.Application.Port.Inbound.Validate_Source.Validation_Result;
-
-   --  13. Import cache from file (GPT-5 pattern: uses port's
-   --      canonical type)
-   function Import_Cache
-     (Path : Application.Port.Inbound.Import_Cache.Path_String)
-      return TZif.Application.Port.Inbound.Import_Cache.Import_Cache_Result;
-
-   --  14. Export cache to file (GPT-5 pattern: uses port's canonical type)
-   function Export_Cache
-     (Path      : TZif.Application.Port.Inbound.Export_Cache.Path_String;
-      Overwrite : Boolean)
-      return TZif.Application.Port.Inbound.Export_Cache.Export_Cache_Result;
 
 end TZif.Infrastructure.Adapter.File_System.Repository;

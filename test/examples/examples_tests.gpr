@@ -1,0 +1,35 @@
+-- ===========================================================================
+-- examples_tests.gpr - Examples Test Suite
+-- ===========================================================================
+-- Copyright (c) 2025 Michael Gardner, A Bit of Help, Inc.
+-- SPDX-License-Identifier: BSD-3-Clause
+--
+-- Purpose:
+--   Test runner that spawns and validates all example programs.
+--   Uses Test_Framework for consistent output with unit/integration tests.
+-- ===========================================================================
+
+with "../../config/tzif_config.gpr";
+
+project Examples_Tests is
+
+   for Source_Dirs use (".", "../common");
+   for Object_Dir use "../../obj/test/examples";
+   for Exec_Dir use "../bin";
+
+   --  Only the runner is Main
+   for Main use ("examples_runner.adb");
+
+   package Compiler is
+      for Default_Switches ("Ada") use TZif_Config.Ada_Compiler_Switches;
+   end Compiler;
+
+   package Binder is
+      for Switches ("Ada") use ("-Es");  -- Symbolic traceback
+   end Binder;
+
+   package Builder is
+      for Switches ("Ada") use ("-g");  -- Debug symbols
+   end Builder;
+
+end Examples_Tests;

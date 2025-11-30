@@ -38,15 +38,11 @@ is
      (Byte_Array => TZif.Infrastructure.IO.Desktop.Byte_Array,
       --  Formal packages for Result monads
       Read_File_Result => TZif.Infrastructure.IO.Desktop.Read_File_Result,
-      Read_Cache_Result => TZif.Infrastructure.IO.Desktop.Read_Cache_Result,
-      Write_Cache_Result => TZif.Infrastructure.IO.Desktop.Write_Cache_Result,
       Get_Modified_Time_Result =>
         TZif.Infrastructure.IO.Desktop.Get_Modified_Time_Result,
       Timestamp_Type => TZif.Infrastructure.IO.Desktop.Timestamp_Type,
       --  I/O procedures
       Read_File => TZif.Infrastructure.IO.Desktop.Read_File,
-      Read_Cache_File => TZif.Infrastructure.IO.Desktop.Read_Cache_File,
-      Write_Cache_File => TZif.Infrastructure.IO.Desktop.Write_Cache_File,
       List_Directory_Sources =>
         TZif.Infrastructure.IO.Desktop.List_Directory_Sources,
       Get_Modified_Time => TZif.Infrastructure.IO.Desktop.Get_Modified_Time);

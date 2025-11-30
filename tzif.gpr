@@ -85,7 +85,7 @@ library project Tzif is
    --  Stand-Alone Library Configuration - PUBLIC API ENFORCEMENT
    --  =======================================================================
    --
-   --  Hybrid Library Architecture: Only Domain and API are public
+   --  TZif Library Architecture: Only Domain and API are public
    --
    --  PUBLIC (Publishable, Reusable):
    --    - Tzif            Root package
@@ -120,7 +120,6 @@ library project Tzif is
       "TZif.Domain.Service.Timezone_Lookup",
       "TZif.Domain.TZif_Data",
       "TZif.Domain.Value_Object",
-      "TZif.Domain.Value_Object.Cache_Stats",
       "TZif.Domain.Value_Object.Epoch_Seconds",
       "TZif.Domain.Value_Object.IANA_Releases",
       "TZif.Domain.Value_Object.Source_Info",

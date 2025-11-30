@@ -16,11 +16,7 @@ with Ada.Text_IO;
 with Test_Framework;
 
 --  Import all integration test procedures
-with Test_Cache_Export_Import;
-with Test_Cache_Validation_Errors;
-with Test_Cache_With_Zones;
 with Test_Discover_Sources;
-with Test_Export_Cache;
 with Test_Find_By_Id;
 with Test_Find_By_Pattern;
 with Test_Find_By_Regex;
@@ -28,7 +24,6 @@ with Test_Find_By_Region;
 with Test_Find_My_Id;
 with Test_Get_Transition_At_Epoch;
 with Test_Get_Version;
-with Test_Import_Cache;
 with Test_List_All_Order_By_Id;
 with Test_Load_Source;
 with Test_Platform_Stubs;
@@ -58,11 +53,7 @@ begin
    --  Run all integration test procedures
    --  Each test registers its results with Test_Framework
 
-   Test_Cache_Export_Import;
-   Test_Cache_Validation_Errors;
-   Test_Cache_With_Zones;
    Test_Discover_Sources;
-   Test_Export_Cache;
    Test_Find_By_Id;
    Test_Find_By_Pattern;
    Test_Find_By_Regex;
@@ -70,7 +61,6 @@ begin
    Test_Find_My_Id;
    Test_Get_Transition_At_Epoch;
    Test_Get_Version;
-   Test_Import_Cache;
    Test_List_All_Order_By_Id;
    Test_Load_Source;
    Test_Platform_Stubs;

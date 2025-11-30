@@ -51,7 +51,7 @@ obj/** linguist-generated
 lib/** linguist-generated
 bin/** linguist-generated
 alire/** linguist-generated
-config/hybrid_lib_ada_config.ads linguist-generated
+config/tzif_config.ads linguist-generated
 
 # Version control and IDE
 .git/** linguist-vendored

@@ -21,7 +21,6 @@ with Test_Value_Object_Accessors;
 with Test_IANA_Releases;
 with Test_Zone_Entity;
 with Test_Source_Cache;
-with Test_JSON_Serialization;
 with Test_ULID;
 
 procedure Unit_Runner is
@@ -52,7 +51,6 @@ begin
    Test_IANA_Releases;
    Test_Zone_Entity;
    Test_Source_Cache;
-   Test_JSON_Serialization;
    Test_ULID;
 
    --  Get cumulative results

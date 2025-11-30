@@ -13,8 +13,6 @@ pragma Ada_2022;
 --    Find_By_Id_Result_Type
 --    Discover_Path_List_Type
 --    Discovery_Result_Type
---    Import_Path_String
---    ... and 6 more
 --
 --  Dependencies:
 --    Interfaces
@@ -29,8 +27,6 @@ with TZif.Domain.Error.Result;
 
 with TZif.Application.Port.Inbound.Find_By_Id;
 with TZif.Application.Port.Inbound.Discover_Sources;
-with TZif.Application.Port.Inbound.Import_Cache;
-with TZif.Application.Port.Inbound.Export_Cache;
 
 package TZif.Application.Operations with
   SPARK_Mode => On
@@ -45,10 +41,6 @@ is
    package Inbound_Find_By_Id renames TZif.Application.Port.Inbound.Find_By_Id;
    package Inbound_Discover_Sources renames
      TZif.Application.Port.Inbound.Discover_Sources;
-   package Inbound_Import_Cache renames
-     TZif.Application.Port.Inbound.Import_Cache;
-   package Inbound_Export_Cache renames
-     TZif.Application.Port.Inbound.Export_Cache;
 
    --  Find_By_Id types
    subtype Zone_Id_Input_Type is Inbound_Find_By_Id.Zone_Id_Input_Type;
@@ -60,18 +52,6 @@ is
    package Discovery_Result renames
      Inbound_Discover_Sources.Discovery_Result_Package;
    subtype Discovery_Result_Type is Discovery_Result.Result;
-
-   --  Import_Cache types
-   subtype Import_Path_String is Inbound_Import_Cache.Path_String;
-   package Import_Cache_Result renames
-     Inbound_Import_Cache.Import_Cache_Result_Package;
-   subtype Import_Cache_Result_Type is Import_Cache_Result.Result;
-
-   --  Export_Cache types
-   subtype Export_Path_String is Inbound_Export_Cache.Path_String;
-   package Export_Cache_Result renames
-     Inbound_Export_Cache.Export_Cache_Result_Package;
-   subtype Export_Cache_Result_Type is Export_Cache_Result.Result;
 
    --  ========================================================================
    --  Generic I/O Plugin Contract
@@ -115,34 +95,6 @@ is
       with procedure Read_File
         (Id : Zone_Id_Input_Type; Bytes : out Byte_Array; Length : out Natural;
          Result : out Read_File_Result.Result);
-
-      -------------------------------------------------------------------------
-      --  Formal package: Result monad for cache file reads
-      -------------------------------------------------------------------------
-      with package Read_Cache_Result is new TZif.Domain.Error.Result
-        .Generic_Result
-        (<>);
-
-      -------------------------------------------------------------------------
-      --  Read a cache file from a path (Import_Cache)
-      -------------------------------------------------------------------------
-      with procedure Read_Cache_File
-        (Path   :     Import_Path_String; Bytes : out Byte_Array;
-         Length : out Natural; Result : out Read_Cache_Result.Result);
-
-      -------------------------------------------------------------------------
-      --  Formal package: Result monad for cache file writes
-      -------------------------------------------------------------------------
-      with package Write_Cache_Result is new TZif.Domain.Error.Result
-        .Generic_Result
-        (<>);
-
-      -------------------------------------------------------------------------
-      --  Write a cache file to a path (Export_Cache)
-      -------------------------------------------------------------------------
-      with procedure Write_Cache_File
-        (Path      : Export_Path_String; Bytes : Byte_Array; Length : Natural;
-         Overwrite : Boolean; Result : out Write_Cache_Result.Result);
 
       -------------------------------------------------------------------------
       --  List directory contents to discover timezone sources
@@ -190,19 +142,6 @@ is
       procedure Discover_Sources
         (Search_Paths :     Discover_Path_List_Type;
          Result       : out Discovery_Result_Type);
-
-      ----------------------------------------------------------------------
-      --  Import_Cache
-      ----------------------------------------------------------------------
-      procedure Import_Cache
-        (Path : Import_Path_String; Result : out Import_Cache_Result_Type);
-
-      ----------------------------------------------------------------------
-      --  Export_Cache
-      ----------------------------------------------------------------------
-      procedure Export_Cache
-        (Path   :     Export_Path_String; Overwrite : Boolean;
-         Result : out Export_Cache_Result_Type);
 
       ----------------------------------------------------------------------
       --  TODO: Add other I/O-related use cases as they are migrated:

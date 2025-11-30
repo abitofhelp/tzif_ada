@@ -1,4 +1,4 @@
-# Software Requirements Specification
+# Software Requirements Specification (SRS)
 
 **Version:** 1.0.0<br>
 **Date:** 2025-11-29<br>
@@ -13,33 +13,36 @@
 
 ### 1.1 Purpose
 
-This Software Requirements Specification (SRS) defines the functional and non-functional requirements for **Tzif**, a canonical Ada 2022 library demonstrating hexagonal architecture patterns with functional error handling.
+This Software Requirements Specification (SRS) describes the functional and non-functional requirements for TZif, a production-ready Ada 2022 library for parsing and querying IANA timezone information from TZif binary files.
 
 ### 1.2 Scope
 
-Tzif provides:
-- A reusable library for greeting operations
-- Demonstration of DDD/Clean/Hexagonal architecture in Ada
-- Functional error handling via Result monad
-- SPARK-compatible design for formal verification
-- Embedded-safe patterns (no heap allocation)
+TZif provides:
+- Parsing of TZif binary format (versions 2 and 3)
+- Query operations for timezone data by ID, region, pattern, and regex
+- Timezone transition lookups for specific epochs
+- Source discovery and validation
+- High-performance in-memory caching
+- Thread-safe operations
+- Railway-oriented error handling
 
-### 1.3 Definitions
+### 1.3 Definitions and Acronyms
 
 | Term | Definition |
 |------|------------|
-| **DDD** | Domain-Driven Design - strategic and tactical patterns for complex software |
-| **Hexagonal Architecture** | Ports & Adapters pattern isolating business logic from infrastructure |
-| **Result Monad** | Functional pattern for error handling without exceptions |
-| **SPARK** | Ada subset for formal verification |
-| **Value Object** | Immutable domain object defined by its attributes |
+| TZif | Timezone Information Format (IANA standard binary format) |
+| IANA | Internet Assigned Numbers Authority |
+| SRS | Software Requirements Specification |
+| API | Application Programming Interface |
+| UTC | Coordinated Universal Time |
+| RFC | Request for Comments |
+| ULID | Universally Unique Lexicographically Sortable Identifier |
 
 ### 1.4 References
 
-- Ada 2022 Reference Manual (ISO/IEC 8652:2023)
-- SPARK 2014 Reference Manual
-- Domain-Driven Design (Eric Evans, 2003)
-- Clean Architecture (Robert C. Martin, 2017)
+- IANA Time Zone Database: https://www.iana.org/time-zones
+- TZif Format Specification: RFC 9636
+- Ada 2022 Language Reference Manual
 
 ---
 
@@ -47,268 +50,274 @@ Tzif provides:
 
 ### 2.1 Product Perspective
 
-Tzif is a standalone library designed to be imported by Ada applications. It provides:
+TZif is a standalone Ada library implementing hexagonal (ports and adapters) architecture with clean separation between domain logic, application use cases, and infrastructure adapters.
 
-```
-┌─────────────────────────────────────────────────────────┐
-│                   Client Application                     │
-│                                                          │
-│   with Tzif.API;                              │
-│   Result := API.Greet (API.Create_Greet_Command ("X")); │
-└────────────────────────┬────────────────────────────────┘
-                         │
-┌────────────────────────▼────────────────────────────────┐
-│                   Tzif                         │
-│                                                          │
-│  API Layer → Application Layer → Domain Layer            │
-│       ↓                                                  │
-│  Infrastructure Layer (adapters)                         │
-└─────────────────────────────────────────────────────────┘
-```
+**Architecture Layers**:
 
-### 2.2 Product Functions
+| Layer | Purpose |
+|-------|---------|
+| Domain | Pure business logic, value objects, entities |
+| Application | Use cases, ports (interfaces) |
+| Infrastructure | Adapters for file system, parsing |
+| API | Public facade with stable interface |
 
-| Function | Description |
-|----------|-------------|
-| **Greet** | Generate and output a personalized greeting |
-| **Create_Person** | Create validated Person value object |
-| **Create_Greet_Command** | Create command for greet operation |
+### 2.2 Product Features
 
-### 2.3 User Characteristics
+1. **TZif Parsing**: Parse TZif v2, v3 binary files (RFC 9636)
+2. **Timezone Queries**: Find by ID, region, pattern, regex
+3. **Transition Lookups**: Get timezone info for specific epoch
+4. **Source Management**: Discover and validate timezone sources
+5. **In-Memory Caching**: High-performance zone caching with automatic invalidation
+6. **Error Handling**: Railway-oriented programming with Result monads
 
-| User Type | Characteristics |
-|-----------|-----------------|
-| **Library Consumer** | Ada developer integrating greeting functionality |
-| **Architecture Student** | Learning hexagonal architecture in Ada |
-| **Embedded Developer** | Requiring heap-free, SPARK-compatible patterns |
+### 2.3 User Classes
 
-### 2.4 Constraints
+| User Class | Description |
+|------------|-------------|
+| Application Developers | Integrate timezone functionality into applications |
+| System Administrators | Configure timezone data sources |
+| Library Maintainers | Extend and maintain the codebase |
 
-| Constraint | Rationale |
-|------------|-----------|
-| Ada 2022 | Required for modern language features |
-| GNAT 14+ | Required compiler version |
-| No Heap Allocation | Embedded system compatibility |
-| SPARK Subset | Formal verification capability |
+### 2.4 Operating Environment
 
-### 2.5 Assumptions and Dependencies
-
-- Alire 2.0+ available for dependency management
-- `functional` crate available (Result monad implementation)
-- GNAT toolchain installed via Alire
+| Requirement | Specification |
+|-------------|---------------|
+| Platforms | POSIX-compliant systems (Linux, macOS, BSD) |
+| Ada Compiler | GNAT FSF 14.2+ or GNAT Pro 25.0+ |
+| Ada Version | Ada 2022 |
+| Dependencies | functional ^2.0.0 (Result/Option monads) |
 
 ---
 
 ## 3. Functional Requirements
 
-### 3.1 Domain Layer Requirements
+### 3.1 TZif Parsing (FR-01)
 
-#### REQ-DOM-001: Person Value Object
+**Priority**: High
+**Description**: Parse TZif binary files in supported versions.
 
-**Description:** The system SHALL provide a Person value object representing a named individual.
+| ID | Requirement |
+|----|-------------|
+| FR-01.1 | Parse TZif version 2 (64-bit) |
+| FR-01.2 | Parse TZif version 3 (with extensions) |
+| FR-01.3 | Validate file format and magic numbers |
+| FR-01.4 | Handle malformed files gracefully |
+| FR-01.5 | Extract transition times, types, and abbreviations |
 
-**Acceptance Criteria:**
-- Person is immutable after creation
-- Person name is validated on creation
-- Name length is bounded (1 to 100 characters)
-- Empty names are rejected with Validation_Error
+### 3.2 Timezone Query Operations (FR-02)
 
-#### REQ-DOM-002: Error Types
+**Priority**: High
+**Description**: Provide query operations for timezone data.
 
-**Description:** The system SHALL define structured error types for all failure modes.
+| ID | Requirement |
+|----|-------------|
+| FR-02.1 | Find timezone by exact ID (e.g., "America/New_York") |
+| FR-02.2 | Find timezones by region (e.g., "America") |
+| FR-02.3 | Find timezones by substring pattern matching |
+| FR-02.4 | Find timezones by regular expression |
+| FR-02.5 | List all available timezones (ordered by ID) |
+| FR-02.6 | Get local system timezone ID |
 
-**Acceptance Criteria:**
-- Error includes Kind enumeration
-- Error includes human-readable Message
-- Error Kinds: Validation_Error, IO_Error, Not_Found_Error, Already_Exists_Error, Config_Error, Internal_Error
+### 3.3 Transition Lookups (FR-03)
 
-#### REQ-DOM-003: Result Monad
+**Priority**: High
+**Description**: Retrieve timezone information for specific points in time.
 
-**Description:** The system SHALL use Result[T] for all fallible operations.
+| ID | Requirement |
+|----|-------------|
+| FR-03.1 | Get transition info for given epoch seconds |
+| FR-03.2 | Return UTC offset at specific time |
+| FR-03.3 | Return timezone abbreviation (e.g., "PST", "PDT") |
+| FR-03.4 | Handle times before/after transition data |
 
-**Acceptance Criteria:**
-- Result is either Ok(value) or Error(error_info)
-- No exceptions raised for expected errors
-- Type-safe value extraction
+### 3.4 Source Management (FR-04)
 
-### 3.2 Application Layer Requirements
+**Priority**: Medium
+**Description**: Discover and validate timezone data sources from developer-provided paths.
 
-#### REQ-APP-001: Greet Command
+| ID | Requirement |
+|----|-------------|
+| FR-04.1 | Scan developer-provided filesystem paths for timezone sources |
+| FR-04.2 | Validate source directory structure |
+| FR-04.3 | Check for required version information |
+| FR-04.4 | Count available zone files |
+| FR-04.5 | Generate unique IDs for sources (ULID) |
+| FR-04.6 | Protect against infinite loops during recursive directory traversal |
 
-**Description:** The system SHALL provide a Greet_Command data transfer object.
+**Implementation Notes**:
+- v1.0.0 implements sequential recursive directory traversal
+- Developer explicitly provides list of paths to scan
+- Infinite loop protection: canonical path deduplication + 15-level depth limit
 
-**Acceptance Criteria:**
-- Encapsulates name for greeting
-- Immutable after creation
-- No validation (thin DTO)
+### 3.5 In-Memory Caching (FR-05)
 
-#### REQ-APP-002: Greet Use Case
+**Priority**: Medium
+**Description**: High-performance in-memory zone caching with automatic invalidation.
 
-**Description:** The system SHALL provide a Greet use case orchestrating the greeting workflow.
+| ID | Requirement | Status |
+|----|-------------|--------|
+| FR-05.1 | High-performance in-memory caching | Implemented |
+| FR-05.2 | Automatic cache invalidation on source changes | Implemented |
+| FR-05.3 | Cache miss triggers automatic zone parsing | Implemented |
+| FR-05.4 | Thread-safe cache operations | Implemented |
 
-**Acceptance Criteria:**
-- Accepts Greet_Command
-- Creates Person from command name
-- Generates greeting message
-- Writes message via Writer port
-- Returns Result[Unit]
+**Implementation Notes**:
+- v1.0.0 provides excellent performance (~20ms cold start)
+- Cache persistence (export/import) deferred pending user demand
+- See roadmap.md for future cache persistence considerations
 
-#### REQ-APP-003: Writer Port
+### 3.6 Error Handling (FR-06)
 
-**Description:** The system SHALL define an output port for write operations.
+**Priority**: High
+**Description**: Railway-oriented error handling without exceptions.
 
-**Acceptance Criteria:**
-- Generic function signature: Write(Message) -> Result[Unit]
-- Port is Application-owned, Infrastructure-implemented
-- Static polymorphism via generics
-
-### 3.3 Infrastructure Layer Requirements
-
-#### REQ-INF-001: Console Writer Adapter
-
-**Description:** The system SHALL provide a Console_Writer adapter.
-
-**Acceptance Criteria:**
-- Implements Writer port contract
-- Writes to standard output
-- Returns Ok on success
-- Returns IO_Error on failure
-
-### 3.4 API Layer Requirements
-
-#### REQ-API-001: Public Facade
-
-**Description:** The system SHALL provide a thin public facade for library consumers.
-
-**Acceptance Criteria:**
-- Single `Tzif.API` package for imports
-- Re-exports Domain types (Person, Error, Unit)
-- Re-exports Application types (Greet_Command, Unit_Result)
-- Provides Greet function
-
-#### REQ-API-002: SPARK-Safe Operations
-
-**Description:** The system SHALL provide SPARK-verifiable operations.
-
-**Acceptance Criteria:**
-- API.Operations package with SPARK_Mode(On)
-- Generic, parameterized by Writer port
-- No Infrastructure dependencies
-- Formally verifiable business logic
-
-#### REQ-API-003: Composition Root
-
-**Description:** The system SHALL provide platform-specific composition roots.
-
-**Acceptance Criteria:**
-- API.Desktop wires Console_Writer
-- SPARK_Mode(Off) for I/O wiring
-- Instantiates API.Operations with concrete adapter
+| ID | Requirement |
+|----|-------------|
+| FR-06.1 | Use Result monad for all fallible operations |
+| FR-06.2 | Provide descriptive error messages |
+| FR-06.3 | Error codes for all failure modes |
+| FR-06.4 | No exceptions in library code |
 
 ---
 
 ## 4. Non-Functional Requirements
 
-### 4.1 Performance
+### 4.1 Performance (NFR-01)
 
-| Requirement | Target |
-|-------------|--------|
-| Greet operation latency | < 1ms (excluding I/O) |
-| Memory allocation | Zero heap allocation |
-| Stack usage | < 4KB per call |
+| ID | Requirement |
+|----|-------------|
+| NFR-01.1 | Parse TZif file in < 10ms |
+| NFR-01.2 | Zone lookup in < 1ms (cached) |
+| NFR-01.3 | Transition lookup in < 100μs |
+| NFR-01.4 | Cold start (all sources) in < 25ms |
 
-### 4.2 Reliability
+### 4.2 Reliability (NFR-02)
 
-| Requirement | Description |
-|-------------|-------------|
-| Error handling | All errors returned via Result, no exceptions |
-| Input validation | All inputs validated at domain boundary |
-| Crash safety | No uncaught exceptions possible |
+| ID | Requirement |
+|----|-------------|
+| NFR-02.1 | Handle all malformed inputs gracefully |
+| NFR-02.2 | No memory leaks |
+| NFR-02.3 | Thread-safe repository operations |
 
-### 4.3 Portability
+### 4.3 Portability (NFR-03)
 
-| Requirement | Description |
-|-------------|-------------|
-| Compiler | GNAT 14+ |
-| Platforms | Linux, macOS, Windows |
-| Embedded | Ravenscar-compatible design |
-| Bare-metal | Zero-footprint runtime option |
+| ID | Requirement |
+|----|-------------|
+| NFR-03.1 | Support POSIX platforms (Linux, macOS, BSD) |
+| NFR-03.2 | No platform-specific code in domain/application layers |
+| NFR-03.3 | Generic I/O plugin pattern for platform portability |
 
-### 4.4 Maintainability
+### 4.4 Maintainability (NFR-04)
 
-| Requirement | Description |
-|-------------|-------------|
-| Architecture | 4-layer hexagonal (Domain/Application/Infrastructure/API) |
-| Coupling | Inward dependencies only |
-| Testing | Unit tests for each layer |
-| Documentation | Full API and architecture documentation |
+| ID | Requirement |
+|----|-------------|
+| NFR-04.1 | Hexagonal architecture with clear boundaries |
+| NFR-04.2 | Comprehensive documentation (docstrings) |
+| NFR-04.3 | > 90% test coverage |
+| NFR-04.4 | Zero compiler warnings |
 
-### 4.5 Security
+### 4.5 Usability (NFR-05)
 
-| Requirement | Description |
-|-------------|-------------|
-| Input validation | Bounded strings prevent buffer overflow |
-| No dynamic memory | Prevents use-after-free, double-free |
-| SPARK compatible | Enables formal verification |
-
----
-
-## 5. Interface Requirements
-
-### 5.1 User Interfaces
-
-None - this is a library, not an application.
-
-### 5.2 Software Interfaces
-
-#### 5.2.1 Alire Integration
-
-```toml
-[[depends-on]]
-tzif = "*"
-```
-
-#### 5.2.2 Ada API
-
-```ada
-with Tzif.API;
-use Tzif.API;
-
-Cmd    : constant Greet_Command := Create_Greet_Command ("Name");
-Result : constant Unit_Result.Result := Greet (Cmd);
-```
-
-### 5.3 Hardware Interfaces
-
-None specified - library is hardware-agnostic.
+| ID | Requirement |
+|----|-------------|
+| NFR-05.1 | Clear, intuitive API |
+| NFR-05.2 | Working examples for all use cases |
+| NFR-05.3 | Comprehensive error messages |
 
 ---
 
-## 6. Traceability Matrix
+## 5. System Requirements
 
-| Requirement | Design | Test |
-|-------------|--------|------|
-| REQ-DOM-001 | Domain.Value_Object.Person | test_domain_person.adb |
-| REQ-DOM-002 | Domain.Error | test_domain_error_result.adb |
-| REQ-DOM-003 | Domain.Error.Result | test_domain_error_result.adb |
-| REQ-APP-001 | Application.Command.Greet | test_application_command_greet.adb |
-| REQ-APP-002 | Application.Usecase.Greet | test_application_usecase_greet.adb |
-| REQ-APP-003 | Application.Port.Outbound.Writer | test_application_usecase_greet.adb |
-| REQ-INF-001 | Infrastructure.Adapter.Console_Writer | test_api_greet.adb |
-| REQ-API-001 | Tzif.API | test_api_greet.adb |
-| REQ-API-002 | Tzif.API.Operations | test_api_operations.adb |
-| REQ-API-003 | Tzif.API.Desktop | test_api_greet.adb |
+### 5.1 Hardware Requirements
+
+| Category | Requirement |
+|----------|-------------|
+| CPU | Any modern processor |
+| RAM | 64 MB minimum |
+| Disk | 10 MB minimum |
+
+### 5.2 Software Requirements
+
+| Category | Requirement |
+|----------|-------------|
+| Operating System | Linux, macOS, BSD |
+| Compiler | GNAT FSF 14.2+ or GNAT Pro 25.0+ |
+| Build System | Alire 2.0+ |
 
 ---
 
-## 7. Appendices
+## 6. API Operations
 
-### A. Glossary
+### 6.1 Use Case Summary
 
-See Section 1.3 Definitions.
+The TZif API provides 11 operations:
 
-### B. Change History
+| Operation | Description |
+|-----------|-------------|
+| `Find_By_Id` | Retrieve zone by exact ID |
+| `Find_By_Region` | Find zones in geographic region |
+| `Find_By_Pattern` | Pattern matching search |
+| `Find_By_Regex` | Regex-based search |
+| `Find_My_Id` | Detect local timezone |
+| `Get_Transition_At_Epoch` | Lookup transition at specific time |
+| `Get_Version` | Get timezone database version |
+| `List_All_Order_By_Id` | List all zones ordered by ID |
+| `Discover_Sources` | Scan filesystem for sources |
+| `Load_Source` | Load timezone data from source |
+| `Validate_Source` | Validate source integrity |
 
-| Version | Date | Author | Changes |
-|---------|------|--------|---------|
-| 1.0.0 | 2025-11-29 | Michael Gardner | Initial release |
+---
+
+## 7. Verification and Validation
+
+### 7.1 Test Coverage
+
+| Test Type | Count |
+|-----------|-------|
+| Unit tests | 126 |
+| Integration test files | 16 |
+| Example programs | 11 |
+
+### 7.2 Verification Methods
+
+| Method | Description |
+|--------|-------------|
+| Code Review | All code reviewed before merge |
+| Static Analysis | Zero compiler warnings |
+| Dynamic Testing | All tests must pass |
+| Coverage Analysis | > 90% line coverage |
+
+---
+
+## 8. Appendices
+
+### 8.1 TZif Format Overview
+
+TZif (Timezone Information Format) is a binary format defined by IANA for storing timezone data (RFC 9636). The format includes:
+- Header with version and counts
+- Transition times (64-bit timestamps)
+- Transition types
+- Timezone abbreviations
+- Leap second information
+- Standard/wall indicators
+- UTC/local indicators
+- POSIX TZ string for future transitions
+
+### 8.2 Project Statistics
+
+| Metric | Value |
+|--------|-------|
+| Ada specification files | ~85 |
+| Ada implementation files | ~26 |
+| Architecture layers | Domain, Application, Infrastructure, API |
+| Examples | 11 |
+| Unit tests | 126 |
+
+---
+
+**Document Control**:
+- Version: 1.0.0
+- Last Updated: 2025-11-29
+- Status: Released
+- Copyright © 2025 Michael Gardner, A Bit of Help, Inc.
+- License: BSD-3-Clause

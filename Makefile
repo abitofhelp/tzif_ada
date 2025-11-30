@@ -93,7 +93,7 @@ all: build
 
 help: ## Display this help message
 	@echo "$(CYAN)$(BOLD)╔══════════════════════════════════════════════════╗$(NC)"
-	@echo "$(CYAN)$(BOLD)║  Hybrid Lib - Ada 2022 Library                   ║$(NC)"
+	@echo "$(CYAN)$(BOLD)║  TZif - IANA Timezone Information Library        ║$(NC)"
 	@echo "$(CYAN)$(BOLD)╚══════════════════════════════════════════════════╝$(NC)"
 	@echo " "
 	@echo "$(YELLOW)Build Commands:$(NC)"
@@ -116,7 +116,7 @@ help: ## Display this help message
 	@echo "  test-all           - Run all test executables"
 	@echo "  test-framework     - Run all test suites (unit + integration)"
 	@echo "  test-python        - Run Python script tests (arch_guard.py validation)"
-	@echo "  test-examples      - Run E2E tests for all examples"
+	@echo "  test-examples      - Run Ada-based tests for all examples"
 	@echo "  test-coverage      - Run tests with coverage analysis"
 	@echo ""
 	@echo "$(YELLOW)Examples Commands:$(NC)"
@@ -194,6 +194,12 @@ build-tests: check-arch prereqs
 		echo "$(GREEN)✓ Integration tests built$(NC)"; \
 	else \
 		echo "$(YELLOW)Integration test project not found$(NC)"; \
+	fi
+	@if [ -f "$(TEST_DIR)/examples/examples_tests.gpr" ]; then \
+		$(ALR) exec -- $(GPRBUILD) -P $(TEST_DIR)/examples/examples_tests.gpr -p $(ALR_TEST_FLAGS); \
+		echo "$(GREEN)✓ Examples tests built$(NC)"; \
+	else \
+		echo "$(YELLOW)Examples test project not found$(NC)"; \
 	fi
 
 build-profiles: ## Validate library builds with all configuration profiles
@@ -394,18 +400,18 @@ run-examples: build-examples
 		echo "$(YELLOW)No examples found in $(BIN_DIR)/examples$(NC)"; \
 	fi
 
-test-examples: build-examples
-	@echo "$(GREEN)Running E2E tests for examples...$(NC)"
-	@if [ -f "test/e2e/test_examples.sh" ]; then \
-		bash test/e2e/test_examples.sh; \
+test-examples: build-examples build-tests
+	@echo "$(GREEN)Running examples tests...$(NC)"
+	@if [ -f "$(TEST_DIR)/bin/examples_runner" ]; then \
+		$(TEST_DIR)/bin/examples_runner; \
 		if [ $$? -eq 0 ]; then \
-			echo "$(GREEN)✓ Example E2E tests passed$(NC)"; \
+			echo "$(GREEN)✓ Examples tests passed$(NC)"; \
 		else \
-			echo "$(RED)✗ Example E2E tests failed$(NC)"; \
+			echo "$(RED)✗ Examples tests failed$(NC)"; \
 			exit 1; \
 		fi; \
 	else \
-		echo "$(YELLOW)E2E test script not found at test/e2e/test_examples.sh$(NC)"; \
+		echo "$(YELLOW)Examples runner not found at $(TEST_DIR)/bin/examples_runner$(NC)"; \
 		exit 1; \
 	fi
 
