@@ -116,7 +116,13 @@ help: ## Display this help message
 	@echo "  test-all           - Run all test executables"
 	@echo "  test-framework     - Run all test suites (unit + integration)"
 	@echo "  test-python        - Run Python script tests (arch_guard.py validation)"
+	@echo "  test-examples      - Run E2E tests for all examples"
 	@echo "  test-coverage      - Run tests with coverage analysis"
+	@echo ""
+	@echo "$(YELLOW)Examples Commands:$(NC)"
+	@echo "  build-examples     - Build all example programs"
+	@echo "  examples           - Alias for build-examples"
+	@echo "  run-examples       - Build and run all example programs"
 	@echo ""
 	@echo "$(YELLOW)Quality & Architecture Commands:$(NC)"
 	@echo "  check              - Run static analysis"
@@ -355,6 +361,51 @@ test-coverage: clean build build-coverage-runtime
 		bash scripts/makefile/coverage.sh; \
 	else \
 		echo "$(YELLOW)Coverage script not found at scripts/makefile/coverage.sh$(NC)"; \
+		exit 1; \
+	fi
+
+# =============================================================================
+# Examples Commands
+# =============================================================================
+
+build-examples: build check-arch prereqs
+	@echo "$(GREEN)Building example programs...$(NC)"
+	@if [ -f "examples/examples.gpr" ]; then \
+		$(ALR) exec -- $(GPRBUILD) -P examples/examples.gpr -p $(ALR_BUILD_FLAGS); \
+		echo "$(GREEN)✓ Examples built$(NC)"; \
+	else \
+		echo "$(YELLOW)Examples project not found$(NC)"; \
+	fi
+
+examples: build-examples
+
+run-examples: build-examples
+	@echo "$(GREEN)Running example programs...$(NC)"
+	@if [ -d "$(BIN_DIR)/examples" ]; then \
+		for example in $(BIN_DIR)/examples/*; do \
+			if [ -x "$$example" ] && [ -f "$$example" ]; then \
+				echo "$(CYAN)Running $$example...$(NC)"; \
+				$$example || true; \
+				echo ""; \
+			fi; \
+		done; \
+		echo "$(GREEN)✓ All examples completed$(NC)"; \
+	else \
+		echo "$(YELLOW)No examples found in $(BIN_DIR)/examples$(NC)"; \
+	fi
+
+test-examples: build-examples
+	@echo "$(GREEN)Running E2E tests for examples...$(NC)"
+	@if [ -f "test/e2e/test_examples.sh" ]; then \
+		bash test/e2e/test_examples.sh; \
+		if [ $$? -eq 0 ]; then \
+			echo "$(GREEN)✓ Example E2E tests passed$(NC)"; \
+		else \
+			echo "$(RED)✗ Example E2E tests failed$(NC)"; \
+			exit 1; \
+		fi; \
+	else \
+		echo "$(YELLOW)E2E test script not found at test/e2e/test_examples.sh$(NC)"; \
 		exit 1; \
 	fi
 
