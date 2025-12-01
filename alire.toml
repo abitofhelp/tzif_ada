@@ -36,5 +36,5 @@ functional = "2.1.0"
 [[depends-on]]
 gnatcov = "^22.0.1"
 
-[[pins]]
-functional = { path = '../functional' }
+# [[pins]]
+# functional = { path = '../functional' }
