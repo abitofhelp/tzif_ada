@@ -13,6 +13,23 @@
 
 TZif is an Ada 2022 library for parsing and querying IANA's compiled timezone information (TZif format, RFC 9636). It provides a clean, functional API for timezone operations with Result monad error handling, hexagonal architecture, and embedded-safe patterns.
 
+## Getting Started
+
+### Clone with Submodules
+
+This repository uses git submodules for shared tooling. Clone with:
+
+```bash
+git clone --recurse-submodules https://github.com/abitofhelp/tzif.git
+```
+
+Or if already cloned without submodules:
+
+```bash
+git submodule update --init --recursive
+# Or: make submodule-init
+```
+
 ## Features
 
 - ✅ Parse IANA TZif binary files (version 2/3)
