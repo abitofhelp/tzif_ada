@@ -129,6 +129,7 @@ is
       Err_Hdr   : constant String := "Insufficient data for header";
       Err_Magic : constant String := "Invalid TZif magic";
       Err_Vers  : constant String := "Unknown TZif version";
+      First     : constant Positive := Error_Msg'First;
    begin
       Is_Ok     := False;
       Error_Msg := [others => ' '];
@@ -136,16 +137,16 @@ is
 
       --  Check minimum size for header
       if Length - Pos + 1 < Header_Size then
-         Error_Msg (1 .. Err_Hdr'Length) := Err_Hdr;
-         Error_Len                       := Err_Hdr'Length;
+         Error_Msg (First .. First + Err_Hdr'Length - 1) := Err_Hdr;
+         Error_Len := Err_Hdr'Length;
          return;
       end if;
 
       --  Validate magic number
       for I in TZif_Magic'Range loop
          if Bytes (Pos + I - 1) /= TZif_Magic (I) then
-            Error_Msg (1 .. Err_Magic'Length) := Err_Magic;
-            Error_Len                         := Err_Magic'Length;
+            Error_Msg (First .. First + Err_Magic'Length - 1) := Err_Magic;
+            Error_Len := Err_Magic'Length;
             return;
          end if;
       end loop;
@@ -164,8 +165,8 @@ is
             when 16#34# =>  -- '4'
                Header.Version := Version_4;
             when others =>
-               Error_Msg (1 .. Err_Vers'Length) := Err_Vers;
-               Error_Len                        := Err_Vers'Length;
+               Error_Msg (First .. First + Err_Vers'Length - 1) := Err_Vers;
+               Error_Len := Err_Vers'Length;
                return;
          end case;
       end;
@@ -215,6 +216,7 @@ is
         array (Natural range 0 .. 255) of Type_Info;  -- Max 256 types
 
       Err_Data : constant String := "Insufficient data for data section";
+      First    : constant Positive := Error_Msg'First;
    begin
       Is_Ok     := True;
       Error_Msg := [others => ' '];
@@ -242,9 +244,9 @@ is
            Required_Leap + Required_Indicators;
       begin
          if Length - Pos + 1 < Total_Required then
-            Error_Msg (1 .. Err_Data'Length) := Err_Data;
-            Error_Len                        := Err_Data'Length;
-            Is_Ok                            := False;
+            Error_Msg (First .. First + Err_Data'Length - 1) := Err_Data;
+            Error_Len := Err_Data'Length;
+            Is_Ok     := False;
             return;
          end if;
       end;
