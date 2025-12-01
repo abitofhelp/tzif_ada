@@ -6,70 +6,29 @@ pragma Ada_2022;
 --  SPDX-License-Identifier: BSD-3-Clause
 --
 --  Purpose:
---    TZif binary format parser implementation.
+--    Thin I/O wrapper for TZif parsing. Handles file operations and
+--    delegates actual parsing to Domain.Parser.
 --
---  Supported Versions:
---    - TZif version 1 (legacy)
---    - TZif version 2 (64-bit)
---    - TZif version 3 (with extensions)
+--  Architecture:
+--    Infrastructure layer - performs I/O operations only.
+--    Pure parsing logic lives in TZif.Domain.Parser.
 --
 --  ===========================================================================
 
 with Ada.Exceptions;
 with Ada.Streams;
-with Ada.Strings.Unbounded;
-with Ada.Unchecked_Conversion;
-with Interfaces;
-with Functional.Try;
 with TZif.Domain.Error;
-with TZif.Domain.Value_Object.TZif_Header;
-with TZif.Domain.Value_Object.Transition;
-with TZif.Domain.Value_Object.Timezone_Type;
-with TZif.Domain.Value_Object.Epoch_Seconds;
-with TZif.Domain.Value_Object.UTC_Offset;
+with TZif.Domain.Parser;
 
 package body TZif.Infrastructure.TZif_Parser is
 
    use Ada.Streams;
    use Ada.Streams.Stream_IO;
-   use Interfaces;
    use TZif.Domain.Error;
    use TZif.Domain.Error.Error_Strings;
-   use TZif.Domain.Value_Object.TZif_Header;
-   use TZif.Domain.Value_Object.Transition;
-   use TZif.Domain.Value_Object.Timezone_Type;
-   use TZif.Domain.Value_Object.Epoch_Seconds;
-   use TZif.Domain.Value_Object.UTC_Offset;
-   use Ada.Strings.Unbounded;
 
    --  ========================================================================
-   --  Unchecked conversions for binary parsing
-   --  ========================================================================
-
-   function To_Integer_32 is new Ada.Unchecked_Conversion
-     (Source => Unsigned_32, Target => Integer_32);
-
-   function To_Integer_64 is new Ada.Unchecked_Conversion
-     (Source => Unsigned_64, Target => Integer_64);
-
-   --  ========================================================================
-   --  Domain Result Types
-   --  ========================================================================
-
-   package Int32_Result is new Domain.Error.Result.Generic_Result
-     (T => Integer_32);
-
-   package Int64_Result is new Domain.Error.Result.Generic_Result
-     (T => Integer_64);
-
-   package Byte_Result is new Domain.Error.Result.Generic_Result
-     (T => Stream_Element);
-
-   package String_Result is new Domain.Error.Result.Generic_Result
-     (T => Unbounded_String);
-
-   --  ========================================================================
-   --  Exception Mapping for Try_To_Result
+   --  Exception Mapping for I/O Errors
    --  ========================================================================
 
    function From_Exception
@@ -83,8 +42,7 @@ package body TZif.Infrastructure.TZif_Parser is
            (Kind    => Resource_Error,
             Message =>
               To_Bounded_String
-                ("Out of memory during stream I/O: " &
-                 Exception_Message (Occ)));
+                ("Out of memory during file I/O: " & Exception_Message (Occ)));
       elsif Exc_Name = "ADA.IO_EXCEPTIONS.END_ERROR" then
          return
            (Kind    => Parse_Error,
@@ -114,595 +72,104 @@ package body TZif.Infrastructure.TZif_Parser is
            (Kind    => IO_Error,
             Message =>
               To_Bounded_String
-                ("Stream I/O error: " & Exception_Message (Occ)));
+                ("File I/O error: " & Exception_Message (Occ)));
       end if;
    end From_Exception;
 
    --  ========================================================================
-   --  Binary Parsing Functions (Using Try_To_Result)
-   --  ========================================================================
-
-   --  Read a 32-bit big-endian signed integer
-   function Read_Int32
-     (Stream : not null Stream_Access) return Int32_Result.Result
-   is
-      function Raw_Read_Int32 return Integer_32 is
-         Bytes        : Stream_Element_Array (1 .. 4);
-         Last         : Stream_Element_Offset;
-         Unsigned_Val : Unsigned_32;
-      begin
-         Read (Stream.all, Bytes, Last);
-         if Last /= 4 then
-            raise Constraint_Error
-              with "Insufficient data for Int32 (read" & Last'Image &
-              " bytes, expected 4)";
-         end if;
-
-         Unsigned_Val :=
-           Shift_Left (Unsigned_32 (Bytes (1)), 24) or
-           Shift_Left (Unsigned_32 (Bytes (2)), 16) or
-           Shift_Left (Unsigned_32 (Bytes (3)), 8) or Unsigned_32 (Bytes (4));
-
-         return To_Integer_32 (Unsigned_Val);
-      end Raw_Read_Int32;
-
-      function Try_Read is new Functional.Try.Try_To_Result
-        (T => Integer_32, E => Error_Type, Result_Type => Int32_Result.Result,
-         Ok            => Int32_Result.Ok, Err => Int32_Result.From_Error,
-         Map_Exception => From_Exception, Action => Raw_Read_Int32);
-   begin
-      return Try_Read;
-   end Read_Int32;
-
-   --  Read a 64-bit big-endian signed integer
-   function Read_Int64
-     (Stream : not null Stream_Access) return Int64_Result.Result
-   is
-      function Raw_Read_Int64 return Integer_64 is
-         Bytes        : Stream_Element_Array (1 .. 8);
-         Last         : Stream_Element_Offset;
-         Unsigned_Val : Unsigned_64;
-      begin
-         Read (Stream.all, Bytes, Last);
-         if Last /= 8 then
-            raise Constraint_Error
-              with "Insufficient data for Int64 (read" & Last'Image &
-              " bytes, expected 8)";
-         end if;
-
-         Unsigned_Val :=
-           Shift_Left (Unsigned_64 (Bytes (1)), 56) or
-           Shift_Left (Unsigned_64 (Bytes (2)), 48) or
-           Shift_Left (Unsigned_64 (Bytes (3)), 40) or
-           Shift_Left (Unsigned_64 (Bytes (4)), 32) or
-           Shift_Left (Unsigned_64 (Bytes (5)), 24) or
-           Shift_Left (Unsigned_64 (Bytes (6)), 16) or
-           Shift_Left (Unsigned_64 (Bytes (7)), 8) or Unsigned_64 (Bytes (8));
-
-         return To_Integer_64 (Unsigned_Val);
-      end Raw_Read_Int64;
-
-      function Try_Read is new Functional.Try.Try_To_Result
-        (T => Integer_64, E => Error_Type, Result_Type => Int64_Result.Result,
-         Ok            => Int64_Result.Ok, Err => Int64_Result.From_Error,
-         Map_Exception => From_Exception, Action => Raw_Read_Int64);
-   begin
-      return Try_Read;
-   end Read_Int64;
-
-   --  Read a single byte
-   function Read_Byte
-     (Stream : not null Stream_Access) return Byte_Result.Result
-   is
-      function Raw_Read_Byte return Stream_Element is
-         Byte : Stream_Element_Array (1 .. 1);
-         Last : Stream_Element_Offset;
-      begin
-         Read (Stream.all, Byte, Last);
-         if Last /= 1 then
-            raise Constraint_Error
-              with "Insufficient data for byte (read" & Last'Image &
-              " bytes, expected 1)";
-         end if;
-         return Byte (1);
-      end Raw_Read_Byte;
-
-      function Try_Read is new Functional.Try.Try_To_Result
-        (T           => Stream_Element, E => Error_Type,
-         Result_Type => Byte_Result.Result, Ok => Byte_Result.Ok,
-         Err => Byte_Result.From_Error, Map_Exception => From_Exception,
-         Action      => Raw_Read_Byte);
-   begin
-      return Try_Read;
-   end Read_Byte;
-
-   --  Skip N bytes in the stream
-   procedure Skip_Bytes (Stream : not null Stream_Access; Count : Natural) is
-      Dummy : Stream_Element_Array (1 .. Stream_Element_Offset (Count));
-      Last  : Stream_Element_Offset;
-   begin
-      if Count > 0 then
-         Read (Stream.all, Dummy, Last);
-      end if;
-   end Skip_Bytes;
-
-   --  Read N bytes as a string
-   function Read_String
-     (Stream : not null Stream_Access; Length : Natural)
-      return String_Result.Result
-   is
-      function Raw_Read_String return Unbounded_String is
-         Bytes : Stream_Element_Array (1 .. Stream_Element_Offset (Length));
-         Last  : Stream_Element_Offset;
-      begin
-         if Length = 0 then
-            return To_Unbounded_String ("");
-         end if;
-
-         Read (Stream.all, Bytes, Last);
-         if Last /= Stream_Element_Offset (Length) then
-            raise Constraint_Error
-              with "Insufficient data for string (read" & Last'Image &
-              " bytes, expected" & Length'Image & ")";
-         end if;
-
-         declare
-            Result_Str : String (1 .. Length);
-         begin
-            for I in Result_Str'Range loop
-               Result_Str (I) :=
-                 Character'Val (Bytes (Stream_Element_Offset (I)));
-            end loop;
-            return To_Unbounded_String (Result_Str);
-         end;
-      end Raw_Read_String;
-
-      function Try_Read is new Functional.Try.Try_To_Result
-        (T           => Unbounded_String, E => Error_Type,
-         Result_Type => String_Result.Result, Ok => String_Result.Ok,
-         Err => String_Result.From_Error, Map_Exception => From_Exception,
-         Action      => Raw_Read_String);
-   begin
-      return Try_Read;
-   end Read_String;
-
-   --  ========================================================================
-   --  Parse_Header
-   --  ========================================================================
-
-   function Parse_Header
-     (Stream : not null Stream_Access) return Parse_Result_Type
-   is
-      function Raw_Parse_Header return TZif_Data_Type is
-         Magic : Stream_Element_Array (1 .. 4);
-         Last  : Stream_Element_Offset;
-         Data  : TZif_Data_Type;
-      begin
-         --  Read magic number
-         Read (Stream.all, Magic, Last);
-         if Last /= 4
-           or else
-           (Magic (1) /= Character'Pos ('T')
-            or else Magic (2) /= Character'Pos ('Z')
-            or else Magic (3) /= Character'Pos ('i')
-            or else Magic (4) /= Character'Pos ('f'))
-         then
-            raise Constraint_Error with "Invalid magic number (not 'TZif')";
-         end if;
-
-         --  Read version byte
-         declare
-            Version_Result : constant Byte_Result.Result := Read_Byte (Stream);
-         begin
-            if Byte_Result.Is_Error (Version_Result) then
-               raise Constraint_Error
-                 with "Reading version: " &
-                 To_String (Byte_Result.Error_Info (Version_Result).Message);
-            end if;
-
-            --  Skip reserved bytes
-            Skip_Bytes (Stream, 15);
-
-            --  Read counts
-            declare
-               UTC_Local_Res  : constant Int32_Result.Result :=
-                 Read_Int32 (Stream);
-               Std_Wall_Res   : constant Int32_Result.Result :=
-                 Read_Int32 (Stream);
-               Leap_Res : constant Int32_Result.Result := Read_Int32 (Stream);
-               Transition_Res : constant Int32_Result.Result :=
-                 Read_Int32 (Stream);
-               Type_Res : constant Int32_Result.Result := Read_Int32 (Stream);
-               Abbrev_Res     : constant Int32_Result.Result :=
-                 Read_Int32 (Stream);
-            begin
-               if Int32_Result.Is_Error (UTC_Local_Res) then
-                  raise Constraint_Error
-                    with "Reading UTC/local count: " &
-                    To_String
-                      (Int32_Result.Error_Info (UTC_Local_Res).Message);
-               elsif Int32_Result.Is_Error (Std_Wall_Res) then
-                  raise Constraint_Error
-                    with "Reading std/wall count: " &
-                    To_String (Int32_Result.Error_Info (Std_Wall_Res).Message);
-               elsif Int32_Result.Is_Error (Leap_Res) then
-                  raise Constraint_Error
-                    with "Reading leap count: " &
-                    To_String (Int32_Result.Error_Info (Leap_Res).Message);
-               elsif Int32_Result.Is_Error (Transition_Res) then
-                  raise Constraint_Error
-                    with "Reading transition count: " &
-                    To_String
-                      (Int32_Result.Error_Info (Transition_Res).Message);
-               elsif Int32_Result.Is_Error (Type_Res) then
-                  raise Constraint_Error
-                    with "Reading type count: " &
-                    To_String (Int32_Result.Error_Info (Type_Res).Message);
-               elsif Int32_Result.Is_Error (Abbrev_Res) then
-                  raise Constraint_Error
-                    with "Reading abbrev chars: " &
-                    To_String (Int32_Result.Error_Info (Abbrev_Res).Message);
-               end if;
-
-               --  Validate version
-               declare
-                  Version : constant Stream_Element :=
-                    Byte_Result.Value (Version_Result);
-               begin
-                  case Version is
-                     when Character'Pos ('2') =>
-                        Data.Header.Version := Version_2;
-
-                     when Character'Pos ('3') =>
-                        Data.Header.Version := Version_3;
-
-                     when Character'Pos ('4') =>
-                        Data.Header.Version := Version_4;
-
-                     when 0 =>
-                        Data.Header.Version := Version_1;
-
-                     when others =>
-                        raise Constraint_Error
-                          with "Invalid or unsupported TZif version:" &
-                          Version'Image;
-                  end case;
-               end;
-
-               Data.Header.UTC_Local_Count     :=
-                 Natural (Int32_Result.Value (UTC_Local_Res));
-               Data.Header.Standard_Wall_Count :=
-                 Natural (Int32_Result.Value (Std_Wall_Res));
-               Data.Header.Leap_Count          :=
-                 Natural (Int32_Result.Value (Leap_Res));
-               Data.Header.Transition_Count    :=
-                 Natural (Int32_Result.Value (Transition_Res));
-               Data.Header.Type_Count          :=
-                 Natural (Int32_Result.Value (Type_Res));
-               Data.Header.Abbrev_Chars        :=
-                 Natural (Int32_Result.Value (Abbrev_Res));
-
-               return Data;
-            end;
-         end;
-      end Raw_Parse_Header;
-
-      function Try_Parse is new Functional.Try.Try_To_Result
-        (T           => TZif_Data_Type, E => Error_Type,
-         Result_Type => Parse_Result.Result, Ok => Parse_Result.Ok,
-         Err => Parse_Result.From_Error, Map_Exception => From_Exception,
-         Action      => Raw_Parse_Header);
-   begin
-      return Try_Parse;
-   end Parse_Header;
-
-   --  ========================================================================
-   --  Parse_Data_Section
-   --  ========================================================================
-
-   procedure Parse_Data_Section
-     (Stream :        not null Stream_Access; Header : TZif_Header_Type;
-      Data : in out TZif.Domain.TZif_Data.TZif_Data_Type; Use_64bit : Boolean)
-   is
-   begin
-      if Header.Type_Count = 0 and then Header.Transition_Count = 0 then
-         return;
-      end if;
-
-      --  Parse transition times
-      for I in 1 .. Header.Transition_Count loop
-         declare
-            Time     : Epoch_Seconds_Type;
-            Time_Raw : Integer_64;
-         begin
-            if Use_64bit then
-               declare
-                  Time_R : constant Int64_Result.Result := Read_Int64 (Stream);
-               begin
-                  if Int64_Result.Is_Error (Time_R) then
-                     raise Constraint_Error
-                       with To_String
-                         (Int64_Result.Error_Info (Time_R).Message);
-                  end if;
-                  Time_Raw := Int64_Result.Value (Time_R);
-               end;
-            else
-               declare
-                  Time_R : constant Int32_Result.Result := Read_Int32 (Stream);
-               begin
-                  if Int32_Result.Is_Error (Time_R) then
-                     raise Constraint_Error
-                       with To_String
-                         (Int32_Result.Error_Info (Time_R).Message);
-                  end if;
-                  Time_Raw := Integer_64 (Int32_Result.Value (Time_R));
-               end;
-            end if;
-            Time := Epoch_Seconds_Type (Time_Raw);
-
-            Data.Transitions.Append
-              (Transition_Type'(Time => Time, Type_Index => 0));
-         end;
-      end loop;
-
-      --  Parse transition type indices
-      for I in 1 .. Header.Transition_Count loop
-         declare
-            Type_Index_R : constant Byte_Result.Result := Read_Byte (Stream);
-            Type_Index   : Natural;
-         begin
-            if Byte_Result.Is_Error (Type_Index_R) then
-               raise Constraint_Error
-                 with To_String
-                   (Byte_Result.Error_Info (Type_Index_R).Message);
-            end if;
-            Type_Index := Natural (Byte_Result.Value (Type_Index_R));
-
-            Data.Transitions.Replace_Element
-              (Index    => I,
-               New_Item =>
-                 Transition_Type'
-                   (Time       => Data.Transitions.Element (I).Time,
-                    Type_Index => Type_Index));
-         end;
-      end loop;
-
-      --  Parse timezone types
-      declare
-         type Type_Info is record
-            UTC_Off  : Integer_32;
-            Is_DST   : Boolean;
-            Abbr_Idx : Natural;
-         end record;
-
-         type Type_Info_Array is array (Natural range <>) of Type_Info;
-         Type_Infos : Type_Info_Array (1 .. Header.Type_Count);
-      begin
-         for I in 1 .. Header.Type_Count loop
-            declare
-               UTC_Off_R : constant Int32_Result.Result := Read_Int32 (Stream);
-            begin
-               if Int32_Result.Is_Error (UTC_Off_R) then
-                  raise Constraint_Error
-                    with To_String
-                      (Int32_Result.Error_Info (UTC_Off_R).Message);
-               end if;
-               Type_Infos (I).UTC_Off := Int32_Result.Value (UTC_Off_R);
-            end;
-
-            declare
-               DST_R : constant Byte_Result.Result := Read_Byte (Stream);
-            begin
-               if Byte_Result.Is_Error (DST_R) then
-                  raise Constraint_Error
-                    with To_String (Byte_Result.Error_Info (DST_R).Message);
-               end if;
-               Type_Infos (I).Is_DST := Byte_Result.Value (DST_R) /= 0;
-            end;
-
-            declare
-               Abbr_Idx_R : constant Byte_Result.Result := Read_Byte (Stream);
-            begin
-               if Byte_Result.Is_Error (Abbr_Idx_R) then
-                  raise Constraint_Error
-                    with To_String
-                      (Byte_Result.Error_Info (Abbr_Idx_R).Message);
-               end if;
-               Type_Infos (I).Abbr_Idx :=
-                 Natural (Byte_Result.Value (Abbr_Idx_R));
-            end;
-         end loop;
-
-         --  Read abbreviation string block
-         declare
-            Abbrev_Block_R : constant String_Result.Result :=
-              Read_String (Stream, Header.Abbrev_Chars);
-         begin
-            if String_Result.Is_Error (Abbrev_Block_R) then
-               raise Constraint_Error
-                 with To_String
-                   (String_Result.Error_Info (Abbrev_Block_R).Message);
-            end if;
-
-            declare
-               Abbrev_Block : constant String :=
-                 To_String (String_Result.Value (Abbrev_Block_R));
-
-               function Extract_Abbreviation
-                 (Start_Idx : Natural) return String
-               is
-                  End_Idx : Natural := Start_Idx + 1;
-               begin
-                  if Start_Idx >= Abbrev_Block'Last then
-                     return "";
-                  end if;
-
-                  while End_Idx <= Abbrev_Block'Last
-                    and then Abbrev_Block (End_Idx) /= ASCII.NUL
-                  loop
-                     End_Idx := End_Idx + 1;
-                  end loop;
-
-                  return Abbrev_Block (Start_Idx + 1 .. End_Idx - 1);
-               end Extract_Abbreviation;
-
-            begin
-               for I in 1 .. Header.Type_Count loop
-                  declare
-                     Abbrev : constant String :=
-                       Extract_Abbreviation (Type_Infos (I).Abbr_Idx);
-                  begin
-                     Data.Timezone_Types.Append
-                       (Make_Timezone_Type
-                          (UTC_Offset   =>
-                             UTC_Offset_Type (Type_Infos (I).UTC_Off),
-                           Is_DST       => Type_Infos (I).Is_DST,
-                           Abbreviation => Abbrev));
-                  end;
-               end loop;
-            end;
-         end;
-      end;
-
-      --  Skip leap seconds
-      Skip_Bytes (Stream, Header.Leap_Count * (if Use_64bit then 12 else 8));
-
-      --  Skip standard/wall and UT/local indicators
-      Skip_Bytes (Stream, Header.Standard_Wall_Count + Header.UTC_Local_Count);
-   end Parse_Data_Section;
-
-   --  ========================================================================
    --  Parse_From_Stream
+   --
+   --  Read all bytes from stream into buffer, then delegate to Domain.Parser.
    --  ========================================================================
 
    function Parse_From_Stream
      (Stream : not null Stream_Access) return Parse_Result_Type
    is
+      --  Buffer size matches Domain.Parser expectations
+      Max_Size    : constant := 65_536;
+      Buffer      : TZif.Domain.Parser.Byte_Array (1 .. Max_Size);
+      Total_Read  : Natural := 0;
+      Chunk       : Stream_Element_Array (1 .. 4_096);
+      Last        : Stream_Element_Offset;
+      Domain_Res  : TZif.Domain.Parser.Parse_Result_Type;
    begin
-      declare
-         V1_Header     : TZif_Header_Type;
-         Header_Result : constant Parse_Result_Type := Parse_Header (Stream);
-      begin
-         if Parse_Result.Is_Error (Header_Result) then
-            return Header_Result;
-         end if;
-         V1_Header := Parse_Result.Value (Header_Result).Header;
+      --  Read stream contents into buffer
+      loop
+         begin
+            Read (Stream.all, Chunk, Last);
+            exit when Last < Chunk'First;
 
-         if Is_Version_2_Or_Later (V1_Header) then
-            declare
-               V1_Size : constant Natural :=
-                 V1_Header.Transition_Count * 5 + V1_Header.Type_Count * 6 +
-                 V1_Header.Abbrev_Chars + V1_Header.Leap_Count * 8 +
-                 V1_Header.Standard_Wall_Count + V1_Header.UTC_Local_Count;
-            begin
-               Skip_Bytes (Stream, V1_Size);
-            end;
-
-            declare
-               V2_Header_Result : constant Parse_Result_Type :=
-                 Parse_Header (Stream);
-               Data             : TZif_Data_Type;
-            begin
-               if Parse_Result.Is_Error (V2_Header_Result) then
-                  return V2_Header_Result;
+            for I in Chunk'First .. Last loop
+               if Total_Read < Max_Size then
+                  Total_Read          := Total_Read + 1;
+                  Buffer (Total_Read) :=
+                    TZif.Domain.Parser.Byte_Array'Component_Type (Chunk (I));
                end if;
-               Data.Header := Parse_Result.Value (V2_Header_Result).Header;
+            end loop;
 
-               Parse_Data_Section (Stream, Data.Header, Data, True);
+            exit when Last < Chunk'Last;
+         exception
+            when Ada.Streams.Stream_IO.End_Error =>
+               exit;
+         end;
+      end loop;
 
-               --  Read POSIX TZ string (optional)
-               declare
-                  NL1_R : constant Byte_Result.Result := Read_Byte (Stream);
-               begin
-                  if Byte_Result.Is_Ok (NL1_R) then
-                     if Byte_Result.Value (NL1_R) = Character'Pos (ASCII.LF)
-                     then
-                        declare
-                           Buffer : String (1 .. 512);
-                           Idx    : Natural := 0;
-                        begin
-                           loop
-                              declare
-                                 Byte_R : constant Byte_Result.Result :=
-                                   Read_Byte (Stream);
-                              begin
-                                 exit when Byte_Result.Is_Error (Byte_R);
-                                 exit when Byte_Result.Value (Byte_R) =
-                                   Character'Pos (ASCII.LF);
-                                 if Idx < Buffer'Last then
-                                    Idx          := Idx + 1;
-                                    Buffer (Idx) :=
-                                      Character'Val
-                                        (Byte_Result.Value (Byte_R));
-                                 end if;
-                              end;
-                           end loop;
+      --  Delegate to Domain.Parser
+      if Total_Read = 0 then
+         return
+           Parse_Result.Error (IO_Error, "No data read from stream");
+      end if;
 
-                           if Idx > 0 then
-                              Data.POSIX_TZ :=
-                                POSIX_TZ_Strings.To_Bounded_String
-                                  (Buffer (1 .. Idx));
-                           end if;
-                        end;
-                     end if;
-                  end if;
-               end;
+      TZif.Domain.Parser.Parse_From_Bytes (Buffer, Total_Read, Domain_Res);
 
-               return Parse_Result.Ok (Data);
-            end;
-         else
-            declare
-               Data : TZif_Data_Type;
-            begin
-               Data.Header := V1_Header;
-               Parse_Data_Section (Stream, V1_Header, Data, False);
-               return Parse_Result.Ok (Data);
-            end;
-         end if;
-      end;
+      --  Convert Domain result to Infrastructure result
+      if TZif.Domain.Parser.Parse_Result.Is_Ok (Domain_Res) then
+         return Parse_Result.Ok
+           (TZif.Domain.Parser.Parse_Result.Value (Domain_Res));
+      else
+         declare
+            Err : constant Error_Type :=
+              TZif.Domain.Parser.Parse_Result.Error_Info (Domain_Res);
+         begin
+            return Parse_Result.Error (Err.Kind, To_String (Err.Message));
+         end;
+      end if;
+
+   exception
+      when Occ : others =>
+         return Parse_Result.From_Error (From_Exception (Occ));
    end Parse_From_Stream;
 
    --  ========================================================================
    --  Parse_From_File
+   --
+   --  Open file, read bytes, delegate to Domain.Parser, close file.
    --  ========================================================================
 
    function Parse_From_File (File_Path : String) return Parse_Result_Type is
-      function Raw_Parse_File return TZif_Data_Type is
-         File   : File_Type;
-         Stream : Stream_Access;
-         Result : Parse_Result_Type;
-      begin
-         Open (File, In_File, File_Path);
-
-         --  Ensure file is closed even if exception occurs
-         begin
-            Stream := Stream_IO.Stream (File);
-            Result := Parse_From_Stream (Stream);
-         exception
-            when others =>
-               if Is_Open (File) then
-                  Close (File);
-               end if;
-               raise;
-         end;
-
-         Close (File);
-
-         if Parse_Result.Is_Error (Result) then
-            raise Constraint_Error
-              with To_String (Parse_Result.Error_Info (Result).Message);
-         end if;
-
-         return Parse_Result.Value (Result);
-      end Raw_Parse_File;
-
-      function Try_Parse is new Functional.Try.Try_To_Result
-        (T           => TZif_Data_Type, E => Error_Type,
-         Result_Type => Parse_Result.Result, Ok => Parse_Result.Ok,
-         Err => Parse_Result.From_Error, Map_Exception => From_Exception,
-         Action      => Raw_Parse_File);
+      File   : File_Type;
+      Stream : Stream_Access;
+      Result : Parse_Result_Type;
    begin
-      return Try_Parse;
+      Open (File, In_File, File_Path);
+
+      begin
+         Stream := Stream_IO.Stream (File);
+         Result := Parse_From_Stream (Stream);
+      exception
+         when Occ : others =>
+            if Is_Open (File) then
+               Close (File);
+            end if;
+            return Parse_Result.From_Error (From_Exception (Occ));
+      end;
+
+      Close (File);
+      return Result;
+
+   exception
+      when Occ : others =>
+         return Parse_Result.From_Error (From_Exception (Occ));
    end Parse_From_File;
 
 end TZif.Infrastructure.TZif_Parser;

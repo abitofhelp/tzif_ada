@@ -74,7 +74,8 @@ is
    end Read_Unsigned_32_At;
 
    --  Read a 32-bit big-endian signed integer at position
-   function Read_Int32_At (Bytes : Byte_Array; Pos : Positive) return Integer_32
+   function Read_Int32_At
+     (Bytes : Byte_Array; Pos : Positive) return Integer_32
    is
    begin
       return To_Integer_32 (Read_Unsigned_32_At (Bytes, Pos));
@@ -96,7 +97,8 @@ is
    end Read_Unsigned_64_At;
 
    --  Read a 64-bit big-endian signed integer at position
-   function Read_Int64_At (Bytes : Byte_Array; Pos : Positive) return Integer_64
+   function Read_Int64_At
+     (Bytes : Byte_Array; Pos : Positive) return Integer_64
    is
    begin
       return To_Integer_64 (Read_Unsigned_64_At (Bytes, Pos));
@@ -299,9 +301,12 @@ is
          --  Read abbreviation string block
          declare
             Abbrev_Start : constant Positive := Pos;
-            Abbrev_End   : constant Positive := Pos + Header.Abbrev_Chars - 1;
+            Abbrev_End   : constant Positive :=
+              Pos + Header.Abbrev_Chars - 1;
 
-            function Extract_Abbreviation (Start_Idx : Natural) return String is
+            function Extract_Abbreviation
+              (Start_Idx : Natural) return String
+            is
                Act_Start : constant Positive := Abbrev_Start + Start_Idx;
                End_Idx   : Natural           := Act_Start;
             begin
