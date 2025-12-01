@@ -92,9 +92,9 @@ end Example;
 ## See Also
 
 - [Main README](../README.md) - Library overview and installation
-- [Software Requirements Specification](../docs/software_requirements_specification.md)
-- [Software Design Specification](../docs/software_design_specification.md)
-- [Software Test Guide](../docs/software_test_guide.md)
+- [Software Requirements Specification](../docs/formal/software_requirements_specification.md)
+- [Software Design Specification](../docs/formal/software_design_specification.md)
+- [Software Test Guide](../docs/formal/software_test_guide.md)
 - [Test Suite](../test/) - Comprehensive usage examples
 
 ## License

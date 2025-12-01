@@ -31,7 +31,7 @@ gnat = ">=13"
 gnatcoll = "^25.0.0"
 
 [[depends-on]]
-functional = "^2.2.0"
+functional = "^2.1.1"
 
 [[depends-on]]
 gnatcov = "^22.0.1"
