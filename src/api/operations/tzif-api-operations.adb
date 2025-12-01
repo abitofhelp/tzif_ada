@@ -10,8 +10,6 @@ pragma Ada_2022;
 --
 --  ===========================================================================
 
-with TZif.Infrastructure.Adapter.File_System.Repository;
-
 package body TZif.API.Operations is
 
    package body Facade is
@@ -78,40 +76,40 @@ package body TZif.API.Operations is
       end List_All_Zones;
 
       -------------------------------------------------------------------
-      --  Find_By_Pattern - Calls Infrastructure
+      --  (*) Find_By_Pattern - Delegated to All_Operations
       -------------------------------------------------------------------
       function Find_By_Pattern
         (Pattern : Pattern_String; Yield : Pattern_Callback)
          return Pattern_Result
       is
+         Result : Pattern_Result;
       begin
-         return TZif.Infrastructure.Adapter.File_System.Repository
-                  .Find_By_Pattern
-                  (Pattern, Yield);
+         Ops.Find_By_Pattern (Pattern, Yield, Result);
+         return Result;
       end Find_By_Pattern;
 
       -------------------------------------------------------------------
-      --  Find_By_Region - Calls Infrastructure
+      --  (*) Find_By_Region - Delegated to All_Operations
       -------------------------------------------------------------------
       function Find_By_Region
         (Region : Region_String; Yield : Region_Callback) return Region_Result
       is
+         Result : Region_Result;
       begin
-         return TZif.Infrastructure.Adapter.File_System.Repository
-                  .Find_By_Region
-                  (Region, Yield);
+         Ops.Find_By_Region (Region, Yield, Result);
+         return Result;
       end Find_By_Region;
 
       -------------------------------------------------------------------
-      --  Find_By_Regex - Calls Infrastructure
+      --  (*) Find_By_Regex - Delegated to All_Operations
       -------------------------------------------------------------------
       function Find_By_Regex
         (Regex : Regex_String; Yield : Regex_Callback) return Regex_Result
       is
+         Result : Regex_Result;
       begin
-         return TZif.Infrastructure.Adapter.File_System.Repository
-                  .Find_By_Regex
-                  (Regex, Yield);
+         Ops.Find_By_Regex (Regex, Yield, Result);
+         return Result;
       end Find_By_Regex;
 
       -------------------------------------------------------------------
@@ -127,26 +125,27 @@ package body TZif.API.Operations is
       end Discover_Sources;
 
       -------------------------------------------------------------------
-      --  Load_Source - Calls Infrastructure
+      --  (*) Load_Source - Delegated to All_Operations
       -------------------------------------------------------------------
       function Load_Source
         (Path : Load_Path_String) return Load_Source_Result
       is
+         Result : Load_Source_Result;
       begin
-         return TZif.Infrastructure.Adapter.File_System.Repository.Load_Source
-                  (Path);
+         Ops.Load_Source (Path, Result);
+         return Result;
       end Load_Source;
 
       -------------------------------------------------------------------
-      --  Validate_Source - Calls Infrastructure
+      --  (*) Validate_Source - Delegated to All_Operations
       -------------------------------------------------------------------
       function Validate_Source
         (Path : Validate_Path_String) return Validation_Result
       is
+         Result : Validation_Result;
       begin
-         return TZif.Infrastructure.Adapter.File_System.Repository
-                  .Validate_Source
-                  (Path);
+         Ops.Validate_Source (Path, Result);
+         return Result;
       end Validate_Source;
 
       -------------------------------------------------------------------

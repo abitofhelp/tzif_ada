@@ -50,7 +50,17 @@ is
       Read_System_Timezone_Id =>
         TZif.Infrastructure.IO.Desktop.Read_System_Timezone_Id,
       List_Zones_In_Source =>
-        TZif.Infrastructure.IO.Desktop.List_Zones_In_Source);
+        TZif.Infrastructure.IO.Desktop.List_Zones_In_Source,
+      Load_Source_From_Path =>
+        TZif.Infrastructure.IO.Desktop.Load_Source_From_Path,
+      Validate_Source_Path =>
+        TZif.Infrastructure.IO.Desktop.Validate_Source_Path,
+      Find_Zones_By_Pattern =>
+        TZif.Infrastructure.IO.Desktop.Find_Zones_By_Pattern,
+      Find_Zones_By_Region =>
+        TZif.Infrastructure.IO.Desktop.Find_Zones_By_Region,
+      Find_Zones_By_Regex =>
+        TZif.Infrastructure.IO.Desktop.Find_Zones_By_Regex);
 
    --  Instantiate the generic API facade for desktop profile
    package API is new TZif.API.Operations.Facade (Ops => Desktop_Ops);

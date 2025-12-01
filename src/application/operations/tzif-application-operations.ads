@@ -31,6 +31,11 @@ with TZif.Application.Port.Inbound.Get_Transition_At_Epoch;
 with TZif.Application.Port.Inbound.Get_Version;
 with TZif.Application.Port.Inbound.Find_My_Id;
 with TZif.Application.Port.Inbound.List_All_Order_By_Id;
+with TZif.Application.Port.Inbound.Load_Source;
+with TZif.Application.Port.Inbound.Validate_Source;
+with TZif.Application.Port.Inbound.Find_By_Pattern;
+with TZif.Application.Port.Inbound.Find_By_Region;
+with TZif.Application.Port.Inbound.Find_By_Regex;
 with TZif.Domain.Value_Object.Epoch_Seconds;
 with TZif.Domain.Value_Object.Source_Info;
 
@@ -90,6 +95,48 @@ is
      TZif.Application.Port.Inbound.List_All_Order_By_Id;
    package List_All_Result renames Inbound_List_All.List_All_Zones_Result_Package;
    subtype List_All_Result_Type is List_All_Result.Result;
+
+   --  Load_Source types
+   package Inbound_Load_Source renames
+     TZif.Application.Port.Inbound.Load_Source;
+   subtype Load_Path_String is Inbound_Load_Source.Path_String;
+   package Load_Source_Result renames Inbound_Load_Source.Load_Source_Result_Package;
+   subtype Load_Source_Result_Type is Load_Source_Result.Result;
+
+   --  Validate_Source types
+   package Inbound_Validate_Source renames
+     TZif.Application.Port.Inbound.Validate_Source;
+   subtype Validate_Path_String is Inbound_Validate_Source.Path_String;
+   package Validate_Source_Result renames
+     Inbound_Validate_Source.Validation_Result_Package;
+   subtype Validate_Source_Result_Type is Validate_Source_Result.Result;
+
+   --  Find_By_Pattern types
+   package Inbound_Find_By_Pattern renames
+     TZif.Application.Port.Inbound.Find_By_Pattern;
+   subtype Pattern_String_Type is Inbound_Find_By_Pattern.Pattern_String;
+   subtype Pattern_Callback_Type is Inbound_Find_By_Pattern.Yield_Callback_Access;
+   package Find_By_Pattern_Result renames
+     Inbound_Find_By_Pattern.Find_By_Pattern_Result_Package;
+   subtype Find_By_Pattern_Result_Type is Find_By_Pattern_Result.Result;
+
+   --  Find_By_Region types
+   package Inbound_Find_By_Region renames
+     TZif.Application.Port.Inbound.Find_By_Region;
+   subtype Region_String_Type is Inbound_Find_By_Region.Region_String;
+   subtype Region_Callback_Type is Inbound_Find_By_Region.Yield_Callback_Access;
+   package Find_By_Region_Result renames
+     Inbound_Find_By_Region.Find_By_Region_Result_Package;
+   subtype Find_By_Region_Result_Type is Find_By_Region_Result.Result;
+
+   --  Find_By_Regex types
+   package Inbound_Find_By_Regex renames
+     TZif.Application.Port.Inbound.Find_By_Regex;
+   subtype Regex_String_Type is Inbound_Find_By_Regex.Regex_String;
+   subtype Regex_Callback_Type is Inbound_Find_By_Regex.Yield_Callback_Access;
+   package Find_By_Regex_Result renames
+     Inbound_Find_By_Regex.Find_By_Regex_Result_Package;
+   subtype Find_By_Regex_Result_Type is Find_By_Regex_Result.Result;
 
    --  ========================================================================
    --  Generic I/O Plugin Contract
@@ -181,6 +228,49 @@ is
          Descending :     Boolean;
          Result     : out List_All_Result.Result);
 
+      -------------------------------------------------------------------------
+      --  Load source metadata from filesystem path
+      --  Reads directory, counts zones, reads +VERSION file
+      -------------------------------------------------------------------------
+      with procedure Load_Source_From_Path
+        (Path   :     Load_Path_String;
+         Result : out Load_Source_Result.Result);
+
+      -------------------------------------------------------------------------
+      --  Validate source path
+      --  Checks path exists, is directory, contains zone files
+      -------------------------------------------------------------------------
+      with procedure Validate_Source_Path
+        (Path   :     Validate_Path_String;
+         Result : out Validate_Source_Result.Result);
+
+      -------------------------------------------------------------------------
+      --  Find zones by substring pattern
+      --  Scans zone list and yields matches via callback
+      -------------------------------------------------------------------------
+      with procedure Find_Zones_By_Pattern
+        (Pattern :     Pattern_String_Type;
+         Yield   :     Pattern_Callback_Type;
+         Result  : out Find_By_Pattern_Result.Result);
+
+      -------------------------------------------------------------------------
+      --  Find zones by region prefix
+      --  Scans zone list and yields matches via callback
+      -------------------------------------------------------------------------
+      with procedure Find_Zones_By_Region
+        (Region :     Region_String_Type;
+         Yield  :     Region_Callback_Type;
+         Result : out Find_By_Region_Result.Result);
+
+      -------------------------------------------------------------------------
+      --  Find zones by regular expression
+      --  Scans zone list and yields matches via callback
+      -------------------------------------------------------------------------
+      with procedure Find_Zones_By_Regex
+        (Regex  :     Regex_String_Type;
+         Yield  :     Regex_Callback_Type;
+         Result : out Find_By_Regex_Result.Result);
+
    package All_Operations with
      SPARK_Mode => On
    is
@@ -263,10 +353,73 @@ is
          Result     : out List_All_Result_Type);
 
       ----------------------------------------------------------------------
-      --  ROADMAP: Add other I/O-related use cases as needed (roadmap.md):
-      --    - Validate_Source, Load_Source
-      --    - Find_By_Pattern / Find_By_Regex / Find_By_Region
+      --  Load_Source
+      --
+      --  Loads timezone source metadata from filesystem path.
+      --
+      --  Parameters:
+      --    Path   : Filesystem path to timezone database source
+      --    Result : Ok(Source_Info) or Error (Not_Found, IO_Error)
       ----------------------------------------------------------------------
+      procedure Load_Source
+        (Path : Load_Path_String; Result : out Load_Source_Result_Type);
+
+      ----------------------------------------------------------------------
+      --  Validate_Source
+      --
+      --  Validates that a path is a valid timezone source.
+      --
+      --  Parameters:
+      --    Path   : Filesystem path to validate
+      --    Result : Ok(Boolean) or Error (IO_Error)
+      ----------------------------------------------------------------------
+      procedure Validate_Source
+        (Path : Validate_Path_String; Result : out Validate_Source_Result_Type);
+
+      ----------------------------------------------------------------------
+      --  Find_By_Pattern
+      --
+      --  Finds timezone IDs matching a substring pattern.
+      --
+      --  Parameters:
+      --    Pattern : Substring to match against zone IDs
+      --    Yield   : Callback invoked for each matching zone
+      --    Result  : Ok(Unit) or Error (IO_Error)
+      ----------------------------------------------------------------------
+      procedure Find_By_Pattern
+        (Pattern :     Pattern_String_Type;
+         Yield   :     Pattern_Callback_Type;
+         Result  : out Find_By_Pattern_Result_Type);
+
+      ----------------------------------------------------------------------
+      --  Find_By_Region
+      --
+      --  Finds timezone IDs by region prefix.
+      --
+      --  Parameters:
+      --    Region : Region prefix (e.g., "America", "Europe")
+      --    Yield  : Callback invoked for each matching zone
+      --    Result : Ok(Unit) or Error (IO_Error)
+      ----------------------------------------------------------------------
+      procedure Find_By_Region
+        (Region :     Region_String_Type;
+         Yield  :     Region_Callback_Type;
+         Result : out Find_By_Region_Result_Type);
+
+      ----------------------------------------------------------------------
+      --  Find_By_Regex
+      --
+      --  Finds timezone IDs matching a regular expression.
+      --
+      --  Parameters:
+      --    Regex  : Regular expression pattern
+      --    Yield  : Callback invoked for each matching zone
+      --    Result : Ok(Unit) or Error (IO_Error)
+      ----------------------------------------------------------------------
+      procedure Find_By_Regex
+        (Regex  :     Regex_String_Type;
+         Yield  :     Regex_Callback_Type;
+         Result : out Find_By_Regex_Result_Type);
 
    end All_Operations;
 

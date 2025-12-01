@@ -30,6 +30,11 @@ with TZif.Application.Port.Inbound.Discover_Sources;
 with TZif.Application.Port.Inbound.Get_Version;
 with TZif.Application.Port.Inbound.Find_My_Id;
 with TZif.Application.Port.Inbound.List_All_Order_By_Id;
+with TZif.Application.Port.Inbound.Load_Source;
+with TZif.Application.Port.Inbound.Validate_Source;
+with TZif.Application.Port.Inbound.Find_By_Pattern;
+with TZif.Application.Port.Inbound.Find_By_Region;
+with TZif.Application.Port.Inbound.Find_By_Regex;
 with TZif.Domain.Value_Object.Source_Info;
 
 package TZif.Infrastructure.IO.Desktop with
@@ -200,5 +205,93 @@ is
       Descending : Boolean;
       Result     : out TZif.Application.Port.Inbound.List_All_Order_By_Id
         .List_All_Zones_Result);
+
+   -------------------------------------------------------------------------
+   --  Load_Source_From_Path
+   --
+   --  Loads timezone source metadata from filesystem path.
+   --
+   --  Parameters:
+   --    Path   : Filesystem path to timezone database source
+   --    Result : Ok(Source_Info) or Error (Not_Found, Validation_Error, IO_Error)
+   --
+   --  Implementation:
+   --    - Validates path exists and is directory
+   --    - Reads +VERSION file if present
+   --    - Counts zone files recursively
+   --    - Constructs Source_Info_Type with metadata
+   -------------------------------------------------------------------------
+   procedure Load_Source_From_Path
+     (Path   : TZif.Application.Port.Inbound.Load_Source.Path_String;
+      Result : out TZif.Application.Port.Inbound.Load_Source.Load_Source_Result);
+
+   -------------------------------------------------------------------------
+   --  Validate_Source_Path
+   --
+   --  Validates that a path is a valid timezone source.
+   --
+   --  Parameters:
+   --    Path   : Filesystem path to validate
+   --    Result : Ok(Boolean) or Error (IO_Error)
+   --
+   --  Implementation:
+   --    - Checks path exists
+   --    - Checks path is directory
+   --    - Checks for at least one ordinary file
+   -------------------------------------------------------------------------
+   procedure Validate_Source_Path
+     (Path   : TZif.Application.Port.Inbound.Validate_Source.Path_String;
+      Result : out TZif.Application.Port.Inbound.Validate_Source
+        .Validation_Result);
+
+   -------------------------------------------------------------------------
+   --  Find_Zones_By_Pattern
+   --
+   --  Finds timezone IDs matching a substring pattern.
+   --
+   --  Parameters:
+   --    Pattern : Substring to match against zone IDs
+   --    Yield   : Callback invoked for each matching zone
+   --    Result  : Ok(Unit) or Error (IO_Error)
+   -------------------------------------------------------------------------
+   procedure Find_Zones_By_Pattern
+     (Pattern : TZif.Application.Port.Inbound.Find_By_Pattern.Pattern_String;
+      Yield   : TZif.Application.Port.Inbound.Find_By_Pattern
+        .Yield_Callback_Access;
+      Result  : out TZif.Application.Port.Inbound.Find_By_Pattern
+        .Find_By_Pattern_Result);
+
+   -------------------------------------------------------------------------
+   --  Find_Zones_By_Region
+   --
+   --  Finds timezone IDs by region prefix.
+   --
+   --  Parameters:
+   --    Region : Region prefix (e.g., "America", "Europe")
+   --    Yield  : Callback invoked for each matching zone
+   --    Result : Ok(Unit) or Error (IO_Error)
+   -------------------------------------------------------------------------
+   procedure Find_Zones_By_Region
+     (Region : TZif.Application.Port.Inbound.Find_By_Region.Region_String;
+      Yield  : TZif.Application.Port.Inbound.Find_By_Region
+        .Yield_Callback_Access;
+      Result : out TZif.Application.Port.Inbound.Find_By_Region
+        .Find_By_Region_Result);
+
+   -------------------------------------------------------------------------
+   --  Find_Zones_By_Regex
+   --
+   --  Finds timezone IDs matching a regular expression.
+   --
+   --  Parameters:
+   --    Regex  : Regular expression pattern
+   --    Yield  : Callback invoked for each matching zone
+   --    Result : Ok(Unit) or Error (IO_Error)
+   -------------------------------------------------------------------------
+   procedure Find_Zones_By_Regex
+     (Regex  : TZif.Application.Port.Inbound.Find_By_Regex.Regex_String;
+      Yield  : TZif.Application.Port.Inbound.Find_By_Regex.Yield_Callback_Access;
+      Result : out TZif.Application.Port.Inbound.Find_By_Regex
+        .Find_By_Regex_Result);
 
 end TZif.Infrastructure.IO.Desktop;

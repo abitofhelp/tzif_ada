@@ -177,24 +177,21 @@ package TZif.API.Operations is
          Descending : Boolean := False) return Zone_List_Result;
 
       -------------------------------------------------------------------
-      --  Find_By_Pattern - Calls Infrastructure directly
-      --  (Simple query, no application layer use case needed)
+      --  (*) Find_By_Pattern - Delegated to All_Operations
       -------------------------------------------------------------------
       function Find_By_Pattern
         (Pattern : Pattern_String; Yield : Pattern_Callback)
          return Pattern_Result;
 
       -------------------------------------------------------------------
-      --  Find_By_Region - Calls Infrastructure directly
-      --  (Simple query, no application layer use case needed)
+      --  (*) Find_By_Region - Delegated to All_Operations
       -------------------------------------------------------------------
       function Find_By_Region
         (Region : Region_String; Yield : Region_Callback)
          return Region_Result;
 
       -------------------------------------------------------------------
-      --  Find_By_Regex - Calls Infrastructure directly
-      --  (Simple query, no application layer use case needed)
+      --  (*) Find_By_Regex - Delegated to All_Operations
       -------------------------------------------------------------------
       function Find_By_Regex
         (Regex : Regex_String; Yield : Regex_Callback) return Regex_Result;
@@ -206,14 +203,13 @@ package TZif.API.Operations is
         (Search_Paths : Discover_Path_List_Type) return Discovery_Result_Type;
 
       -------------------------------------------------------------------
-      --  Load_Source - ROADMAP: Migrate to All_Operations (see roadmap.md)
+      --  (*) Load_Source - Delegated to All_Operations
       -------------------------------------------------------------------
       function Load_Source
         (Path : Load_Path_String) return Load_Source_Result;
 
       -------------------------------------------------------------------
-      --  Validate_Source - Calls Infrastructure directly
-      --  (Simple validation, no application layer use case needed)
+      --  (*) Validate_Source - Delegated to All_Operations
       -------------------------------------------------------------------
       function Validate_Source
         (Path : Validate_Path_String) return Validation_Result;

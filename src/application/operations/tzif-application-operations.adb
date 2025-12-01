@@ -278,6 +278,82 @@ is
          List_Zones_In_Source (Source, Descending, Result);
       end List_All_Zones;
 
+      ----------------------------------------------------------------------
+      --  Load_Source
+      --
+      --  Simply delegates to the injected I/O procedure.
+      --  Source metadata extraction is done in the I/O layer.
+      ----------------------------------------------------------------------
+      procedure Load_Source
+        (Path : Load_Path_String; Result : out Load_Source_Result_Type)
+      is
+      begin
+         --  Delegate to injected I/O plugin
+         Load_Source_From_Path (Path, Result);
+      end Load_Source;
+
+      ----------------------------------------------------------------------
+      --  Validate_Source
+      --
+      --  Simply delegates to the injected I/O procedure.
+      --  Path validation is done in the I/O layer.
+      ----------------------------------------------------------------------
+      procedure Validate_Source
+        (Path : Validate_Path_String; Result : out Validate_Source_Result_Type)
+      is
+      begin
+         --  Delegate to injected I/O plugin
+         Validate_Source_Path (Path, Result);
+      end Validate_Source;
+
+      ----------------------------------------------------------------------
+      --  Find_By_Pattern
+      --
+      --  Simply delegates to the injected I/O procedure.
+      --  Pattern matching is done in the I/O layer.
+      ----------------------------------------------------------------------
+      procedure Find_By_Pattern
+        (Pattern :     Pattern_String_Type;
+         Yield   :     Pattern_Callback_Type;
+         Result  : out Find_By_Pattern_Result_Type)
+      is
+      begin
+         --  Delegate to injected I/O plugin
+         Find_Zones_By_Pattern (Pattern, Yield, Result);
+      end Find_By_Pattern;
+
+      ----------------------------------------------------------------------
+      --  Find_By_Region
+      --
+      --  Simply delegates to the injected I/O procedure.
+      --  Region matching is done in the I/O layer.
+      ----------------------------------------------------------------------
+      procedure Find_By_Region
+        (Region :     Region_String_Type;
+         Yield  :     Region_Callback_Type;
+         Result : out Find_By_Region_Result_Type)
+      is
+      begin
+         --  Delegate to injected I/O plugin
+         Find_Zones_By_Region (Region, Yield, Result);
+      end Find_By_Region;
+
+      ----------------------------------------------------------------------
+      --  Find_By_Regex
+      --
+      --  Simply delegates to the injected I/O procedure.
+      --  Regex matching is done in the I/O layer.
+      ----------------------------------------------------------------------
+      procedure Find_By_Regex
+        (Regex  :     Regex_String_Type;
+         Yield  :     Regex_Callback_Type;
+         Result : out Find_By_Regex_Result_Type)
+      is
+      begin
+         --  Delegate to injected I/O plugin
+         Find_Zones_By_Regex (Regex, Yield, Result);
+      end Find_By_Regex;
+
    end All_Operations;
 
 end TZif.Application.Operations;
