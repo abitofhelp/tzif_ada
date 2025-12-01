@@ -21,7 +21,7 @@ with TZif.Domain.TZif_Data;
 with TZif.Domain.Value_Object.Epoch_Seconds;
 with TZif.Domain.Value_Object.UTC_Offset;
 with TZif.Domain.Value_Object.Timezone_Type;
-with Functional.Option;
+with TZif.Domain.Option;
 
 package TZif.Domain.Service.Timezone_Lookup with
   Preelaborate
@@ -39,13 +39,13 @@ is
    --  timezone data is unavailable (no types defined, invalid type index).
    --  ========================================================================
 
-   package UTC_Offset_Options is new Functional.Option (UTC_Offset_Type);
+   package UTC_Offset_Options is new TZif.Domain.Option (UTC_Offset_Type);
    subtype UTC_Offset_Option is UTC_Offset_Options.Option;
 
-   package Boolean_Options is new Functional.Option (Boolean);
+   package Boolean_Options is new TZif.Domain.Option (Boolean);
    subtype Boolean_Option is Boolean_Options.Option;
 
-   package Abbreviation_Options is new Functional.Option (Abbreviation_Type);
+   package Abbreviation_Options is new TZif.Domain.Option (Abbreviation_Type);
    subtype Abbreviation_Option is Abbreviation_Options.Option;
 
    --  ========================================================================

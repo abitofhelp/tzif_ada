@@ -436,7 +436,7 @@ check-arch: ## Validate hexagonal architecture boundaries
 
 test-python: ## Run Python script tests (arch_guard.py validation)
 	@echo "$(GREEN)Running Python script tests...$(NC)"
-	@cd test/python && $(PYTHON3) -m pytest -v
+	@cd test/python && PYTHONPATH=../../scripts/python $(PYTHON3) -m pytest -v
 	@echo "$(GREEN)✓ Python tests complete$(NC)"
 
 
