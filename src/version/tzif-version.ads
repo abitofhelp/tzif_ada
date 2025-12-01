@@ -26,7 +26,7 @@ pragma Ada_2022;
 --    - Build metadata: +build.N, +commit.HASH
 --  =========================================================================
 
-package TZif.Version is
+package Tzif.Version is
 
    --  Semantic Version Components
    Major : constant Natural := 1;
@@ -56,4 +56,4 @@ package TZif.Version is
    --  Check if this is a stable release
    function Is_Stable return Boolean is (not Is_Prerelease);
 
-end TZif.Version;
+end Tzif.Version;

@@ -1,11 +1,11 @@
 # Error Handling Strategy
 
-**Version:** 1.0.0<br>
-**Date:** November 29, 2025<br>
+**Version:** 1.0.0  
+**Date:** November 30, 2025  
 **SPDX-License-Identifier:** BSD-3-Clause<br>
 **License File:** See the LICENSE file in the project root<br>
-**Copyright:** © 2025 Michael Gardner, A Bit of Help, Inc.<br>
-**Status:** Released
+**Copyright:** © 2025 Michael Gardner, A Bit of Help, Inc.<br>  
+**Status:** Released  
 
 ---
 

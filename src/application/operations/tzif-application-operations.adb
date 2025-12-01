@@ -40,7 +40,7 @@ is
         (Id : Zone_Id_Input_Type; Result : out Find_By_Id_Result_Type)
       is
          --  Local buffer for TZif bytes
-         --  TODO: Make buffer size configurable
+         --  ROADMAP: Make buffer size configurable (see roadmap.md)
          Buffer : Byte_Array (1 .. 65_536);
          Length : Natural := 0;
 
