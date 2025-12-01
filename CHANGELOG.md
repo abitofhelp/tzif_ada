@@ -1,11 +1,11 @@
 # Changelog
 
-**Version:** 1.0.0  
-**Date:** November 30, 2025  
+**Version:** 1.0.0
+**Date:** November 30, 2025
 **SPDX-License-Identifier:** BSD-3-Clause<br>
 **License File:** See the LICENSE file in the project root<br>
-**Copyright:** © 2025 Michael Gardner, A Bit of Help, Inc.<br>  
-**Status:** Released  
+**Copyright:** © 2025 Michael Gardner, A Bit of Help, Inc.<br>
+**Status:** Released
 
 All notable changes to this project will be documented in this file.
 
@@ -14,40 +14,84 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Fixed
-- **Style**: Fixed `TZif` casing in tzif-version.ads to match root package declaration
-  - Changed `package Tzif.Version` to `package TZif.Version`
-  - Eliminates `-gnatyr` style warnings about identifier casing
+## [1.0.0] - 2025-11-30
 
-## [1.0.0] - 2025-11-29
+### Overview
+Initial release of TZif, an Ada 2022 library for parsing and querying IANA's
+compiled timezone information (TZif format, RFC 9636).
 
 ### Added
-- Initial library structure based on hybrid_app_ada
-- 4-layer hexagonal architecture (Domain, Application, Infrastructure, API)
-- Public API facade at `Tzif.API`
-- Three-package API pattern (Operations, Desktop, facade)
-- Generic I/O plugin pattern via `Tzif.API.Operations`
-- Desktop platform instantiation via `Tzif.API.Desktop`
-- Embedded safety restrictions in root package
-- Result monad error handling via `functional` crate
-- Person value object with bounded string validation
-- Greet use case with dependency injection via generics
-- Console writer adapter for desktop platforms
-- Version package for runtime version queries
-- Comprehensive Makefile for build automation
-- 98 tests (88 unit + 10 integration)
-- Comprehensive documentation (SRS, SDS, STG)
-- 6 UML diagrams with SVG output
-- Build profile support (standard, embedded, baremetal, STM32)
 
-### Architecture
-- Domain layer: Pure business logic with zero dependencies
-- Application layer: Use cases, ports, commands
-- Infrastructure layer: Adapters (Console_Writer)
-- API layer: Public facade with platform-specific instantiations
+#### Core Features
+- Parse IANA TZif binary files (version 1, 2, and 3)
+- Query timezone transitions at any Unix epoch time
+- Discover and validate timezone data sources
+- Find zones by exact ID, substring pattern, geographic region, or regex
+- Detect the system's local timezone (POSIX platforms)
+- List all available timezones with configurable sort order
+
+#### API Operations (11 total)
+- `Find_By_Id` - Lookup timezone by exact IANA identifier
+- `Find_By_Pattern` - Search zones by substring match
+- `Find_By_Region` - Search zones by geographic region
+- `Find_By_Regex` - Search zones using regular expressions
+- `Find_My_Id` - Detect the system's local timezone
+- `Get_Transition_At_Epoch` - Query UTC offset and DST at any time
+- `Get_Version` - Retrieve IANA database version
+- `List_All_Zones` - Enumerate all available timezones
+- `Discover_Sources` - Find timezone data directories
+- `Load_Source` - Load a specific timezone data source
+- `Validate_Source` - Validate timezone data integrity
+
+#### Domain Value Objects
+- `Zone_Id` - Validated IANA timezone identifier
+- `Epoch_Seconds` - Unix timestamp type
+- `UTC_Offset` - Timezone offset from UTC
+- `Transition_Info` - DST/standard time transition data
+- `TZif_Header` - Parsed TZif file header
+- `Timezone_Type` - Individual timezone type record
+- `Source_Info` - Timezone data source metadata with ULID
+
+#### Architecture
+- 4-layer hexagonal architecture (Domain, Application, Infrastructure, API)
+- Public API facade at `TZif.API` with stable interface
+- Three-package API pattern (Operations, Desktop, facade)
+- Generic I/O plugin pattern for platform portability
+- Pure Domain parser (no I/O dependencies, SPARK-friendly)
+- Thin Infrastructure wrapper for file system operations
 - Library_Standalone mode with explicit Library_Interface
-- Static dispatch via generics for zero-overhead DI
-- SPARK_Mode boundaries defined for future formal verification
+- Result monad error handling via `functional` crate
+
+#### Platform Support
+- Full support: Linux, macOS, FreeBSD, NetBSD, OpenBSD
+- Custom I/O adapters for embedded platforms
+- Windows: Not supported (see roadmap.md for future plans)
+
+#### Testing
+- 126 tests total (11 examples + 116 integration/unit)
+- TZif parser error handling tests (29 cases)
+- Zone repository tests (14 cases)
+- IANA releases metadata lookup tests
+- ULID generation and validation tests
+- Comprehensive integration tests for all API operations
+
+#### Documentation
+- Software Requirements Specification (SRS)
+- Software Design Specification (SDS)
+- Software Test Guide (STG)
+- API guide with usage examples
+- Architecture enforcement documentation
+
+#### Build System
+- Alire package manager integration
+- Comprehensive Makefile with architecture validation
+- Build profile support (standard, embedded, concurrent, baremetal, STM32)
+- Python-based release automation scripts
 
 ### Dependencies
-- functional ^2.1.1 (Result/Option/Try monads)
+- `functional` ^2.1.1 (Result/Option/Try monads)
+- `gnatcoll` ^25.0.0 (GNAT Components Collection)
+
+### Known Limitations
+- Windows timezone detection not supported (different format, requires registry)
+- Cache import/export deferred to post-1.0 (pending user demand)
