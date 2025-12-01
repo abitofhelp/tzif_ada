@@ -302,7 +302,7 @@ procedure Test_TZif_Parser_Errors is
         (Parse_Result.Is_Ok (Result),
          "Should successfully parse V2 file with POSIX TZ");
    end Test_V2_With_POSIX_TZ;
-   --  TODO: Disabled - parser accepts V1 section, doesn't validate V2
+   --  ROADMAP: Disabled - parser accepts V1 section, doesn't validate V2
    --  procedure Test_Partial_V2_Transition is
    --  Result : constant Parse_Result_Type := Parse_From_File
    --  ("test/data/invalid/partial_v2_transition.tzif");
@@ -361,8 +361,8 @@ begin
    --  Version-specific tests
    Test_Valid_V1;
    Test_V2_With_POSIX_TZ;
-   --  TODO: Test_Partial_V2_Transition - parser accepts V1 section, doesn't
-   --  validate V2 section
+   --  ROADMAP: Test_Partial_V2_Transition - parser accepts V1 section,
+   --  doesn't validate V2 section
    Test_Partial_Type_Index;
    --  Summary
    Put_Line ("====================================================");
