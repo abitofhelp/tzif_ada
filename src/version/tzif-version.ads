@@ -1,6 +1,6 @@
 pragma Ada_2022;
 --  =========================================================================
---  Tzif.Version - Application Version Information
+--  TZif.Version - Application Version Information
 --  =========================================================================
 --  Copyright (c) 2025 Michael Gardner, A Bit of Help, Inc.
 --  SPDX-License-Identifier: BSD-3-Clause
@@ -26,7 +26,7 @@ pragma Ada_2022;
 --    - Build metadata: +build.N, +commit.HASH
 --  =========================================================================
 
-package Tzif.Version is
+package TZif.Version is
 
    --  Semantic Version Components
    Major : constant Natural := 1;
@@ -56,4 +56,4 @@ package Tzif.Version is
    --  Check if this is a stable release
    function Is_Stable return Boolean is (not Is_Prerelease);
 
-end Tzif.Version;
+end TZif.Version;
