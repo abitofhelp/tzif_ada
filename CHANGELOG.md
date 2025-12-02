@@ -98,7 +98,7 @@ compiled timezone information (TZif format, RFC 9636).
 - Added 14 Python tests for domain external dependency validation
 
 ### Dependencies
-- `functional` ^2.1.1 (Result/Option/Try monads)
+- `functional` ^2.2.1 (Result/Option/Try monads)
 - `gnatcoll` ^25.0.0 (GNAT Components Collection)
 
 ### Known Limitations
