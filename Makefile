@@ -15,7 +15,7 @@
 PROJECT_NAME := tzif
 
 .PHONY: all build build-dev build-opt build-release build-tests build-profiles check check-arch \
-        clean clean-clutter clean-coverage clean-deep compress deps diagrams \
+        clean clean-clutter clean-coverage clean-deep compress deps \
 		help prereqs rebuild refresh stats test test-all test-coverage test-framework \
 		test-integration test-unit test-python install-tools build-coverage-runtime
 # FIX: ENABLE AFTER THE TARGETS CONVERT TO USING OUR ADAFMT TOOL, WHICH IS IN DEVELOPMENT.
@@ -140,7 +140,6 @@ help: ## Display this help message
 	@echo "  refresh                 - Refresh Alire dependencies"
 	@echo "  install-tools           - Install development tools (GMP, gcovr, gnatformat)"
 	@echo "  build-coverage-runtime  - Build GNATcoverage runtime library"
-	@echo "  diagrams                - Generate SVG diagrams from PlantUML"
 	@echo ""
 	@echo "$(YELLOW)Advanced Commands:$(NC)"
 	@echo "  build-profiles     - Test compilation with all build profiles"
@@ -156,6 +155,11 @@ help: ## Display this help message
 	@echo ""
 	@echo "$(YELLOW)Workflow Shortcuts:$(NC)"
 	@echo "  all                - Build library (default)"
+	@echo ""
+	@echo "$(YELLOW)Submodule Commands:$(NC)"
+	@echo "  submodule-init     - Initialize submodules after fresh clone"
+	@echo "  submodule-update   - Pull latest from all submodule repos"
+	@echo "  submodule-status   - Show submodule commit status"
 
 # =============================================================================
 # Build Commands
@@ -510,21 +514,6 @@ build-coverage-runtime: ## Build GNATcoverage runtime library
 	@echo "$(CYAN)Building GNATcoverage runtime...$(NC)"
 	@$(PYTHON3) scripts/python/makefile/build_gnatcov_runtime.py
 
-diagrams: ## Generate SVG diagrams from PlantUML sources
-	@echo "$(CYAN)Generating SVG diagrams from PlantUML...$(NC)"
-	@command -v plantuml >/dev/null 2>&1 || { echo "$(RED)Error: plantuml not found. Install with: brew install plantuml$(NC)"; exit 1; }
-	@if [ -d "docs/diagrams" ]; then \
-		cd docs/diagrams && for f in *.puml; do \
-			if [ -f "$$f" ]; then \
-				echo "  Processing $$f..."; \
-				plantuml -tsvg "$$f"; \
-			fi; \
-		done; \
-		echo "$(GREEN)✓ Diagrams generated$(NC)"; \
-	else \
-		echo "$(YELLOW)No docs/diagrams directory found$(NC)"; \
-	fi
-
 .DEFAULT_GOAL := help
 
 ## ---------------------------------------------------------------------------
@@ -540,7 +529,7 @@ submodule-update: ## Pull latest from all submodule repos
 	git submodule update --remote --merge
 	@echo ""
 	@echo "Submodules updated. Review changes, then run:"
-	@echo "  git add scripts/python test/python"
+	@echo "  git add docs/common scripts/python test/python"
 	@echo "  git commit -m 'chore: update submodules'"
 	@echo "  git push"
 
