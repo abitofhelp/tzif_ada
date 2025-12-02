@@ -14,6 +14,7 @@ with Ada.Text_IO;
 with Test_Framework;
 
 --  Import all test procedures
+with Test_Bounded_Vector;
 with Test_Timezone_Lookup;
 with Test_TZif_Data;
 with Test_Zone_Id;
@@ -44,6 +45,7 @@ begin
    --  Run all unit test procedures
    --  Each test registers its results with Test_Framework
 
+   Test_Bounded_Vector;
    Test_Timezone_Lookup;
    Test_TZif_Data;
    Test_Zone_Id;
