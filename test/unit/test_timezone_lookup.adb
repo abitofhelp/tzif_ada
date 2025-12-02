@@ -76,7 +76,7 @@ procedure Test_Timezone_Lookup is
       Put_Line ("Test: No transitions - use first type");
       TZ_Type := Make_Timezone_Type
           (UTC_Offset => 0, Is_DST => False, Abbreviation => "UTC");
-      Data.Timezone_Types.Append (TZ_Type);
+      Timezone_Type_Vectors.Unchecked_Append (Data.Timezone_Types, TZ_Type);
       Assert
         (Offset_Equals (Tz_Lookup.Find_UTC_Offset_At_Time (Data, 0), 0),
          "No transitions: should return first type offset");
@@ -101,10 +101,10 @@ procedure Test_Timezone_Lookup is
           (UTC_Offset => -18000, Is_DST => False, Abbreviation => "EST");
       Type2 := Make_Timezone_Type
           (UTC_Offset => -14400, Is_DST => True, Abbreviation => "EDT");
-      Data.Timezone_Types.Append (Type1);
-      Data.Timezone_Types.Append (Type2);
+      Timezone_Type_Vectors.Unchecked_Append (Data.Timezone_Types, Type1);
+      Timezone_Type_Vectors.Unchecked_Append (Data.Timezone_Types, Type2);
       Trans := (Time => 100, Type_Index => 1);
-      Data.Transitions.Append (Trans);
+      Transition_Vectors.Unchecked_Append (Data.Transitions, Trans);
       Assert
         (Offset_Equals (Tz_Lookup.Find_UTC_Offset_At_Time (Data, 50), -14400),
          "Before first transition: should use first transition's type");
@@ -126,12 +126,12 @@ procedure Test_Timezone_Lookup is
           (UTC_Offset => -18000, Is_DST => False, Abbreviation => "EST");
       Type2 := Make_Timezone_Type
           (UTC_Offset => -14400, Is_DST => True, Abbreviation => "EDT");
-      Data.Timezone_Types.Append (Type1);
-      Data.Timezone_Types.Append (Type2);
+      Timezone_Type_Vectors.Unchecked_Append (Data.Timezone_Types, Type1);
+      Timezone_Type_Vectors.Unchecked_Append (Data.Timezone_Types, Type2);
       Trans1 := (Time => 100, Type_Index => 1);
       Trans2 := (Time => 200, Type_Index => 0);
-      Data.Transitions.Append (Trans1);
-      Data.Transitions.Append (Trans2);
+      Transition_Vectors.Unchecked_Append (Data.Transitions, Trans1);
+      Transition_Vectors.Unchecked_Append (Data.Transitions, Trans2);
       Assert
         (Offset_Equals (Tz_Lookup.Find_UTC_Offset_At_Time (Data, 300), -18000),
          "After last transition: should use EST offset");
@@ -151,10 +151,10 @@ procedure Test_Timezone_Lookup is
       Put_Line ("Test: Time exactly at transition");
       Type1 := Make_Timezone_Type (-18000, False, "EST");
       Type2 := Make_Timezone_Type (-14400, True, "EDT");
-      Data.Timezone_Types.Append (Type1);
-      Data.Timezone_Types.Append (Type2);
+      Timezone_Type_Vectors.Unchecked_Append (Data.Timezone_Types, Type1);
+      Timezone_Type_Vectors.Unchecked_Append (Data.Timezone_Types, Type2);
       Trans := (Time => 100, Type_Index => 1);
-      Data.Transitions.Append (Trans);
+      Transition_Vectors.Unchecked_Append (Data.Transitions, Trans);
       Assert
         (Offset_Equals (Tz_Lookup.Find_UTC_Offset_At_Time (Data, 100), -14400),
          "At transition: should use new type offset");
@@ -174,12 +174,12 @@ procedure Test_Timezone_Lookup is
       Put_Line ("Test: Time between transitions");
       Type1 := Make_Timezone_Type (-18000, False, "EST");
       Type2 := Make_Timezone_Type (-14400, True, "EDT");
-      Data.Timezone_Types.Append (Type1);
-      Data.Timezone_Types.Append (Type2);
+      Timezone_Type_Vectors.Unchecked_Append (Data.Timezone_Types, Type1);
+      Timezone_Type_Vectors.Unchecked_Append (Data.Timezone_Types, Type2);
       Trans1 := (Time => 100, Type_Index => 1);
       Trans2 := (Time => 200, Type_Index => 0);
-      Data.Transitions.Append (Trans1);
-      Data.Transitions.Append (Trans2);
+      Transition_Vectors.Unchecked_Append (Data.Transitions, Trans1);
+      Transition_Vectors.Unchecked_Append (Data.Transitions, Trans2);
       Assert
         (Offset_Equals (Tz_Lookup.Find_UTC_Offset_At_Time (Data, 150), -14400),
          "Between transitions: should use EDT offset");
@@ -199,10 +199,10 @@ procedure Test_Timezone_Lookup is
       Put_Line ("Test: DST detection");
       Type1 := Make_Timezone_Type (-18000, False, "EST");
       Type2 := Make_Timezone_Type (-14400, True, "EDT");
-      Data.Timezone_Types.Append (Type1);
-      Data.Timezone_Types.Append (Type2);
+      Timezone_Type_Vectors.Unchecked_Append (Data.Timezone_Types, Type1);
+      Timezone_Type_Vectors.Unchecked_Append (Data.Timezone_Types, Type2);
       Trans := (Time => 100, Type_Index => 1);
-      Data.Transitions.Append (Trans);
+      Transition_Vectors.Unchecked_Append (Data.Transitions, Trans);
       Assert
         (DST_Equals (Tz_Lookup.Is_DST_At_Time (Data, 50), True),
          "Before transition: uses first transition's type (EDT/DST)");
@@ -222,10 +222,10 @@ procedure Test_Timezone_Lookup is
       Put_Line ("Test: Abbreviation lookup");
       Type1 := Make_Timezone_Type (-18000, False, "EST");
       Type2 := Make_Timezone_Type (-14400, True, "EDT");
-      Data.Timezone_Types.Append (Type1);
-      Data.Timezone_Types.Append (Type2);
+      Timezone_Type_Vectors.Unchecked_Append (Data.Timezone_Types, Type1);
+      Timezone_Type_Vectors.Unchecked_Append (Data.Timezone_Types, Type2);
       Trans := (Time => 100, Type_Index => 1);
-      Data.Transitions.Append (Trans);
+      Transition_Vectors.Unchecked_Append (Data.Transitions, Trans);
       Assert
         (Abbrev_Equals (Tz_Lookup.Get_Abbreviation_At_Time (Data, 150), "EDT"),
          "Should return correct abbreviation for time");
@@ -273,7 +273,7 @@ procedure Test_Timezone_Lookup is
       Put_Line ("Test: Error paths - no types available");
       --  Add a transition but no types (invalid state but test error handling)
       Trans := (Time => 100, Type_Index => 0);
-      Data.Transitions.Append (Trans);
+      Transition_Vectors.Unchecked_Append (Data.Transitions, Trans);
       --  Should return None (no fallback values)
       Assert
         (Tz_Lookup.UTC_Offset_Options.Is_None
@@ -300,9 +300,9 @@ procedure Test_Timezone_Lookup is
       Put_Line ("Test: Error paths - invalid type index");
       --  Add one type but transition points to invalid index
       TZ_Type := Make_Timezone_Type (-18000, False, "EST");
-      Data.Timezone_Types.Append (TZ_Type);
+      Timezone_Type_Vectors.Unchecked_Append (Data.Timezone_Types, TZ_Type);
       Trans := (Time => 100, Type_Index => 99);  --  Invalid index
-      Data.Transitions.Append (Trans);
+      Transition_Vectors.Unchecked_Append (Data.Transitions, Trans);
       --  Should return None (no silent fallback)
       Assert
         (Tz_Lookup.UTC_Offset_Options.Is_None
@@ -328,9 +328,9 @@ procedure Test_Timezone_Lookup is
    begin
       Put_Line ("Test: Binary search edge case");
       Type1 := Make_Timezone_Type (-18000, False, "EST");
-      Data.Timezone_Types.Append (Type1);
+      Timezone_Type_Vectors.Unchecked_Append (Data.Timezone_Types, Type1);
       Trans1 := (Time => 100, Type_Index => 0);
-      Data.Transitions.Append (Trans1);
+      Transition_Vectors.Unchecked_Append (Data.Transitions, Trans1);
       --  Query time way before first transition
       Assert
         (Offset_Equals (Tz_Lookup.Find_UTC_Offset_At_Time (Data, 1), -18000),

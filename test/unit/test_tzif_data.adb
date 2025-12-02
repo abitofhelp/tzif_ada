@@ -20,6 +20,9 @@ procedure Test_TZif_Data is
    use TZif.Domain.Value_Object.Timezone_Type;
    use TZif.Domain.Value_Object.Transition;
 
+   --  Suppress "aggregate not fully initialized" for test data with defaults
+   pragma Warnings (Off, "*aggregate*not fully initialized*");
+
    Test_Count : Natural := 0;
    Pass_Count : Natural := 0;
 
@@ -73,7 +76,7 @@ procedure Test_TZif_Data is
       Put_Line ("Test: Find type with no transitions");
       TZ_Type := Make_Timezone_Type
           (UTC_Offset => 0, Is_DST => False, Abbreviation => "UTC");
-      Data.Timezone_Types.Append (TZ_Type);
+      Timezone_Type_Vectors.Unchecked_Append (Data.Timezone_Types, TZ_Type);
       Type_Index := Find_Type_At_Time (Data, 0);
       Assert
         (Type_Index = 0, "No transitions: should return first type index");
@@ -97,13 +100,13 @@ procedure Test_TZif_Data is
           (UTC_Offset => -18000, Is_DST => False, Abbreviation => "EST");
       Type2 := Make_Timezone_Type
           (UTC_Offset => -14400, Is_DST => True, Abbreviation => "EDT");
-      Data.Timezone_Types.Append (Type1);
-      Data.Timezone_Types.Append (Type2);
+      Timezone_Type_Vectors.Unchecked_Append (Data.Timezone_Types, Type1);
+      Timezone_Type_Vectors.Unchecked_Append (Data.Timezone_Types, Type2);
       Trans := (Time => 100, Type_Index => 1);
-      Data.Transitions.Append (Trans);
+      Transition_Vectors.Unchecked_Append (Data.Transitions, Trans);
       Type_Index := Find_Type_At_Time (Data, 50);
       Assert
-        (Type_Index = 0, "Before first transition: should use first type");
+        (Type_Index = 1, "Before first transition: use first trans type");
    end Test_Find_Type_Before_First;
 
    --  =====================================================================
@@ -118,12 +121,12 @@ procedure Test_TZif_Data is
       Put_Line ("Test: Find type after last transition");
       Type1 := Make_Timezone_Type (-18000, False, "EST");
       Type2 := Make_Timezone_Type (-14400, True, "EDT");
-      Data.Timezone_Types.Append (Type1);
-      Data.Timezone_Types.Append (Type2);
+      Timezone_Type_Vectors.Unchecked_Append (Data.Timezone_Types, Type1);
+      Timezone_Type_Vectors.Unchecked_Append (Data.Timezone_Types, Type2);
       Trans1 := (Time => 100, Type_Index => 1);
       Trans2 := (Time => 200, Type_Index => 0);
-      Data.Transitions.Append (Trans1);
-      Data.Transitions.Append (Trans2);
+      Transition_Vectors.Unchecked_Append (Data.Transitions, Trans1);
+      Transition_Vectors.Unchecked_Append (Data.Transitions, Trans2);
       Type_Index := Find_Type_At_Time (Data, 300);
       Assert
         (Type_Index = 0,
@@ -142,12 +145,12 @@ procedure Test_TZif_Data is
       Put_Line ("Test: Find type between transitions");
       Type1 := Make_Timezone_Type (-18000, False, "EST");
       Type2 := Make_Timezone_Type (-14400, True, "EDT");
-      Data.Timezone_Types.Append (Type1);
-      Data.Timezone_Types.Append (Type2);
+      Timezone_Type_Vectors.Unchecked_Append (Data.Timezone_Types, Type1);
+      Timezone_Type_Vectors.Unchecked_Append (Data.Timezone_Types, Type2);
       Trans1 := (Time => 100, Type_Index => 1);
       Trans2 := (Time => 200, Type_Index => 0);
-      Data.Transitions.Append (Trans1);
-      Data.Transitions.Append (Trans2);
+      Transition_Vectors.Unchecked_Append (Data.Transitions, Trans1);
+      Transition_Vectors.Unchecked_Append (Data.Transitions, Trans2);
       Type_Index := Find_Type_At_Time (Data, 150);
       Assert (Type_Index = 1, "Between: should use correct type");
    end Test_Find_Type_Between;
@@ -163,10 +166,10 @@ procedure Test_TZif_Data is
       Put_Line ("Test: Find offset at specific time");
       Type1 := Make_Timezone_Type (-18000, False, "EST");
       Type2 := Make_Timezone_Type (-14400, True, "EDT");
-      Data.Timezone_Types.Append (Type1);
-      Data.Timezone_Types.Append (Type2);
+      Timezone_Type_Vectors.Unchecked_Append (Data.Timezone_Types, Type1);
+      Timezone_Type_Vectors.Unchecked_Append (Data.Timezone_Types, Type2);
       Trans := (Time => 100, Type_Index => 1);
-      Data.Transitions.Append (Trans);
+      Transition_Vectors.Unchecked_Append (Data.Transitions, Trans);
       Assert
         (Offset_Equals (Find_Offset_At_Time (Data, 150), -14400),
          "Should return correct offset");
@@ -183,10 +186,10 @@ procedure Test_TZif_Data is
       Put_Line ("Test: Check DST status at time");
       Type1 := Make_Timezone_Type (-18000, False, "EST");
       Type2 := Make_Timezone_Type (-14400, True, "EDT");
-      Data.Timezone_Types.Append (Type1);
-      Data.Timezone_Types.Append (Type2);
+      Timezone_Type_Vectors.Unchecked_Append (Data.Timezone_Types, Type1);
+      Timezone_Type_Vectors.Unchecked_Append (Data.Timezone_Types, Type2);
       Trans := (Time => 100, Type_Index => 1);
-      Data.Transitions.Append (Trans);
+      Transition_Vectors.Unchecked_Append (Data.Transitions, Trans);
       --  Before first transition: uses first transition's type (EDT/DST)
       Assert
         (DST_Equals (Is_DST_At_Time (Data, 50), True),
@@ -200,14 +203,14 @@ procedure Test_TZif_Data is
    --  Test: Has_Transitions Query
    --  =====================================================================
    procedure Test_Has_Transitions is
-      Data  : TZif_Data_Type;
+      Data  : TZif_Data_Type := (others => <>);
       Trans : Transition_Type;
    begin
       Put_Line ("Test: Has_Transitions query");
       Assert
         (not Has_Transitions (Data), "Empty data should have no transitions");
       Trans := (Time => 100, Type_Index => 0);
-      Data.Transitions.Append (Trans);
+      Transition_Vectors.Unchecked_Append (Data.Transitions, Trans);
       Assert
         (Has_Transitions (Data), "Data with transition should report true");
    end Test_Has_Transitions;
@@ -216,7 +219,7 @@ procedure Test_TZif_Data is
    --  Test: Leap Seconds Queries
    --  =====================================================================
    procedure Test_Leap_Second_Queries is
-      Data : TZif_Data_Type;
+      Data : TZif_Data_Type := (others => <>);
       Leap : Leap_Second_Type;
    begin
       Put_Line ("Test: Leap second queries");
@@ -227,7 +230,7 @@ procedure Test_TZif_Data is
         (Leap_Second_Count (Data) = 0,
          "Empty data should have leap count of 0");
       Leap := (Occurrence_Time => 1000, Leap_Count => 1);
-      Data.Leap_Seconds.Append (Leap);
+      Leap_Second_Vectors.Unchecked_Append (Data.Leap_Seconds, Leap);
       Assert
         (Has_Leap_Seconds (Data), "Data with leap second should report true");
       Assert
@@ -239,7 +242,7 @@ procedure Test_TZif_Data is
    --  Test: POSIX TZ String Queries
    --  =====================================================================
    procedure Test_POSIX_TZ_Queries is
-      Data : TZif_Data_Type;
+      Data : TZif_Data_Type := (others => <>);
    begin
       Put_Line ("Test: POSIX TZ string queries");
       Assert
@@ -262,10 +265,10 @@ procedure Test_TZif_Data is
       Put_Line ("Test: Get abbreviation at specific time");
       Type1 := Make_Timezone_Type (-18000, False, "EST");
       Type2 := Make_Timezone_Type (-14400, True, "EDT");
-      Data.Timezone_Types.Append (Type1);
-      Data.Timezone_Types.Append (Type2);
+      Timezone_Type_Vectors.Unchecked_Append (Data.Timezone_Types, Type1);
+      Timezone_Type_Vectors.Unchecked_Append (Data.Timezone_Types, Type2);
       Trans := (Time => 100, Type_Index => 1);
-      Data.Transitions.Append (Trans);
+      Transition_Vectors.Unchecked_Append (Data.Transitions, Trans);
       --  Before first transition: uses first transition's type (EDT)
       Assert
         (Abbrev_Equals (Get_Abbreviation_At_Time (Data, 50), "EDT"),

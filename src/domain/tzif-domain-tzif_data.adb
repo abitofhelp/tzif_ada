@@ -27,24 +27,23 @@ package body TZif.Domain.TZif_Data is
    function Find_Type_At_Time
      (Data : TZif_Data_Type; Time : Epoch_Seconds_Type) return Natural
    is
+      use Transition_Vectors;
    begin
       --  If no transitions, use first type (index 0)
-      if Data.Transitions.Is_Empty then
+      if Is_Empty (Data.Transitions) then
          return 0;
       end if;
 
-      --  If time is before first transition, use first type
-      if Time < Data.Transitions.First_Element.Time then
-         return 0;
+      --  If time is before first transition, use first transition's type
+      if Time < Unchecked_First (Data.Transitions).Time then
+         return Unchecked_First (Data.Transitions).Type_Index;
       end if;
 
-      --  Binary search for the last transition <= Time
+      --  Linear search backwards for the last transition <= Time
       --  We iterate backwards to find the most recent transition
-      for I in reverse
-        Data.Transitions.First_Index .. Data.Transitions.Last_Index
-      loop
-         if Data.Transitions.Element (I).Time <= Time then
-            return Data.Transitions.Element (I).Type_Index;
+      for I in reverse First_Index .. Last_Index (Data.Transitions) loop
+         if Unchecked_Element (Data.Transitions, I).Time <= Time then
+            return Unchecked_Element (Data.Transitions, I).Type_Index;
          end if;
       end loop;
 

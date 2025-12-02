@@ -1,4 +1,5 @@
 pragma Ada_2022;
+pragma Unevaluated_Use_Of_Old (Allow);
 --  ===========================================================================
 --  Tzif.Domain.Tzif_Data
 --  ===========================================================================
@@ -23,7 +24,6 @@ pragma Ada_2022;
 --
 --  ===========================================================================
 
-with Ada.Containers.Vectors;
 with Ada.Strings.Bounded;
 with TZif_Config;
 with TZif.Domain.Value_Object.TZif_Header;
@@ -32,6 +32,7 @@ with TZif.Domain.Value_Object.Timezone_Type;
 with TZif.Domain.Value_Object.Epoch_Seconds;
 with TZif.Domain.Value_Object.UTC_Offset;
 with TZif.Domain.Types.Option;
+with TZif.Domain.Types.Bounded_Vector;
 
 package TZif.Domain.TZif_Data with
   Preelaborate
@@ -42,23 +43,26 @@ is
    use TZif.Domain.Value_Object.UTC_Offset;
    use TZif.Domain.Value_Object.Timezone_Type;
 
-   --  Make comparison operators visible for vector instantiation
-   use type Transition.Transition_Type;
-
    --  ========================================================================
    --  Bounded Containers for TZif Data
    --  ========================================================================
+   --  Using SPARK-friendly bounded vectors with functional error handling.
+   --  Note: TZif uses 0-based type indices; our vectors are 1-based.
+   --  Callers must add 1 when converting TZif type_index to vector index.
+   --  ========================================================================
 
-   --  Bounded vector for transitions
-   package Transition_Vectors is new Ada.Containers.Vectors
-     (Index_Type => Positive, Element_Type => Transition.Transition_Type);
+   --  Bounded vector for transitions (capacity from TZif_Config)
+   package Transition_Vectors is new TZif.Domain.Types.Bounded_Vector
+     (Element_Type => Transition.Transition_Type,
+      Capacity     => TZif_Config.Max_Transitions_Per_Zone);
 
    subtype Transition_Vector is Transition_Vectors.Vector;
 
-   --  Bounded vector for timezone types
-   package Timezone_Type_Vectors is new Ada.Containers.Vectors
-     (Index_Type   => Natural,
-      Element_Type => Timezone_Type.Timezone_Type_Record);
+   --  Bounded vector for timezone types (capacity from TZif_Config)
+   --  Note: Access with (type_index + 1) to convert 0-based TZif to 1-based
+   package Timezone_Type_Vectors is new TZif.Domain.Types.Bounded_Vector
+     (Element_Type => Timezone_Type.Timezone_Type_Record,
+      Capacity     => TZif_Config.Max_Types_Per_Zone);
 
    subtype Timezone_Type_Vector is Timezone_Type_Vectors.Vector;
 
@@ -81,9 +85,10 @@ is
       Leap_Count : Integer;
    end record;
 
-   --  Bounded vector for leap seconds
-   package Leap_Second_Vectors is new Ada.Containers.Vectors
-     (Index_Type => Positive, Element_Type => Leap_Second_Type);
+   --  Bounded vector for leap seconds (capacity from TZif_Config)
+   package Leap_Second_Vectors is new TZif.Domain.Types.Bounded_Vector
+     (Element_Type => Leap_Second_Type,
+      Capacity     => TZif_Config.Max_Leap_Seconds);
 
    subtype Leap_Second_Vector is Leap_Second_Vectors.Vector;
 
@@ -117,19 +122,19 @@ is
 
    --  Check if TZif data has transitions
    function Has_Transitions (Data : TZif_Data_Type) return Boolean is
-     (not Data.Transitions.Is_Empty);
+     (not Transition_Vectors.Is_Empty (Data.Transitions));
 
    --  Get number of transitions
    function Transition_Count (Data : TZif_Data_Type) return Natural is
-     (Natural (Data.Transitions.Length));
+     (Transition_Vectors.Length (Data.Transitions));
 
    --  Check if TZif data has leap seconds
    function Has_Leap_Seconds (Data : TZif_Data_Type) return Boolean is
-     (not Data.Leap_Seconds.Is_Empty);
+     (not Leap_Second_Vectors.Is_Empty (Data.Leap_Seconds));
 
    --  Get number of leap seconds
    function Leap_Second_Count (Data : TZif_Data_Type) return Natural is
-     (Natural (Data.Leap_Seconds.Length));
+     (Leap_Second_Vectors.Length (Data.Leap_Seconds));
 
    --  Check if TZif data has POSIX TZ string
    function Has_POSIX_TZ (Data : TZif_Data_Type) return Boolean is
@@ -166,12 +171,15 @@ is
    function Find_Type_At_Time
      (Data : TZif_Data_Type; Time : Epoch_Seconds_Type) return Natural;
 
-   --  Get timezone type by index
+   --  Get timezone type by index (1-based, add 1 to TZif 0-based index)
    function Get_Type
-     (Data : TZif_Data_Type; Type_Index : Natural)
+     (Data : TZif_Data_Type; Type_Index : Positive)
       return Timezone_Type.Timezone_Type_Record is
-     (Data.Timezone_Types.Element (Type_Index)) with
-     Pre => Natural (Data.Timezone_Types.Length) > Type_Index;
+     (Timezone_Type_Vectors.Unchecked_Element
+        (Data.Timezone_Types, Type_Index))
+   with
+     Pre => Type_Index <=
+       Timezone_Type_Vectors.Length (Data.Timezone_Types);
 
    --  Find the UTC offset in effect at a given epoch time
    --  Returns Some(offset) or None if no timezone types available

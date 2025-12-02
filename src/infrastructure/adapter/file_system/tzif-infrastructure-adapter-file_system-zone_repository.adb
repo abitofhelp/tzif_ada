@@ -249,20 +249,38 @@ package body TZif.Infrastructure.Adapter.File_System.Zone_Repository is
               Infrastructure.TZif_Parser.Parse_Result.Value (Parse_Result);
 
             --  Find timezone type in effect at the given epoch time
-            Type_Index : constant Natural :=
+            --  Note: TZif uses 0-based indices; Get_Type expects 1-based
+            Type_Index_0 : constant Natural :=
               Find_Type_At_Time (TZif_Data, Epoch_Time);
-
-            TZ_Type : constant Timezone_Type_Record :=
-              Get_Type (TZif_Data, Type_Index);
-
-            --  Build transition info result
-            Info : constant Transition_Info_Type :=
-              Make_Transition_Info
-                (Epoch_Time   => Epoch_Time, UTC_Offset => TZ_Type.UTC_Offset,
-                 Is_DST       => TZ_Type.Is_DST,
-                 Abbreviation => Get_Abbreviation (TZ_Type));
+            Type_Index   : constant Positive := Type_Index_0 + 1;
+            Tz_Length    : constant Natural :=
+              Timezone_Type_Vectors.Length (TZif_Data.Timezone_Types);
          begin
-            return Transition_Info_Result.Ok (Info);
+            --  Validate type index before accessing
+            if Tz_Length = 0 then
+               return
+                 Transition_Info_Result.Error
+                   (Parse_Error, "No timezone types in zone file");
+            elsif Type_Index > Tz_Length then
+               return
+                 Transition_Info_Result.Error
+                   (Parse_Error, "Invalid timezone type index in zone file");
+            end if;
+
+            declare
+               TZ_Type : constant Timezone_Type_Record :=
+                 Get_Type (TZif_Data, Type_Index);
+
+               --  Build transition info result
+               Info : constant Transition_Info_Type :=
+                 Make_Transition_Info
+                   (Epoch_Time   => Epoch_Time,
+                    UTC_Offset   => TZ_Type.UTC_Offset,
+                    Is_DST       => TZ_Type.Is_DST,
+                    Abbreviation => Get_Abbreviation (TZ_Type));
+            begin
+               return Transition_Info_Result.Ok (Info);
+            end;
          end;
       end;
    end Get_Transition_At_Epoch;

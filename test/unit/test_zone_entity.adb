@@ -22,6 +22,11 @@ procedure Test_Zone_Entity is
    use TZif.Domain.Value_Object.Transition;
    use TZif.Domain.Value_Object.Timezone_Type;
    use TZif.Domain.Value_Object.UTC_Offset;
+
+   --  Suppress test-specific warnings for TZif_Data with default components
+   pragma Warnings (Off, "*aggregate*not fully initialized*");
+   pragma Warnings (Off, "*could be declared constant*");
+
    Test_Count : Natural := 0;
    Pass_Count : Natural := 0;
    procedure Assert (Condition : Boolean; Test_Name : String) is
@@ -39,8 +44,8 @@ procedure Test_Zone_Entity is
    --  ========================================================================
    procedure Test_Make_Zone_With_Zone_Id is
       Zone_ID : constant Zone_Id_Type := Make_Zone_Id ("America/Los_Angeles");
-      Data    : TZif_Data_Type;
-      Zone    : constant Zone_Type := Make_Zone (Zone_ID, Data);
+      Data    : TZif_Data_Type        := (others => <>);
+      Zone    : constant Zone_Type    := Make_Zone (Zone_ID, Data);
    begin
       Put_Line ("Test: Make_Zone with Zone_Id_Type");
       Assert (Get_Id (Zone) = Zone_ID, "Zone should have correct ID");
@@ -52,7 +57,7 @@ procedure Test_Zone_Entity is
    --  Test: Make_Zone with String
    --  ========================================================================
    procedure Test_Make_Zone_With_String is
-      Data : TZif_Data_Type;
+      Data : TZif_Data_Type     := (others => <>);
       Zone : constant Zone_Type := Make_Zone ("UTC", Data);
    begin
       Put_Line ("Test: Make_Zone with String ID");
@@ -64,7 +69,7 @@ procedure Test_Zone_Entity is
    --  Test: Get_Data
    --  ========================================================================
    procedure Test_Get_Data is
-      Data    : TZif_Data_Type;
+      Data    : TZif_Data_Type := (others => <>);
       TZ_Type : Timezone_Type_Record;
       Zone    : Zone_Type;
    begin
@@ -72,13 +77,13 @@ procedure Test_Zone_Entity is
       --  Build TZif data with a timezone type
       TZ_Type := Make_Timezone_Type
           (UTC_Offset => 0, Is_DST => False, Abbreviation => "UTC");
-      Data.Timezone_Types.Append (TZ_Type);
+      Timezone_Type_Vectors.Unchecked_Append (Data.Timezone_Types, TZ_Type);
       Zone := Make_Zone ("UTC", Data);
       declare
          Retrieved_Data : constant TZif_Data_Type := Get_Data (Zone);
       begin
          Assert
-           (Natural (Retrieved_Data.Timezone_Types.Length) = 1,
+           (Timezone_Type_Vectors.Length (Retrieved_Data.Timezone_Types) = 1,
             "Retrieved data should have 1 timezone type");
       end;
    end Test_Get_Data;
@@ -86,7 +91,7 @@ procedure Test_Zone_Entity is
    --  Test: Has_Transitions (Empty)
    --  ========================================================================
    procedure Test_Has_Transitions_Empty is
-      Data : TZif_Data_Type;  --  Empty data, no transitions
+      Data : TZif_Data_Type := (others => <>);  --  Empty, no transitions
       Zone : constant Zone_Type := Make_Zone ("UTC", Data);
    begin
       Put_Line ("Test: Has_Transitions with no transitions");
@@ -98,14 +103,14 @@ procedure Test_Zone_Entity is
    --  Test: Has_Transitions (With Data)
    --  ========================================================================
    procedure Test_Has_Transitions_With_Data is
-      Data  : TZif_Data_Type;
+      Data  : TZif_Data_Type := (others => <>);
       Trans : Transition_Type;
       Zone  : Zone_Type;
    begin
       Put_Line ("Test: Has_Transitions with transitions");
       --  Add a transition
       Trans := (Time => 0, Type_Index => 0);
-      Data.Transitions.Append (Trans);
+      Transition_Vectors.Unchecked_Append (Data.Transitions, Trans);
       Zone := Make_Zone ("America/New_York", Data);
       Assert
         (Has_Transitions (Zone), "Zone with transitions should return True");
@@ -114,16 +119,17 @@ procedure Test_Zone_Entity is
    --  Test: Transition_Count
    --  ========================================================================
    procedure Test_Transition_Count is
-      Data : TZif_Data_Type;
+      Data : TZif_Data_Type := (others => <>);
       Zone : Zone_Type;
    begin
       Put_Line ("Test: Transition_Count");
       --  Add 3 transitions
-      Data.Transitions.Append (Transition_Type'(Time => 0, Type_Index => 0));
-      Data.Transitions.Append
-        (Transition_Type'(Time => 1000, Type_Index => 1));
-      Data.Transitions.Append
-        (Transition_Type'(Time => 2000, Type_Index => 0));
+      Transition_Vectors.Unchecked_Append
+        (Data.Transitions, Transition_Type'(Time => 0, Type_Index => 0));
+      Transition_Vectors.Unchecked_Append
+        (Data.Transitions, Transition_Type'(Time => 1000, Type_Index => 1));
+      Transition_Vectors.Unchecked_Append
+        (Data.Transitions, Transition_Type'(Time => 2000, Type_Index => 0));
       Zone := Make_Zone ("America/New_York", Data);
       Assert (Transition_Count (Zone) = 3, "Zone should have 3 transitions");
    end Test_Transition_Count;
@@ -131,16 +137,15 @@ procedure Test_Zone_Entity is
    --  Test: Entity Equality (Same ID)
    --  ========================================================================
    procedure Test_Entity_Equality_Same_Id is
-      Data1        : TZif_Data_Type;
-      Data2        : TZif_Data_Type;
+      Data1        : TZif_Data_Type := (others => <>);
+      Data2        : TZif_Data_Type := (others => <>);
       Zone1, Zone2 : Zone_Type;
    begin
       Put_Line ("Test: Entity equality with same ID");
       --  Create two zones with same ID but different data
-      Data2.Transitions.Append
-        (Transition_Type'
-           (Time => 0,
-            Type_Index => 0));  --  Data2 has transition, Data1 doesn't
+      --  Data2 has transition
+      Transition_Vectors.Unchecked_Append
+        (Data2.Transitions, Transition_Type'(Time => 0, Type_Index => 0));
       Zone1 := Make_Zone ("UTC", Data1);
       Zone2 := Make_Zone ("UTC", Data2);
       Assert
@@ -151,7 +156,7 @@ procedure Test_Zone_Entity is
    --  Test: Entity Equality (Different ID)
    --  ========================================================================
    procedure Test_Entity_Equality_Different_Id is
-      Data         : TZif_Data_Type;
+      Data         : TZif_Data_Type := (others => <>);
       Zone1, Zone2 : Zone_Type;
    begin
       Put_Line ("Test: Entity equality with different ID");
@@ -163,7 +168,7 @@ procedure Test_Zone_Entity is
    --  Test: Has_Id with Zone_Id_Type
    --  ========================================================================
    procedure Test_Has_Id_With_Zone_Id is
-      Data : TZif_Data_Type;
+      Data : TZif_Data_Type     := (others => <>);
       Zone : constant Zone_Type := Make_Zone ("America/New_York", Data);
       ID   : constant Zone_Id_Type := Make_Zone_Id ("America/New_York");
    begin
@@ -174,7 +179,7 @@ procedure Test_Zone_Entity is
    --  Test: Has_Id with String
    --  ========================================================================
    procedure Test_Has_Id_With_String is
-      Data : TZif_Data_Type;
+      Data : TZif_Data_Type     := (others => <>);
       Zone : constant Zone_Type := Make_Zone ("America/New_York", Data);
    begin
       Put_Line ("Test: Has_Id with String");

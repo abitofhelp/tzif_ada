@@ -266,8 +266,9 @@ is
             end if;
             Time := Epoch_Seconds_Type (Time_Raw);
 
-            Data.Transitions.Append
-              (Transition_Type'(Time => Time, Type_Index => 0));
+            Transition_Vectors.Unchecked_Append
+              (Data.Transitions,
+               Transition_Type'(Time => Time, Type_Index => 0));
          end;
       end loop;
 
@@ -277,12 +278,13 @@ is
             Type_Index : constant Natural := Natural (Bytes (Pos));
          begin
             Pos := Pos + 1;
-            Data.Transitions.Replace_Element
-              (Index    => I,
-               New_Item =>
-                 Transition_Type'
-                   (Time       => Data.Transitions.Element (I).Time,
-                    Type_Index => Type_Index));
+            Transition_Vectors.Unchecked_Replace
+              (Data.Transitions, I,
+               Transition_Type'
+                 (Time =>
+                    Transition_Vectors.Unchecked_Element
+                      (Data.Transitions, I).Time,
+                  Type_Index => Type_Index));
          end;
       end loop;
 
@@ -343,8 +345,9 @@ is
                   Abbrev : constant String :=
                     Extract_Abbreviation (Type_Infos (I).Abbr_Idx);
                begin
-                  Data.Timezone_Types.Append
-                    (Make_Timezone_Type
+                  Timezone_Type_Vectors.Unchecked_Append
+                    (Data.Timezone_Types,
+                     Make_Timezone_Type
                        (UTC_Offset   =>
                           UTC_Offset_Type (Type_Infos (I).UTC_Off),
                         Is_DST       => Type_Infos (I).Is_DST,
