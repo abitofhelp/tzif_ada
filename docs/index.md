@@ -1,6 +1,6 @@
 # Tzif Documentation
 
-**Version:** 1.0.0  
+**Version:** 1.0.1  
 **Date:** December 02, 2025  
 **SPDX-License-Identifier:** BSD-3-Clause<br>
 **License File:** See the LICENSE file in the project root<br>

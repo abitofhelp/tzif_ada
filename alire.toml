@@ -1,6 +1,6 @@
 name = "tzif"
 description = "Parsing and querying of IANA's compiled timezone information"
-version = "1.0.0"
+version = "1.0.1"
 authors = ["Michael Gardner"]
 maintainers = ["Michael Gardner <mike@abitofhelp.com>"]
 maintainers-logins = ["abitofhelp"]
