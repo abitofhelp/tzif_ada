@@ -17,7 +17,8 @@ PROJECT_NAME := tzif
 .PHONY: all build build-dev build-opt build-release build-tests build-profiles check check-arch \
         clean clean-clutter clean-coverage clean-deep compress deps \
 		help prereqs rebuild refresh stats test test-all test-coverage test-framework \
-		test-integration test-unit test-python install-tools build-coverage-runtime
+		test-integration test-unit test-python install-tools build-coverage-runtime \
+		submodule-init submodule-update submodule-status
 # FIX: ENABLE AFTER THE TARGETS CONVERT TO USING OUR ADAFMT TOOL, WHICH IS IN DEVELOPMENT.
 #       format format-all format-src format-tests
 
@@ -519,8 +520,6 @@ build-coverage-runtime: ## Build GNATcoverage runtime library
 ## ---------------------------------------------------------------------------
 ## Submodule Management
 ## ---------------------------------------------------------------------------
-
-.PHONY: submodule-update submodule-status submodule-init
 
 submodule-init: ## Initialize submodules after fresh clone
 	git submodule update --init --recursive
