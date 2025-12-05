@@ -250,11 +250,11 @@ package body TZif.Infrastructure.Adapter.File_System.Repository is
             end if;
 
             declare
-               --  TZif uses 0-based indices; vector is 1-based
-               Type_Index_0 : constant Natural := Value (Type_Index_Opt);
-               Type_Index   : constant Positive := Type_Index_0 + 1;
+               --  Note: TZif uses 0-based indices; Get_Type expects 0-based
+               --  and adds 1 internally for vector access
+               Type_Index : constant Natural := Value (Type_Index_Opt);
             begin
-               if Type_Index > Tz_Length then
+               if Type_Index >= Tz_Length then
                   return
                     Get_Transition_Result_Package.Error
                       (Parse_Error, "Invalid timezone type index in zone file");
