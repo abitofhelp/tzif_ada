@@ -93,6 +93,11 @@ package body TZif.Domain.Service.Timezone_Lookup is
          Type_Index : constant Positive :=
            Type_Index_Options.Value (Type_Index_Opt) + 1;
       begin
+         --  Validate index is within bounds of Timezone_Types vector
+         if Type_Index > Length (Data.Timezone_Types) then
+            return UTC_Offset_Options.None;
+         end if;
+
          return
            UTC_Offset_Options.New_Some
              (Unchecked_Element (Data.Timezone_Types, Type_Index).UTC_Offset);
@@ -119,6 +124,11 @@ package body TZif.Domain.Service.Timezone_Lookup is
          Type_Index : constant Positive :=
            Type_Index_Options.Value (Type_Index_Opt) + 1;
       begin
+         --  Validate index is within bounds of Timezone_Types vector
+         if Type_Index > Length (Data.Timezone_Types) then
+            return Boolean_Options.None;
+         end if;
+
          return
            Boolean_Options.New_Some
              (Unchecked_Element (Data.Timezone_Types, Type_Index).Is_DST);
@@ -146,6 +156,11 @@ package body TZif.Domain.Service.Timezone_Lookup is
          Type_Index : constant Positive :=
            Type_Index_Options.Value (Type_Index_Opt) + 1;
       begin
+         --  Validate index is within bounds of Timezone_Types vector
+         if Type_Index > Length (Data.Timezone_Types) then
+            return Abbreviation_Options.None;
+         end if;
+
          return
            Abbreviation_Options.New_Some
              (Unchecked_Element

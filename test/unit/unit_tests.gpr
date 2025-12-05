@@ -29,4 +29,10 @@ project Unit_Tests is
       for Switches ("Ada") use ("-g");  -- Debug symbols
    end Builder;
 
+   package Linker is
+      --  Link against GNAT tasking runtime (libgnarl) required by
+      --  protected type caches (Source_Cache, Zone_Cache)
+      for Switches ("Ada") use ("-lgnarl");
+   end Linker;
+
 end Unit_Tests;

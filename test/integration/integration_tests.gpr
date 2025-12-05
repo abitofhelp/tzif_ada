@@ -11,6 +11,12 @@ with "../../tzif_internal.gpr";
 project Integration_Tests is
 
    for Source_Dirs use (".", "../common", "../support");
+
+   --  Exclude Windows-specific test on Unix (mirrors tzif.gpr OS detection)
+   --  Test_Platform_Stubs tests Windows stub behavior, not needed when
+   --  Windows code is excluded entirely
+   for Excluded_Source_Files use ("test_platform_stubs.adb");
+
    for Object_Dir use "../../obj/test/integration";
    for Exec_Dir use "../bin";
 
@@ -28,5 +34,11 @@ project Integration_Tests is
    package Builder is
       for Switches ("Ada") use ("-g");  -- Debug symbols
    end Builder;
+
+   package Linker is
+      --  Link against GNAT tasking runtime (libgnarl) required by
+      --  protected type caches (Source_Cache, Zone_Cache)
+      for Switches ("Ada") use ("-lgnarl");
+   end Linker;
 
 end Integration_Tests;

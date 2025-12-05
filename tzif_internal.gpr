@@ -33,6 +33,10 @@ library project Tzif_Internal is
 
    Profile : Profile_Type := external ("TZIF_PROFILE", "standard");
 
+   -- Operating System Detection (same as tzif.gpr)
+   type OS_Type is ("unix", "windows");
+   OS : OS_Type := external ("TZIF_OS", "unix");
+
    -- Include all source directories (same as tzif.gpr)
    case Profile is
       when "standard" =>
@@ -47,6 +51,18 @@ library project Tzif_Internal is
          for Source_Dirs use ("src/**", "config/profiles/stm32h7s78");
       when "stm32mp135_linux" =>
          for Source_Dirs use ("src/**", "config/profiles/stm32mp135_linux");
+   end case;
+
+   -- Platform-Specific Source Exclusions (same as tzif.gpr)
+   case OS is
+      when "unix" =>
+         for Excluded_Source_Files use
+           ("tzif-infrastructure-platform-windows.ads",
+            "tzif-infrastructure-platform-windows.adb");
+      when "windows" =>
+         for Excluded_Source_Files use
+           ("tzif-infrastructure-platform-posix.ads",
+            "tzif-infrastructure-platform-posix.adb");
    end case;
 
    for Object_Dir use "obj/internal";

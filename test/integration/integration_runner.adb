@@ -26,7 +26,7 @@ with Test_Get_Transition_At_Epoch;
 with Test_Get_Version;
 with Test_List_All_Order_By_Id;
 with Test_Load_Source;
-with Test_Platform_Stubs;
+--  Note: Test_Platform_Stubs removed - Windows code now excluded on Unix
 with Test_Query_Timezone_Info;
 with Test_TZif_Parser_Errors;
 with Test_Validate_Source;
@@ -63,7 +63,6 @@ begin
    Test_Get_Version;
    Test_List_All_Order_By_Id;
    Test_Load_Source;
-   Test_Platform_Stubs;
    Test_Query_Timezone_Info;
    Test_TZif_Parser_Errors;
    Test_Validate_Source;
