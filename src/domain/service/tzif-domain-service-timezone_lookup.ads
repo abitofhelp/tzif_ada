@@ -50,6 +50,9 @@ is
      TZif.Domain.Types.Option (Abbreviation_Type);
    subtype Abbreviation_Option is Abbreviation_Options.Option;
 
+   package Type_Index_Options is new TZif.Domain.Types.Option (Natural);
+   subtype Type_Index_Option is Type_Index_Options.Option;
+
    --  ========================================================================
    --  Find_UTC_Offset_At_Time
    --  ========================================================================

@@ -36,17 +36,27 @@ This roadmap outlines planned enhancements and features for future TZif library 
 **Rationale**: Continuous integration is critical for maintaining code quality and catching regressions. Current CI has known issues that prevent it from validating pull requests and releases properly.
 
 #### 2. Complete Windows Platform Support
-**Status**: Engineered but not enabled
-**Effort**: Medium
+**Status**: Implemented, needs validation
+**Effort**: Low (testing only)
 **Impact**: High
 
-- Complete testing of `infrastructure-platform-windows.ads/adb`
-- Verify TZif file path resolution on Windows
-- Test timezone source discovery on Windows
-- Add Windows-specific CI testing
-- Update documentation to reflect full Windows support
+**Completed**:
+- Win32 API bindings (`GetDynamicTimeZoneInformation`)
+- CLDR Windows-to-IANA timezone mapping (~50 common zones)
+- Platform abstraction following POSIX pattern
+- SRS/SDS documentation updated
 
-**Rationale**: Windows platform code exists but needs thorough testing and validation before release. Critical for broad platform adoption.
+**Remaining**:
+- Test on Windows 10/Server 2022+ environment
+- Verify timezone detection with various Windows timezones
+- Add Windows-specific CI testing
+- Test user-provided tzdata path resolution
+
+**Requirements**:
+- Windows 10 or Windows Server 2022+ (for ICU/IANA support)
+- User must download IANA tzdata and provide path
+
+**Rationale**: Windows platform code is implemented and follows the same pattern as POSIX. Needs validation on actual Windows systems.
 
 #### 3. Add Cache Hit/Miss Statistics
 **Status**: Proposed

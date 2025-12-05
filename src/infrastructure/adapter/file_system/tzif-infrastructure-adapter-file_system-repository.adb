@@ -74,7 +74,7 @@ package body TZif.Infrastructure.Adapter.File_System.Repository is
    --  Helper: Find TZif File
    --  ========================================================================
 
-   function Find_TZif_File (Zone_Id : String) return String is
+   function Find_TZif_File (Zone_Id : String) return Path_String_Option is
       use Ada.Directories;
    begin
       for Path of Search_Paths loop
@@ -83,11 +83,12 @@ package body TZif.Infrastructure.Adapter.File_System.Repository is
          begin
             if Exists (Full_Path) and then Kind (Full_Path) = Ordinary_File
             then
-               return Full_Path;
+               return Path_String_Options.New_Some
+                 (Path_Strings.To_Bounded_String (Full_Path));
             end if;
          end;
       end loop;
-      return "";  -- Not found
+      return Path_String_Options.None;
    end Find_TZif_File;
 
    --  ========================================================================
@@ -108,16 +109,19 @@ package body TZif.Infrastructure.Adapter.File_System.Repository is
       return Application.Port.Inbound.Find_By_Id.Find_By_Id_Result_Type
    is
       use TZif.Application.Port.Inbound.Find_By_Id;
-      Zone_Id_Str : constant String := To_String (Id);
-      File_Path   : constant String := Find_TZif_File (Zone_Id_Str);
+      Zone_Id_Str    : constant String := To_String (Id);
+      File_Path_Opt  : constant Path_String_Option :=
+        Find_TZif_File (Zone_Id_Str);
    begin
-      if File_Path'Length = 0 then
+      if Path_String_Options.Is_None (File_Path_Opt) then
          return
            Find_By_Id_Result.Error
              (Not_Found_Error, "Zone not found: " & Zone_Id_Str);
       end if;
 
       declare
+         File_Path    : constant String :=
+           Path_Strings.To_String (Path_String_Options.Value (File_Path_Opt));
          Parse_Result :
            constant Infrastructure.TZif_Parser.Parse_Result_Type :=
            Infrastructure.TZif_Parser.Parse_From_File (File_Path);
@@ -162,10 +166,11 @@ package body TZif.Infrastructure.Adapter.File_System.Repository is
    --  ========================================================================
 
    function Exists_By_Id (Id : Zone_Id_String) return Exists_Result is
-      Zone_Id_Str : constant String := To_String (Id);
-      File_Path   : constant String := Find_TZif_File (Zone_Id_Str);
+      Zone_Id_Str   : constant String := To_String (Id);
+      File_Path_Opt : constant Path_String_Option :=
+        Find_TZif_File (Zone_Id_Str);
    begin
-      return Boolean_Result.Ok (File_Path'Length > 0);
+      return Boolean_Result.Ok (Path_String_Options.Is_Some (File_Path_Opt));
    exception
       when E : others =>
          return
@@ -188,19 +193,22 @@ package body TZif.Infrastructure.Adapter.File_System.Repository is
      .Get_Transition_Result
    is
       use TZif.Application.Port.Inbound.Get_Transition_At_Epoch;
-      Zone_Id_Str : constant String :=
+      Zone_Id_Str   : constant String :=
         Application.Port.Inbound.Get_Transition_At_Epoch.Zone_Id_Strings
           .To_String
           (Id);
-      File_Path   : constant String := Find_TZif_File (Zone_Id_Str);
+      File_Path_Opt : constant Path_String_Option :=
+        Find_TZif_File (Zone_Id_Str);
    begin
-      if File_Path'Length = 0 then
+      if Path_String_Options.Is_None (File_Path_Opt) then
          return
            Get_Transition_Result_Package.Error
              (Not_Found_Error, "Zone not found: " & Zone_Id_Str);
       end if;
 
       declare
+         File_Path    : constant String :=
+           Path_Strings.To_String (Path_String_Options.Value (File_Path_Opt));
          Parse_Result :
            constant Infrastructure.TZif_Parser.Parse_Result_Type :=
            Infrastructure.TZif_Parser.Parse_From_File (File_Path);

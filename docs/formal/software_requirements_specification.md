@@ -82,10 +82,22 @@ TZif is a standalone Ada library implementing hexagonal (ports and adapters) arc
 
 | Requirement | Specification |
 |-------------|---------------|
-| Platforms | POSIX-compliant systems (Linux, macOS, BSD) |
+| Platforms | POSIX systems (Linux, macOS, BSD), Windows 10/Server 2022+ |
 | Ada Compiler | GNAT FSF 14.2+ or GNAT Pro 25.0+ |
 | Ada Version | Ada 2022 |
 | Dependencies | functional ^2.0.0 (Result/Option monads) |
+
+#### 2.4.1 Platform-Specific Notes
+
+**POSIX Systems (Linux, macOS, BSD)**:
+- TZif files are typically pre-installed at `/usr/share/zoneinfo/`
+- System timezone is determined via `/etc/localtime` symlink
+
+**Windows (10/Server 2022+)**:
+- User must provide path to IANA tzdata directory
+- Download tzdata from https://www.iana.org/time-zones
+- System timezone detected via Win32 API (`GetDynamicTimeZoneInformation`)
+- Windows timezone names automatically mapped to IANA zone IDs via CLDR data
 
 ---
 

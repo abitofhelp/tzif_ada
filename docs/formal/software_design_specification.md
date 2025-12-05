@@ -227,6 +227,40 @@ function Find_By_Id (Zone_Id) return Zone_Result;
 **Purpose**: Support multiple I/O backends (desktop, embedded)
 **Implementation**: `TZif.Application.Operations.All_Operations`
 
+### 4.5 Platform Abstraction
+
+**Pattern**: Platform-specific implementations behind common interface
+**Purpose**: Support POSIX and Windows platforms consistently
+**Implementation**: `TZif.Infrastructure.Platform.*`
+
+#### 4.5.1 Package Structure
+
+```
+TZif.Infrastructure.Platform           -- Generic interface definition
+TZif.Infrastructure.Platform.POSIX     -- Linux, macOS, BSD implementation
+TZif.Infrastructure.Platform.Windows   -- Windows 10/Server 2022+ implementation
+```
+
+#### 4.5.2 POSIX Implementation
+
+| Operation | Implementation |
+|-----------|----------------|
+| `Read_Symbolic_Link` | POSIX `readlink(2)` syscall |
+| Local TZ detection | Read `/etc/localtime` symlink target |
+
+#### 4.5.3 Windows Implementation
+
+| Operation | Implementation |
+|-----------|----------------|
+| `Read_Symbolic_Link` | Win32 `GetDynamicTimeZoneInformation` API |
+| Local TZ detection | Query Windows timezone, map to IANA via CLDR |
+| TZif file access | User-provided tzdata directory path |
+
+**Windows-to-IANA Mapping**:
+- Uses CLDR `windowsZones.xml` mapping data
+- ~50 common timezone mappings embedded in code
+- Returns error for unmapped Windows timezones
+
 ---
 
 ## 5. Data Flow

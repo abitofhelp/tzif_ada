@@ -16,28 +16,35 @@ package body TZif.Domain.Service.Timezone_Lookup is
    --  Find_Type_Index_At_Time (Helper)
    --  ========================================================================
    --  Find the timezone type index applicable at the given time.
-   --  Returns 0 if no transitions, otherwise returns the type_index from
-   --  the last transition that occurred before or at the given time.
+   --  Returns None if no timezone types available, otherwise returns
+   --  Some(type_index) from the last transition before or at the given time.
    --  ========================================================================
 
    function Find_Type_Index_At_Time
-     (Data : TZif_Data_Type; Time : Epoch_Seconds_Type) return Natural
+     (Data : TZif_Data_Type; Time : Epoch_Seconds_Type) return Type_Index_Option
    is
       use Transition_Vectors;
+      use Timezone_Type_Vectors;
    begin
+      --  Return None if no timezone types available
+      if Is_Empty (Data.Timezone_Types) then
+         return Type_Index_Options.None;
+      end if;
+
       --  No transitions: use first type (index 0)
       if Transition_Count (Data) = 0 then
-         return 0;
+         return Type_Index_Options.New_Some (0);
       end if;
 
       --  Time before first transition: use first transition's type
       if Time < Unchecked_First (Data.Transitions).Time then
-         return Unchecked_First (Data.Transitions).Type_Index;
+         return Type_Index_Options.New_Some
+           (Unchecked_First (Data.Transitions).Type_Index);
       end if;
 
       --  Binary search for last transition <= Time
       declare
-         Low          : Natural := First_Index;
+         Low          : Natural := Transition_Vectors.First_Index;
          High         : Natural := Last_Index (Data.Transitions);
          Mid          : Natural;
          Result_Index : Natural :=
@@ -53,7 +60,7 @@ package body TZif.Domain.Service.Timezone_Lookup is
                Low          := Mid + 1;
             else
                --  This transition is too late
-               if Mid > First_Index then
+               if Mid > Transition_Vectors.First_Index then
                   High := Mid - 1;
                else
                   exit;
@@ -61,7 +68,7 @@ package body TZif.Domain.Service.Timezone_Lookup is
             end if;
          end loop;
 
-         return Result_Index;
+         return Type_Index_Options.New_Some (Result_Index);
       end;
    end Find_Type_Index_At_Time;
 
@@ -74,22 +81,22 @@ package body TZif.Domain.Service.Timezone_Lookup is
       return UTC_Offset_Option
    is
       use Timezone_Type_Vectors;
-
-      --  TZif uses 0-based type indices; our vector is 1-based
-      Type_Index_0 : constant Natural := Find_Type_Index_At_Time (Data, Time);
-      Type_Index   : constant Positive := Type_Index_0 + 1;
+      Type_Index_Opt : constant Type_Index_Option :=
+        Find_Type_Index_At_Time (Data, Time);
    begin
-      --  Return None if no timezone types available
-      if Is_Empty (Data.Timezone_Types) then
+      if Type_Index_Options.Is_None (Type_Index_Opt) then
          return UTC_Offset_Options.None;
-      elsif Type_Index <= Length (Data.Timezone_Types) then
+      end if;
+
+      declare
+         --  TZif uses 0-based type indices; our vector is 1-based
+         Type_Index : constant Positive :=
+           Type_Index_Options.Value (Type_Index_Opt) + 1;
+      begin
          return
            UTC_Offset_Options.New_Some
              (Unchecked_Element (Data.Timezone_Types, Type_Index).UTC_Offset);
-      else
-         --  Invalid type index - return None rather than silent fallback
-         return UTC_Offset_Options.None;
-      end if;
+      end;
    end Find_UTC_Offset_At_Time;
 
    --  ========================================================================
@@ -100,22 +107,22 @@ package body TZif.Domain.Service.Timezone_Lookup is
      (Data : TZif_Data_Type; Time : Epoch_Seconds_Type) return Boolean_Option
    is
       use Timezone_Type_Vectors;
-
-      --  TZif uses 0-based type indices; our vector is 1-based
-      Type_Index_0 : constant Natural := Find_Type_Index_At_Time (Data, Time);
-      Type_Index   : constant Positive := Type_Index_0 + 1;
+      Type_Index_Opt : constant Type_Index_Option :=
+        Find_Type_Index_At_Time (Data, Time);
    begin
-      --  Return None if no timezone types available
-      if Is_Empty (Data.Timezone_Types) then
+      if Type_Index_Options.Is_None (Type_Index_Opt) then
          return Boolean_Options.None;
-      elsif Type_Index <= Length (Data.Timezone_Types) then
+      end if;
+
+      declare
+         --  TZif uses 0-based type indices; our vector is 1-based
+         Type_Index : constant Positive :=
+           Type_Index_Options.Value (Type_Index_Opt) + 1;
+      begin
          return
            Boolean_Options.New_Some
              (Unchecked_Element (Data.Timezone_Types, Type_Index).Is_DST);
-      else
-         --  Invalid type index - return None rather than silent fallback
-         return Boolean_Options.None;
-      end if;
+      end;
    end Is_DST_At_Time;
 
    --  ========================================================================
@@ -127,23 +134,23 @@ package body TZif.Domain.Service.Timezone_Lookup is
       return Abbreviation_Option
    is
       use Timezone_Type_Vectors;
-
-      --  TZif uses 0-based type indices; our vector is 1-based
-      Type_Index_0 : constant Natural := Find_Type_Index_At_Time (Data, Time);
-      Type_Index   : constant Positive := Type_Index_0 + 1;
+      Type_Index_Opt : constant Type_Index_Option :=
+        Find_Type_Index_At_Time (Data, Time);
    begin
-      --  Return None if no timezone types available
-      if Is_Empty (Data.Timezone_Types) then
+      if Type_Index_Options.Is_None (Type_Index_Opt) then
          return Abbreviation_Options.None;
-      elsif Type_Index <= Length (Data.Timezone_Types) then
+      end if;
+
+      declare
+         --  TZif uses 0-based type indices; our vector is 1-based
+         Type_Index : constant Positive :=
+           Type_Index_Options.Value (Type_Index_Opt) + 1;
+      begin
          return
            Abbreviation_Options.New_Some
              (Unchecked_Element
                 (Data.Timezone_Types, Type_Index).Abbreviation);
-      else
-         --  Invalid type index - return None rather than silent fallback
-         return Abbreviation_Options.None;
-      end if;
+      end;
    end Get_Abbreviation_At_Time;
 
 end TZif.Domain.Service.Timezone_Lookup;

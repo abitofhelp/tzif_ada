@@ -143,7 +143,9 @@ end Find_Local_Example;
 **Platform Support:**
 - **Linux/BSD**: Reads `/etc/localtime` symlink
 - **macOS**: Reads system timezone configuration
-- **Windows**: Not currently supported (returns error)
+- **Windows 10/Server 2022+**: Queries Windows timezone API, maps to IANA zone ID
+  - User must provide path to IANA tzdata directory
+  - Download from: https://www.iana.org/time-zones
 
 ---
 
@@ -382,8 +384,8 @@ See the full API documentation in:
 ### Q: Why does `Find_My_Id` return an error?
 
 **A:**
-- Some systems don't have `/etc/localtime` configured
-- Windows is not currently supported
+- **Linux/BSD/macOS**: Some systems don't have `/etc/localtime` configured
+- **Windows**: The Windows timezone may not have an IANA mapping (uncommon zones)
 - This is normal behavior - handle with `Is_Error(Result)`
 
 ### Q: Can I use TZif without the Functional library dependency?

@@ -45,6 +45,7 @@ with TZif.Application.Port.Inbound.List_All_Order_By_Id;
 with TZif.Application.Port.Inbound.Discover_Sources;
 with TZif.Application.Port.Inbound.Load_Source;
 with TZif.Application.Port.Inbound.Validate_Source;
+with TZif.Domain.Types.Option;
 
 package TZif.Infrastructure.Adapter.File_System.Repository is
 
@@ -79,6 +80,9 @@ package TZif.Infrastructure.Adapter.File_System.Repository is
    package Path_Strings is new Ada.Strings.Bounded.Generic_Bounded_Length
      (Max_Path_Length);
    subtype Path_String is Path_Strings.Bounded_String;
+
+   package Path_String_Options is new TZif.Domain.Types.Option (Path_String);
+   subtype Path_String_Option is Path_String_Options.Option;
 
    --  Version_String types removed - use canonical types from
    --  Application.Port.Inbound.Get_Version

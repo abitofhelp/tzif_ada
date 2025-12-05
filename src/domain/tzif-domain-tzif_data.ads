@@ -162,23 +162,27 @@ is
      TZif.Domain.Types.Option (Abbreviation_Type);
    subtype Abbreviation_Option is Abbreviation_Options.Option;
 
+   package Type_Index_Options is new TZif.Domain.Types.Option (Natural);
+   subtype Type_Index_Option is Type_Index_Options.Option;
+
    --  ========================================================================
    --  Lookup Functions
    --  ========================================================================
 
    --  Find the timezone type in effect at a given epoch time
-   --  Returns the type index, or raises Constraint_Error if not found
+   --  Returns Some(type_index) or None if no timezone types available
    function Find_Type_At_Time
-     (Data : TZif_Data_Type; Time : Epoch_Seconds_Type) return Natural;
+     (Data : TZif_Data_Type; Time : Epoch_Seconds_Type) return Type_Index_Option;
 
-   --  Get timezone type by index (1-based, add 1 to TZif 0-based index)
+   --  Get timezone type by index (0-based, matching TZif file format)
+   --  Internally converts to 1-based for Ada vector access
    function Get_Type
-     (Data : TZif_Data_Type; Type_Index : Positive)
+     (Data : TZif_Data_Type; Type_Index : Natural)
       return Timezone_Type.Timezone_Type_Record is
      (Timezone_Type_Vectors.Unchecked_Element
-        (Data.Timezone_Types, Type_Index))
+        (Data.Timezone_Types, Type_Index + 1))
    with
-     Pre => Type_Index <=
+     Pre => Type_Index <
        Timezone_Type_Vectors.Length (Data.Timezone_Types);
 
    --  Find the UTC offset in effect at a given epoch time

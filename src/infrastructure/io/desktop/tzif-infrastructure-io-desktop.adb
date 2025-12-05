@@ -34,7 +34,20 @@ is
    --  Rename Stream_IO to avoid namespace conflicts with Ada.Directories
    package SIO renames Ada.Streams.Stream_IO;
 
-   --  Standard zoneinfo base path on POSIX systems
+   --  ========================================================================
+   --  Default Zoneinfo Path
+   --  ========================================================================
+   --
+   --  This default path is used for operations that don't receive an explicit
+   --  source path. The developer should always provide explicit paths when
+   --  creating tzif/zoneinfo instances for cross-platform compatibility.
+   --
+   --  Platform notes:
+   --    - Linux/BSD/macOS: /usr/share/zoneinfo is typically pre-installed
+   --    - Windows: No default exists; developer must provide path to
+   --               downloaded IANA tzdata (https://www.iana.org/time-zones)
+   --  ========================================================================
+
    Zoneinfo_Base : constant String := "/usr/share/zoneinfo/";
 
    ----------------------------------------------------------------------

@@ -219,19 +219,41 @@ is
 
          --  Step 6: Find transition type at specified epoch
          declare
-            TZif_Data  : constant TZif.Domain.TZif_Data.TZif_Data_Type :=
+            TZif_Data   : constant TZif.Domain.TZif_Data.TZif_Data_Type :=
               Parse_Result.Value (Parse_Res);
-            Type_Index : constant Natural                              :=
+            Type_Index_Opt : constant TZif.Domain.TZif_Data.Type_Index_Option :=
               TZif.Domain.TZif_Data.Find_Type_At_Time (TZif_Data, Epoch);
-            TZ_Type    : constant Timezone_Type_Record                 :=
-              TZif.Domain.TZif_Data.Get_Type (TZif_Data, Type_Index);
-            Info       : constant Transition_Info_Type                 :=
-              Make_Transition_Info
-                (Epoch_Time   => Epoch, UTC_Offset => TZ_Type.UTC_Offset,
-                 Is_DST       => TZ_Type.Is_DST,
-                 Abbreviation => Get_Abbreviation (TZ_Type));
          begin
-            Result := Get_Transition_Result.Ok (Info);
+            --  Handle zones with no timezone types (None = empty TZif file)
+            if TZif.Domain.TZif_Data.Type_Index_Options.Is_None (Type_Index_Opt)
+            then
+               declare
+                  Info : constant Transition_Info_Type :=
+                    Make_Transition_Info
+                      (Epoch_Time   => Epoch,
+                       UTC_Offset   => 0,
+                       Is_DST       => False,
+                       Abbreviation => "UTC");
+               begin
+                  Result := Get_Transition_Result.Ok (Info);
+               end;
+            else
+               declare
+                  Type_Index : constant Natural :=
+                    TZif.Domain.TZif_Data.Type_Index_Options.Value
+                      (Type_Index_Opt);
+                  TZ_Type    : constant Timezone_Type_Record :=
+                    TZif.Domain.TZif_Data.Get_Type (TZif_Data, Type_Index);
+                  Info       : constant Transition_Info_Type :=
+                    Make_Transition_Info
+                      (Epoch_Time   => Epoch,
+                       UTC_Offset   => TZ_Type.UTC_Offset,
+                       Is_DST       => TZ_Type.Is_DST,
+                       Abbreviation => Get_Abbreviation (TZ_Type));
+               begin
+                  Result := Get_Transition_Result.Ok (Info);
+               end;
+            end if;
          end;
 
       end Get_Transition_At_Epoch;
