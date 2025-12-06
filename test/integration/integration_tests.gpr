@@ -17,17 +17,44 @@ project Integration_Tests is
    OS : OS_Type := external ("TZIF_OS", "unix");
 
    --  Platform-specific test exclusions:
-   --  - Unix: Exclude Windows platform tests
-   --  - Windows: Exclude old platform stubs test (superseded by real tests)
+   --  - Unix: Exclude Windows-specific files
+   --  - Windows: Exclude POSIX-specific tests (use POSIX_Repository)
    case OS is
       when "unix" =>
          for Excluded_Source_Files use
            ("test_platform_stubs.adb",
-            "test_windows_platform.adb");
+            "test_windows_platform.adb",
+            "integration_runner__windows.adb");
       when "windows" =>
+         --  Exclude all tests that use POSIX_Repository or POSIX_Zone_Repository
+         --  These cannot compile on Windows where POSIX platform is excluded
+         --  Also exclude the Unix integration_runner (use Windows-specific one)
          for Excluded_Source_Files use
-           ("test_platform_stubs.adb");
+           ("test_platform_stubs.adb",
+            "integration_runner.adb",
+            "test_discover_sources.adb",
+            "test_find_by_id.adb",
+            "test_find_by_pattern.adb",
+            "test_find_by_regex.adb",
+            "test_find_by_region.adb",
+            "test_find_my_id.adb",
+            "test_get_transition_at_epoch.adb",
+            "test_get_version.adb",
+            "test_list_all_order_by_id.adb",
+            "test_load_source.adb",
+            "test_validate_source.adb",
+            "test_zone_repository_errors.adb");
    end case;
+
+   --  Use GPR Naming to select appropriate runner body per platform
+   package Naming is
+      case OS is
+         when "unix" =>
+            null;  --  Use default naming (integration_runner.adb)
+         when "windows" =>
+            for Body ("Integration_Runner") use "integration_runner__windows.adb";
+      end case;
+   end Naming;
 
    for Object_Dir use "../../obj/test/integration";
    for Exec_Dir use "../bin";
