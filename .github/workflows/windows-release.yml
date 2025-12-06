@@ -63,8 +63,8 @@ jobs:
       - name: Update functional pin for CI
         shell: bash
         run: |
-          # Replace local path pin with GitHub URL pin
-          sed -i "s|path = '../functional'|url = 'https://github.com/abitofhelp/functional.git' \& tag = 'v2.2.1'|" alire.toml
+          # Replace local path pin with GitHub URL pin (commit is the tag SHA)
+          sed -i "s|path = '../functional'|url = \"https://github.com/abitofhelp/functional.git\", commit = \"v2.2.1\"|" alire.toml
           echo "Updated pin to use GitHub URL"
           cat alire.toml
 
