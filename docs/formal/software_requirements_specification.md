@@ -1,7 +1,7 @@
 # Software Requirements Specification (SRS)
 
-**Version:** 1.0.0<br>
-**Date:** 2025-12-02<br>
+**Version:** 1.1.0<br>
+**Date:** 2025-12-06<br>
 **SPDX-License-Identifier:** BSD-3-Clause<br>
 **License File:** See the LICENSE file in the project root<br>
 **Copyright:** © 2025 Michael Gardner, A Bit of Help, Inc.<br>
@@ -82,7 +82,7 @@ TZif is a standalone Ada library implementing hexagonal (ports and adapters) arc
 
 | Requirement | Specification |
 |-------------|---------------|
-| Platforms | POSIX systems (Linux, macOS, BSD), Windows 10/Server 2022+ |
+| Platforms | POSIX (Linux, macOS, BSD), Windows 10+, Embedded (STM32, ARM) |
 | Ada Compiler | GNAT FSF 14.2+ or GNAT Pro 25.0+ |
 | Ada Version | Ada 2022 |
 | Dependencies | functional ^2.0.0 (Result/Option monads) |
@@ -98,6 +98,12 @@ TZif is a standalone Ada library implementing hexagonal (ports and adapters) arc
 - Download tzdata from https://www.iana.org/time-zones
 - System timezone detected via Win32 API (`GetDynamicTimeZoneInformation`)
 - Windows timezone names automatically mapped to IANA zone IDs via CLDR data
+
+**Embedded Systems (STM32F769I, ARM Cortex-M)**:
+- TZif files stored in RAM-based filesystem or flash
+- System timezone configured via environment variable, config file, or compile-time constant
+- Supports Ravenscar profile for real-time constraints
+- No dynamic memory allocation in core operations
 
 ---
 
@@ -216,8 +222,23 @@ TZif is a standalone Ada library implementing hexagonal (ports and adapters) arc
 | ID | Requirement |
 |----|-------------|
 | NFR-03.1 | Support POSIX platforms (Linux, macOS, BSD) |
-| NFR-03.2 | No platform-specific code in domain/application layers |
-| NFR-03.3 | Generic I/O plugin pattern for platform portability |
+| NFR-03.2 | Support Windows platforms (10/Server 2022+) |
+| NFR-03.3 | Support embedded platforms (STM32F769I, ARM Cortex-M) |
+| NFR-03.4 | No platform-specific code in domain layer |
+| NFR-03.5 | No infrastructure types exposed in application layer ports |
+| NFR-03.6 | Platform adapters selectable via GPR configuration |
+
+### 4.6 Platform Abstraction (NFR-06)
+
+| ID | Requirement |
+|----|-------------|
+| NFR-06.1 | Application layer defines abstract outbound ports using pure function signatures |
+| NFR-06.2 | Infrastructure layer provides platform-specific adapters implementing ports |
+| NFR-06.3 | Composition roots (API.Desktop, API.Windows, API.Embedded) wire adapters to ports |
+| NFR-06.4 | Domain types used in port signatures, not infrastructure types |
+| NFR-06.5 | New platforms addable without modifying application layer |
+| NFR-06.6 | All platform adapters testable via mock implementations |
+| NFR-06.7 | Cross-platform tests runnable on all supported platforms |
 
 ### 4.4 Maintainability (NFR-04)
 
@@ -328,8 +349,14 @@ TZif (Timezone Information Format) is a binary format defined by IANA for storin
 ---
 
 **Document Control**:
-- Version: 1.0.0
-- Last Updated: 2025-12-02
-- Status: Released
+- Version: 1.1.0
+- Last Updated: 2025-12-06
+- Status: Draft (Platform Abstraction Refactoring)
 - Copyright © 2025 Michael Gardner, A Bit of Help, Inc.
 - License: BSD-3-Clause
+
+**Change History**:
+| Version | Date | Author | Changes |
+|---------|------|--------|---------|
+| 1.0.0 | 2025-12-02 | Michael Gardner | Initial release |
+| 1.1.0 | 2025-12-06 | Michael Gardner | Added platform abstraction requirements (NFR-06), embedded platform support, Windows platform validation |

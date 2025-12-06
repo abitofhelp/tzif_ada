@@ -1,4 +1,4 @@
-# Tzif Documentation
+# TZif Documentation
 
 **Version:** 1.0.0  
 **Date:** December 02, 2025  
@@ -11,7 +11,7 @@
 
 ## Welcome
 
-Welcome to the documentation for **Tzif**, a canonical Ada 2022 library demonstrating hexagonal architecture (DDD/Clean/Hex) with:
+Welcome to the documentation for **tzif**, a canonical Ada 2022 library demonstrating hexagonal architecture (DDD/Clean/Hex) with:
 
 - **Functional error handling** via Result monad
 - **SPARK-compatible design** for formal verification
@@ -37,6 +37,7 @@ Welcome to the documentation for **Tzif**, a canonical Ada 2022 library demonstr
 
 - **[All About Our API](common/guides/all_about_our_api.md)** - API layer architecture and usage
 - **[Architecture Enforcement](common/guides/architecture_enforcement.md)** - Hexagonal architecture rules
+- **[Embedded Platform Guide](guides/embedded_platform_guide.md)** - STM32, Ravenscar, and embedded targets
 - **[Error Handling Strategy](common/guides/error_handling_strategy.md)** - Result monad patterns
 
 ### Reference
@@ -48,15 +49,15 @@ Welcome to the documentation for **Tzif**, a canonical Ada 2022 library demonstr
 
 ## Architecture Overview
 
-Tzif follows a **4-layer library architecture**:
+TZif follows a **4-layer library architecture**:
 
 ```
 ┌─────────────────────────────────────────────────────────┐
 │                        API Layer                         │
 │  Public facade + composition roots + SPARK operations   │
-│  - Tzif.API (facade)                          │
-│  - Tzif.API.Desktop (composition root)        │
-│  - Tzif.API.Operations (SPARK-safe)           │
+│  - TZif.API (facade)                          │
+│  - TZif.API.Desktop (composition root)        │
+│  - TZif.API.Operations (SPARK-safe)           │
 └─────────────────────────┬───────────────────────────────┘
                           │
 ┌─────────────────────────┼───────────────────────────────┐
@@ -107,10 +108,10 @@ Run tests: `make test-all`
 ## Quick Example
 
 ```ada
-with Tzif.API;
+with TZif.API;
 
 procedure Main is
-   use Tzif.API;
+   use TZif.API;
 
    Cmd    : constant Greet_Command := Create_Greet_Command ("World");
    Result : constant Unit_Result.Result := Greet (Cmd);

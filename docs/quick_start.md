@@ -331,6 +331,7 @@ make test-all
 
 - **[Error Handling Strategy](guides/error_handling_strategy.md)** - Deep dive into Result monad
 - **[Build Profiles Guide](guides/build_profiles.md)** - Configure for your platform
+- **[Embedded Platform Guide](guides/embedded_platform_guide.md)** - STM32, Ravenscar, and embedded targets
 - **[Architecture Enforcement](guides/architecture_enforcement.md)** - Layer dependency rules
 
 ### Example Programs

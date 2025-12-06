@@ -91,17 +91,23 @@ library project TZif is
    --  =======================================================================
    case OS is
       when "unix" =>
+         --  Exclude Windows platform and Windows IO (uses Win32 API)
+         --  Keep Desktop IO and Embedded IO for POSIX systems
          for Excluded_Source_Files use
            ("tzif-infrastructure-platform-windows.ads",
-            "tzif-infrastructure-platform-windows.adb");
+            "tzif-infrastructure-platform-windows.adb",
+            "tzif-infrastructure-io-windows.ads",
+            "tzif-infrastructure-io-windows.adb",
+            "tzif-api-windows.ads");
       when "windows" =>
-         --  Exclude POSIX platform and desktop IO (uses POSIX symlinks)
-         --  Windows uses Win32 API for timezone detection instead
+         --  Exclude POSIX platform and Desktop IO (uses POSIX symlinks)
+         --  Keep Windows IO and Embedded IO for Windows systems
          for Excluded_Source_Files use
            ("tzif-infrastructure-platform-posix.ads",
             "tzif-infrastructure-platform-posix.adb",
             "tzif-infrastructure-io-desktop.ads",
-            "tzif-infrastructure-io-desktop.adb");
+            "tzif-infrastructure-io-desktop.adb",
+            "tzif-api-desktop.ads");
    end case;
 
    for Object_Dir use "obj/" & TZif_Config.Build_Profile;
