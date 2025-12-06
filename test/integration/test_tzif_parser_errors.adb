@@ -1,11 +1,11 @@
 pragma Ada_2022;
 --  ======================================================================
---  Test_Tzif_Parser_Errors
+--  Test_TZif_Parser_Errors
 --  ======================================================================
 --  Copyright (c) 2025 Michael Gardner, A Bit of Help, Inc.
 --  SPDX-License-Identifier: BSD-3-Clause
 --  Purpose:
---    Unit tests for Tzif Parser Errors functionality.
+--    Unit tests for TZif Parser Errors functionality.
 --  ======================================================================
 with Ada.Text_IO; use Ada.Text_IO;
 with Ada.Command_Line;

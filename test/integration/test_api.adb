@@ -12,10 +12,12 @@ with Ada.Text_IO; use Ada.Text_IO;
 with Ada.Command_Line;
 with Test_Framework;
 with TZif.API;
+with Test_API_Callbacks;
 
 procedure Test_API is
 
    use TZif.API;
+   use Test_API_Callbacks;
 
    Test_Count : Natural := 0;
    Pass_Count : Natural := 0;
@@ -31,31 +33,9 @@ procedure Test_API is
       end if;
    end Assert;
 
-   --  Callback for Find_By_Pattern
-   Pattern_Match_Count : Natural := 0;
-   procedure Pattern_Callback (Zone : Zone_Id_Type) is
-      pragma Unreferenced (Zone);
-   begin
-      Pattern_Match_Count := Pattern_Match_Count + 1;
-   end Pattern_Callback;
-
-   --  Callback for Find_By_Region
-   Region_Match_Count : Natural := 0;
-   procedure Region_Callback (Zone : Zone_Id_Type) is
-      pragma Unreferenced (Zone);
-   begin
-      Region_Match_Count := Region_Match_Count + 1;
-   end Region_Callback;
-
-   --  Callback for Find_By_Regex
-   Regex_Match_Count : Natural := 0;
-   procedure Regex_Callback (Zone : Zone_Id_Type) is
-      pragma Unreferenced (Zone);
-   begin
-      Regex_Match_Count := Regex_Match_Count + 1;
-   end Regex_Callback;
-
 begin
+   --  Reset counters at start
+   Reset_Counters;
    Put_Line ("Test: TZif.API.Find_By_Id");
 
    --  Test valid zone via API
@@ -78,7 +58,7 @@ begin
       Zone_Id : constant Zone_Id_Type := Make_Zone_Id ("Invalid/Zone");
       Result  : constant Zone_Result := Find_By_Id (Zone_Id);
    begin
-      Assert (Is_Error (Result), "API.Find_By_Id should error on invalid zone");
+      Assert (Is_Error (Result), "API.Find_By_Id errors on invalid zone");
    end;
 
    Put_Line ("Test: TZif.API.Find_My_Id");
@@ -108,7 +88,8 @@ begin
 
    --  Test Get_Transition_At_Epoch for America/Los_Angeles (has DST)
    declare
-      Zone : constant Zone_Id_String := Make_Zone_Id_String ("America/Los_Angeles");
+      Zone : constant Zone_Id_String :=
+        Make_Zone_Id_String ("America/Los_Angeles");
       --  Summer time (July 2025)
       Epoch  : constant Epoch_Seconds_Type := 1_751_328_000;
       Result : constant Transition_Result :=
@@ -133,10 +114,11 @@ begin
 
    --  Test Discover_Sources with standard paths
    declare
-      Paths : Path_List (1 .. 1);
+      Paths : Path_List;
    begin
-      Paths (1) := Discover_Port.Path_Strings.To_Bounded_String
-        ("/usr/share/zoneinfo");
+      Discover_Port.Path_Vectors.Append
+        (Paths,
+         Discover_Port.Path_Strings.To_Bounded_String ("/usr/share/zoneinfo"));
       declare
          Result : constant Discovery_Result := Discover_Sources (Paths);
       begin
@@ -257,7 +239,7 @@ begin
       Pattern : constant Pattern_String :=
         Find_Pattern_Port.Pattern_Strings.To_Bounded_String ("York");
       Result  : constant Pattern_Result :=
-        Find_By_Pattern (Pattern, Pattern_Callback'Access);
+        Find_By_Pattern (Pattern, On_Pattern_Match'Access);
    begin
       Assert
         (Find_Pattern_Port.Find_By_Pattern_Result_Package.Is_Ok (Result),
@@ -272,7 +254,7 @@ begin
       Region : constant Region_String :=
         Find_Region_Port.Region_Strings.To_Bounded_String ("Europe");
       Result : constant Region_Result :=
-        Find_By_Region (Region, Region_Callback'Access);
+        Find_By_Region (Region, On_Region_Match'Access);
    begin
       Assert
         (Find_Region_Port.Find_By_Region_Result_Package.Is_Ok (Result),
@@ -287,7 +269,7 @@ begin
       Regex : constant Regex_String :=
         Find_Regex_Port.Regex_Strings.To_Bounded_String ("^America/New.*");
       Result : constant Regex_Result :=
-        Find_By_Regex (Regex, Regex_Callback'Access);
+        Find_By_Regex (Regex, On_Regex_Match'Access);
    begin
       Assert
         (Find_Regex_Port.Find_By_Regex_Result_Package.Is_Ok (Result),
