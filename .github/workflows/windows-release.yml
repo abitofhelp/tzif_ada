@@ -69,10 +69,11 @@ jobs:
           cat alire.toml
 
       # -----------------------------------------------------------------------
-      # Build Windows platform tests only
+      # Build Windows platform tests
       # -----------------------------------------------------------------------
-      # Note: The main tzif library and full test suite use Desktop IO which
-      # depends on POSIX symlinks. On Windows, we only validate:
+      # Uses windows_platform_tests.gpr - a standalone project that doesn't
+      # depend on gnatcoll or the full tzif_config.gpr dependencies.
+      # This validates:
       # 1. Windows platform code compiles correctly
       # 2. Win32 GetDynamicTimeZoneInformation API works
       # 3. CLDR Windows-to-IANA timezone mapping works
@@ -80,8 +81,7 @@ jobs:
       - name: Build Windows platform tests
         shell: bash
         run: |
-          alr exec -- gprbuild -P test/integration/integration_tests.gpr -XTZIF_OS=windows -p \
-            -u test_windows_platform.adb
+          alr exec -- gprbuild -P test/integration/windows_platform_tests.gpr -p
 
       # -----------------------------------------------------------------------
       # Run Windows platform tests
