@@ -4,7 +4,6 @@ pragma Ada_2022;
 --  ======================================================================
 --  Copyright (c) 2025 Michael Gardner, A Bit of Help, Inc.
 --  SPDX-License-Identifier: BSD-3-Clause
---
 --  Purpose:
 --    Comprehensive unit tests for ULID functionality including:
 --    - Validation (Is_Valid_ULID_String)
@@ -14,7 +13,6 @@ pragma Ada_2022;
 --    - Monotonic increment (same-millisecond handling)
 --    - Thread safety (concurrent generation)
 --    - Seed-based deterministic generation
---
 --  ======================================================================
 
 with Ada.Text_IO; use Ada.Text_IO;

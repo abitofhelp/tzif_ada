@@ -1,16 +1,15 @@
 pragma Ada_2022;
-pragma Unevaluated_Use_Of_Old (Allow);
 --  ======================================================================
 --  Test_Bounded_Vector
 --  ======================================================================
 --  Copyright (c) 2025 Michael Gardner, A Bit of Help, Inc.
 --  SPDX-License-Identifier: BSD-3-Clause
---
 --  Purpose:
 --    Unit tests for TZif.Domain.Bounded_Vector generic package.
 --    Tests all public operations including Option/Result error handling.
---
 --  ======================================================================
+
+pragma Unevaluated_Use_Of_Old (Allow);
 
 with Ada.Text_IO; use Ada.Text_IO;
 with Ada.Command_Line;

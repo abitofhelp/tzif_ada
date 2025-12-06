@@ -4,12 +4,10 @@ pragma Ada_2022;
 --  ======================================================================
 --  Copyright (c) 2025 Michael Gardner, A Bit of Help, Inc.
 --  SPDX-License-Identifier: BSD-3-Clause
---
 --  Purpose:
 --    Unit tests for TZif.Domain.Error.Result generic package.
 --    Tests all combinator operations to achieve full coverage of
 --    functional operations: And_Then, Map_Error, With_Context.
---
 --  ======================================================================
 
 with Ada.Text_IO; use Ada.Text_IO;
