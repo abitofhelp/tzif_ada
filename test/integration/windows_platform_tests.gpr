@@ -34,25 +34,8 @@ project Windows_Platform_Tests is
       "../../src/infrastructure/cache",
       "../../config/profiles/standard");
 
-   --  Exclude POSIX platform and desktop IO (not available on Windows)
-   for Excluded_Source_Files use
-     ("tzif-infrastructure-platform-posix.ads",
-      "tzif-infrastructure-platform-posix.adb",
-      "tzif-infrastructure-io-desktop.ads",
-      "tzif-infrastructure-io-desktop.adb",
-      "tzif-infrastructure-io.ads",
-      "tzif-infrastructure-tzif_parser.ads",
-      "tzif-infrastructure-tzif_parser.adb",
-      "tzif-infrastructure-query_timezone_info.ads",
-      "tzif-infrastructure-query_timezone_info.adb",
-      "tzif-infrastructure-cpu.ads",
-      "tzif-infrastructure-cpu.adb",
-      "tzif-domain-service-timezone_lookup.ads",
-      "tzif-domain-service-timezone_lookup.adb",
-      "tzif-domain-parser.ads",
-      "tzif-domain-parser.adb",
-      "tzif-domain-tzif_data.ads",
-      "tzif-domain-tzif_data.adb");
+   --  Note: No Excluded_Source_Files needed - we only include specific
+   --  directories that don't contain POSIX-specific code
 
    for Object_Dir use "../../obj/test/windows_platform";
    for Exec_Dir use "../bin";
