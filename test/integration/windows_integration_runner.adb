@@ -1,6 +1,6 @@
 pragma Ada_2022;
 --  ======================================================================
---  Integration_Runner - Windows-specific test runner
+--  Windows_Integration_Runner - Windows-specific test runner
 --  ======================================================================
 --  Copyright (c) 2025 Michael Gardner, A Bit of Help, Inc.
 --  SPDX-License-Identifier: BSD-3-Clause
@@ -21,7 +21,7 @@ with Test_API;
 with Test_Query_Timezone_Info;
 with Test_TZif_Parser_Errors;
 
-procedure Integration_Runner is
+procedure Windows_Integration_Runner is
 
    use Ada.Text_IO;
    use Ada.Command_Line;
@@ -81,4 +81,4 @@ begin
       Set_Exit_Status (if Exit_Code = 0 then Success else Failure);
    end;
 
-end Integration_Runner;
+end Windows_Integration_Runner;

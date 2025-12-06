@@ -24,13 +24,14 @@ project Integration_Tests is
          for Excluded_Source_Files use
            ("test_platform_stubs.adb",
             "test_windows_platform.adb",
-            "integration_runner__windows.adb");
+            "windows_integration_runner.adb");
       when "windows" =>
          --  Exclude all tests that use POSIX_Repository or POSIX_Zone_Repository
          --  These cannot compile on Windows where POSIX platform is excluded
-         --  Note: integration_runner.adb is NOT excluded; Naming maps it to Windows body
+         --  Also exclude integration_runner.adb (has POSIX imports)
          for Excluded_Source_Files use
            ("test_platform_stubs.adb",
+            "integration_runner.adb",
             "test_discover_sources.adb",
             "test_find_by_id.adb",
             "test_find_by_pattern.adb",
@@ -50,13 +51,13 @@ project Integration_Tests is
 
    --  Main executables:
    --  - integration_runner: runs all integration tests (Unix)
-   --  - integration_runner__windows: runs Windows-compatible tests
+   --  - windows_integration_runner: runs Windows-compatible tests
    --  - test_windows_platform: Windows-only standalone test (for CI)
    case OS is
       when "unix" =>
          for Main use ("integration_runner.adb");
       when "windows" =>
-         for Main use ("integration_runner__windows.adb", "test_windows_platform.adb");
+         for Main use ("windows_integration_runner.adb", "test_windows_platform.adb");
    end case;
 
    package Compiler is
