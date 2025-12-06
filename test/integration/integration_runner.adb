@@ -16,6 +16,7 @@ with Ada.Text_IO;
 with Test_Framework;
 
 --  Import all integration test procedures
+with Test_API;
 with Test_Discover_Sources;
 with Test_Find_By_Id;
 with Test_Find_By_Pattern;
@@ -53,6 +54,7 @@ begin
    --  Run all integration test procedures
    --  Each test registers its results with Test_Framework
 
+   Test_API;
    Test_Discover_Sources;
    Test_Find_By_Id;
    Test_Find_By_Pattern;

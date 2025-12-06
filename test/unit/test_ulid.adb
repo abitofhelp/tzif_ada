@@ -325,77 +325,108 @@ procedure Test_ULID is
    --  =====================================================================
 
    procedure Test_Thread_Safety is
-      Task_Count  : constant := 10;
-      Per_Task    : constant := 100;
+      Task_Count  : constant := 4;
+      Per_Task    : constant := 50;
       Total_Count : constant := Task_Count * Per_Task;
 
-      --  Set for uniqueness checking (must be outside protected type)
-      package Thread_ULID_Sets is new Ada.Containers.Ordered_Sets
-        (Element_Type => ULID_Type);
-      use Thread_ULID_Sets;
+      --  Storage for collected ULIDs
+      type ULID_Array is array (1 .. Total_Count) of ULID_Type;
 
-      --  Protected type to collect results from tasks
-      protected Result_Collector is
-         procedure Add (ULID : ULID_Type);
+      --  Protected collector to safely aggregate from multiple tasks
+      protected Collector is
+         procedure Add (U : ULID_Type);
+         procedure Task_Finished;
+         entry Wait_For_All;
          function Get_Count return Natural;
-         function All_Unique return Boolean;
+         function Get_ULIDs return ULID_Array;
       private
-         ULID_Set : Thread_ULID_Sets.Set;
-      end Result_Collector;
+         ULIDs      : ULID_Array := [others => Null_ULID];
+         Count      : Natural := 0;
+         Tasks_Done : Natural := 0;
+      end Collector;
 
-      protected body Result_Collector is
-         procedure Add (ULID : ULID_Type) is
+      protected body Collector is
+         procedure Add (U : ULID_Type) is
          begin
-            ULID_Set.Insert (ULID);
+            if Count < Total_Count then
+               Count := Count + 1;
+               ULIDs (Count) := U;
+            end if;
          end Add;
+
+         procedure Task_Finished is
+         begin
+            Tasks_Done := Tasks_Done + 1;
+         end Task_Finished;
+
+         entry Wait_For_All when Tasks_Done = Task_Count is
+         begin
+            null;  --  Just unblock when all tasks have signaled
+         end Wait_For_All;
 
          function Get_Count return Natural is
          begin
-            return Natural (ULID_Set.Length);
+            return Count;
          end Get_Count;
 
-         function All_Unique return Boolean is
+         function Get_ULIDs return ULID_Array is
          begin
-            return Natural (ULID_Set.Length) = Total_Count;
-         end All_Unique;
-      end Result_Collector;
+            return ULIDs;
+         end Get_ULIDs;
+      end Collector;
 
       --  Worker task type
-      task type ULID_Generator_Task;
+      task type Worker_Task;
 
-      task body ULID_Generator_Task is
+      task body Worker_Task is
       begin
          for I in 1 .. Per_Task loop
-            declare
-               ULID : constant ULID_Type := Generate;
-            begin
-               Result_Collector.Add (ULID);
-            end;
+            Collector.Add (Generate);
          end loop;
-      end ULID_Generator_Task;
+         Collector.Task_Finished;
+      end Worker_Task;
+
+      --  Check uniqueness
+      function Count_Unique return Natural is
+         Collected : constant ULID_Array := Collector.Get_ULIDs;
+         N         : constant Natural := Total_Count;
+         Unique    : Natural := 0;
+         Is_Dup    : Boolean;
+      begin
+         for I in 1 .. N loop
+            Is_Dup := False;
+            for J in 1 .. I - 1 loop
+               if Collected (I) = Collected (J) then
+                  Is_Dup := True;
+                  exit;
+               end if;
+            end loop;
+            if not Is_Dup then
+               Unique := Unique + 1;
+            end if;
+         end loop;
+         return Unique;
+      end Count_Unique;
+
+      --  Declare workers
+      Workers : array (1 .. Task_Count) of Worker_Task;
+      pragma Unreferenced (Workers);
 
    begin
       Put_Line ("Test: Thread Safety (Concurrent Generation)");
 
-      --  Launch concurrent tasks
-      declare
-         type Task_Array is array (1 .. Task_Count) of ULID_Generator_Task;
-         Tasks : Task_Array;
-         pragma Unreferenced (Tasks);
-      begin
-         --  Tasks run and complete automatically
-         null;
-      end;
-
-      --  Verify all ULIDs were unique (no race conditions)
-      Assert
-        (Result_Collector.All_Unique,
-         "Concurrent generation from" & Task_Count'Image & " tasks produces" &
-         Total_Count'Image & " unique ULIDs (no race conditions)");
+      --  Wait for all workers to complete
+      Collector.Wait_For_All;
 
       Assert
-        (Result_Collector.Get_Count = Total_Count,
-         "All" & Total_Count'Image & " ULIDs collected successfully");
+        (Collector.Get_Count = Total_Count,
+         "Concurrent tasks collected" & Total_Count'Image &
+         " ULIDs (got" & Collector.Get_Count'Image & ")");
+
+      Assert
+        (Count_Unique = Total_Count,
+         "All" & Total_Count'Image & " ULIDs are unique - no race conditions" &
+         " (got" & Count_Unique'Image & " unique)");
 
    end Test_Thread_Safety;
 

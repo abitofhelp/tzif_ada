@@ -300,6 +300,120 @@ begin
               "Combined chain preserves error kind");
    end;
 
+   Put_Line ("Test: Bimap - Transform Both Ok and Error");
+   --  Bimap on Ok transforms value
+   declare
+      function Double (X : Integer) return Integer is (X * 2);
+
+      function Change_Kind (E : Error_Type) return Error_Type is
+        ((Kind => IO_Error, Message => E.Message));
+
+      function Transform is new Int_Result.Bimap
+        (Map_Ok  => Double,
+         Map_Err => Change_Kind);
+
+      R      : constant Int_Res := Int_Result.Ok (21);
+      Mapped : constant Int_Res := Transform (R);
+   begin
+      Assert (Int_Result.Is_Ok (Mapped), "Bimap on Ok returns Ok");
+      Assert (Int_Result.Value (Mapped) = 42,
+              "Bimap transforms Ok value correctly");
+   end;
+
+   --  Bimap on Error transforms error
+   declare
+      function Double (X : Integer) return Integer is (X * 2);
+
+      function Change_Kind (E : Error_Type) return Error_Type is
+        ((Kind => IO_Error, Message => E.Message));
+
+      function Transform is new Int_Result.Bimap
+        (Map_Ok  => Double,
+         Map_Err => Change_Kind);
+
+      R      : constant Int_Res := Int_Result.Error (Validation_Error, "test");
+      Mapped : constant Int_Res := Transform (R);
+   begin
+      Assert (Int_Result.Is_Error (Mapped), "Bimap on Error returns Error");
+      Assert (Int_Result.Error_Info (Mapped).Kind = IO_Error,
+              "Bimap transforms error kind");
+   end;
+
+   Put_Line ("Test: Ensure - Validate Ok Values");
+   --  Ensure on Ok with predicate true keeps Ok
+   declare
+      function Is_Positive (X : Integer) return Boolean is (X > 0);
+
+      function To_Validation_Error (X : Integer) return Error_Type is
+         pragma Unreferenced (X);
+      begin
+         return
+           (Kind    => Validation_Error,
+            Message => To_Bounded_String ("Not positive"));
+      end To_Validation_Error;
+
+      function Validate is new Int_Result.Ensure
+        (Pred     => Is_Positive,
+         To_Error => To_Validation_Error);
+
+      R      : constant Int_Res := Int_Result.Ok (10);
+      Result : constant Int_Res := Validate (R);
+   begin
+      Assert (Int_Result.Is_Ok (Result),
+              "Ensure keeps Ok if predicate holds");
+      Assert (Int_Result.Value (Result) = 10,
+              "Ensure preserves Ok value");
+   end;
+
+   --  Ensure on Ok with predicate false converts to Error
+   declare
+      function Is_Positive (X : Integer) return Boolean is (X > 0);
+
+      function To_Validation_Error (X : Integer) return Error_Type is
+         pragma Unreferenced (X);
+      begin
+         return
+           (Kind    => Validation_Error,
+            Message => To_Bounded_String ("Not positive"));
+      end To_Validation_Error;
+
+      function Validate is new Int_Result.Ensure
+        (Pred     => Is_Positive,
+         To_Error => To_Validation_Error);
+
+      R      : constant Int_Res := Int_Result.Ok (-5);
+      Result : constant Int_Res := Validate (R);
+   begin
+      Assert (Int_Result.Is_Error (Result),
+              "Ensure converts to Error if predicate fails");
+      Assert (Int_Result.Error_Info (Result).Kind = Validation_Error,
+              "Ensure creates correct error kind");
+   end;
+
+   --  Ensure on Error leaves Error unchanged
+   declare
+      function Is_Positive (X : Integer) return Boolean is (X > 0);
+
+      function To_Validation_Error (X : Integer) return Error_Type is
+         pragma Unreferenced (X);
+      begin
+         return
+           (Kind    => Validation_Error,
+            Message => To_Bounded_String ("Not positive"));
+      end To_Validation_Error;
+
+      function Validate is new Int_Result.Ensure
+        (Pred     => Is_Positive,
+         To_Error => To_Validation_Error);
+
+      R      : constant Int_Res := Int_Result.Error (IO_Error, "original");
+      Result : constant Int_Res := Validate (R);
+   begin
+      Assert (Int_Result.Is_Error (Result), "Ensure leaves Error unchanged");
+      Assert (Int_Result.Error_Info (Result).Kind = IO_Error,
+              "Ensure preserves original error kind");
+   end;
+
    Put_Line ("Test: All Error Kinds");
    --  Test each error kind can be created and retrieved
    declare

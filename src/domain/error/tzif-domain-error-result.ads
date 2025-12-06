@@ -106,6 +106,83 @@ is
          with function Add (E : Error_Type; Where : String) return Error_Type;
       function With_Context (Self : Result; Where : String) return Result;
 
+      --  =====================================================================
+      --  Extractors with defaults
+      --  =====================================================================
+
+      --  Expect: extract value or raise with custom message
+      --  Forces programmer to document why they believe Result is Ok
+      function Expect (Self : Result; Msg : String) return T with
+        Pre => Is_Ok (Self) or else raise Program_Error with Msg;
+
+      --  Unwrap_Or: extract value or return default
+      function Unwrap_Or (Self : Result; Default : T) return T with
+        Post =>
+          (if Is_Ok (Self) then Unwrap_Or'Result = Value (Self)
+           else Unwrap_Or'Result = Default);
+
+      --  Unwrap_Or_With: extract value or compute default lazily
+      generic
+         with function F return T;
+      function Unwrap_Or_With (Self : Result) return T;
+
+      --  =====================================================================
+      --  Mapping and transformation
+      --  =====================================================================
+
+      --  Map: transform Ok value (keeps same type)
+      generic
+         with function F (X : T) return T;
+      function Map (Self : Result) return Result;
+
+      --  Bimap: transform both Ok and Error values simultaneously
+      generic
+         with function Map_Ok (X : T) return T;
+         with function Map_Err (E : Error_Type) return Error_Type;
+      function Bimap (Self : Result) return Result;
+
+      --  =====================================================================
+      --  Fallback and recovery
+      --  =====================================================================
+
+      --  Fallback: try alternative on error (eager evaluation)
+      function Fallback (A, B : Result) return Result;
+
+      --  Fallback_With: try alternative on error (lazy evaluation)
+      generic
+         with function F return Result;
+      function Fallback_With (Self : Result) return Result;
+
+      --  Recover: turn error into value
+      generic
+         with function Handle (E : Error_Type) return T;
+      function Recover (Self : Result) return T;
+
+      --  Recover_With: turn error into another Result
+      generic
+         with function Handle (E : Error_Type) return Result;
+      function Recover_With (Self : Result) return Result;
+
+      --  =====================================================================
+      --  Validation
+      --  =====================================================================
+
+      --  Ensure: validate Ok value with predicate
+      generic
+         with function Pred (X : T) return Boolean;
+         with function To_Error (X : T) return Error_Type;
+      function Ensure (Self : Result) return Result;
+
+      --  =====================================================================
+      --  Side effects
+      --  =====================================================================
+
+      --  Tap: run side effects without changing Result (for logging/debugging)
+      generic
+         with procedure On_Ok (V : T);
+         with procedure On_Err (E : Error_Type);
+      function Tap (Self : Result) return Result;
+
    private
 
       --  Internal representation: discriminated record (tagged union pattern)
@@ -122,5 +199,25 @@ is
       end record;
 
    end Generic_Result;
+
+   --  ========================================================================
+   --  Cross-Type Chaining: And_Then_Into
+   --  ========================================================================
+   --
+   --  This generic function enables chaining fallible operations that return
+   --  DIFFERENT Result types. This is essential for railway-oriented
+   --  programming when transforming between types.
+
+   generic
+      type T is private;
+      type U is private;
+      with package Source_Result is new Generic_Result (T => T);
+      with package Target_Result is new Generic_Result (T => U);
+      with function F (X : T) return Target_Result.Result;
+   function And_Then_Into
+     (Self : Source_Result.Result) return Target_Result.Result;
+   --  Chain fallible operations that return different Result types
+   --  If Self is Error, converts to Target_Result.Error (same error info)
+   --  If Self is Ok, calls F with value (F might return Error)
 
 end TZif.Domain.Error.Result;
