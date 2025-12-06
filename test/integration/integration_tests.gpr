@@ -45,27 +45,18 @@ project Integration_Tests is
             "test_zone_repository_errors.adb");
    end case;
 
-   --  Use GPR Naming to select appropriate runner body per platform
-   package Naming is
-      case OS is
-         when "unix" =>
-            null;  --  Use default naming (integration_runner.adb)
-         when "windows" =>
-            for Body ("Integration_Runner") use "integration_runner__windows.adb";
-      end case;
-   end Naming;
-
    for Object_Dir use "../../obj/test/integration";
    for Exec_Dir use "../bin";
 
    --  Main executables:
-   --  - integration_runner: runs all integration tests
+   --  - integration_runner: runs all integration tests (Unix)
+   --  - integration_runner__windows: runs Windows-compatible tests
    --  - test_windows_platform: Windows-only standalone test (for CI)
    case OS is
       when "unix" =>
          for Main use ("integration_runner.adb");
       when "windows" =>
-         for Main use ("integration_runner.adb", "test_windows_platform.adb");
+         for Main use ("integration_runner__windows.adb", "test_windows_platform.adb");
    end case;
 
    package Compiler is
