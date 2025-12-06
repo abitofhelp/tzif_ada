@@ -58,24 +58,15 @@ jobs:
           version: 2.0.2
 
       # -----------------------------------------------------------------------
-      # Remove local pin (CI uses Alire index, not sibling checkout)
+      # Replace local pin with GitHub URL pin for CI
       # -----------------------------------------------------------------------
-      - name: Remove functional pin for CI
+      - name: Update functional pin for CI
         shell: bash
         run: |
-          # Remove the [[pins]] section that references local ../functional
-          sed -i '/^\[\[pins\]\]/,/^$/d' alire.toml
-          echo "Removed local pin, using Alire index for functional"
+          # Replace local path pin with GitHub URL pin
+          sed -i "s|path = '../functional'|url = 'https://github.com/abitofhelp/functional.git' \& tag = 'v2.2.1'|" alire.toml
+          echo "Updated pin to use GitHub URL"
           cat alire.toml
-
-      # -----------------------------------------------------------------------
-      # Update Alire index to ensure functional is found
-      # -----------------------------------------------------------------------
-      - name: Update Alire index
-        shell: bash
-        run: |
-          alr index --update-all
-          alr search functional
 
       # -----------------------------------------------------------------------
       # Build tzif library (Windows platform)
