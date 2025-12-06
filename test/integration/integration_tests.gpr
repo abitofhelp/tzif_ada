@@ -28,10 +28,9 @@ project Integration_Tests is
       when "windows" =>
          --  Exclude all tests that use POSIX_Repository or POSIX_Zone_Repository
          --  These cannot compile on Windows where POSIX platform is excluded
-         --  Also exclude the Unix integration_runner (use Windows-specific one)
+         --  Note: integration_runner.adb is NOT excluded; Naming maps it to Windows body
          for Excluded_Source_Files use
            ("test_platform_stubs.adb",
-            "integration_runner.adb",
             "test_discover_sources.adb",
             "test_find_by_id.adb",
             "test_find_by_pattern.adb",
