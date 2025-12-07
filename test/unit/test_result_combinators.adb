@@ -436,6 +436,258 @@ begin
               "Internal_Error kind correct");
    end;
 
+   Put_Line ("Test: Unwrap_Or - Extract or Default");
+   --  Unwrap_Or on Ok returns value
+   declare
+      R      : constant Int_Res := Int_Result.Ok (42);
+      Result : constant Integer := Int_Result.Unwrap_Or (R, Default => 0);
+   begin
+      Assert (Result = 42, "Unwrap_Or on Ok returns value");
+   end;
+
+   --  Unwrap_Or on Error returns default
+   declare
+      R      : constant Int_Res := Int_Result.Error (IO_Error, "failed");
+      Result : constant Integer := Int_Result.Unwrap_Or (R, Default => -1);
+   begin
+      Assert (Result = -1, "Unwrap_Or on Error returns default");
+   end;
+
+   Put_Line ("Test: Unwrap_Or_With - Lazy Default");
+   --  Unwrap_Or_With on Ok returns value
+   declare
+      function Compute_Default return Integer is (999);
+      function Extract is new Int_Result.Unwrap_Or_With (F => Compute_Default);
+      R      : constant Int_Res := Int_Result.Ok (77);
+      Result : constant Integer := Extract (R);
+   begin
+      Assert (Result = 77, "Unwrap_Or_With on Ok returns value");
+   end;
+
+   --  Unwrap_Or_With on Error calls default function
+   declare
+      function Compute_Default return Integer is (999);
+      function Extract is new Int_Result.Unwrap_Or_With (F => Compute_Default);
+      R      : constant Int_Res := Int_Result.Error (IO_Error, "failed");
+      Result : constant Integer := Extract (R);
+   begin
+      Assert (Result = 999, "Unwrap_Or_With on Error returns default");
+   end;
+
+   Put_Line ("Test: Map - Transform Ok Value");
+   --  Map on Ok transforms value
+   declare
+      function Triple (X : Integer) return Integer is (X * 3);
+      function Do_Map is new Int_Result.Map (F => Triple);
+      R      : constant Int_Res := Int_Result.Ok (10);
+      Result : constant Int_Res := Do_Map (R);
+   begin
+      Assert (Int_Result.Is_Ok (Result), "Map on Ok returns Ok");
+      Assert (Int_Result.Value (Result) = 30, "Map transforms value");
+   end;
+
+   --  Map on Error returns Error unchanged
+   declare
+      function Triple (X : Integer) return Integer is (X * 3);
+      function Do_Map is new Int_Result.Map (F => Triple);
+      R      : constant Int_Res := Int_Result.Error (IO_Error, "err");
+      Result : constant Int_Res := Do_Map (R);
+   begin
+      Assert (Int_Result.Is_Error (Result), "Map on Error returns Error");
+      Assert (Int_Result.Error_Info (Result).Kind = IO_Error,
+              "Map preserves error kind");
+   end;
+
+   Put_Line ("Test: Fallback - Eager Alternative");
+   --  Fallback with Ok first returns first
+   declare
+      A      : constant Int_Res := Int_Result.Ok (1);
+      B      : constant Int_Res := Int_Result.Ok (2);
+      Result : constant Int_Res := Int_Result.Fallback (A, B);
+   begin
+      Assert (Int_Result.Is_Ok (Result), "Fallback Ok|Ok returns Ok");
+      Assert (Int_Result.Value (Result) = 1, "Fallback returns first Ok");
+   end;
+
+   --  Fallback with Error first returns second
+   declare
+      A      : constant Int_Res := Int_Result.Error (IO_Error, "first err");
+      B      : constant Int_Res := Int_Result.Ok (2);
+      Result : constant Int_Res := Int_Result.Fallback (A, B);
+   begin
+      Assert (Int_Result.Is_Ok (Result), "Fallback Err|Ok returns Ok");
+      Assert (Int_Result.Value (Result) = 2, "Fallback returns second Ok");
+   end;
+
+   --  Fallback with both Error returns second Error
+   declare
+      A      : constant Int_Res := Int_Result.Error (IO_Error, "first");
+      B      : constant Int_Res := Int_Result.Error (Parse_Error, "second");
+      Result : constant Int_Res := Int_Result.Fallback (A, B);
+   begin
+      Assert (Int_Result.Is_Error (Result), "Fallback Err|Err returns Error");
+      Assert (Int_Result.Error_Info (Result).Kind = Parse_Error,
+              "Fallback returns second error kind");
+   end;
+
+   Put_Line ("Test: Fallback_With - Lazy Alternative");
+   --  Fallback_With on Ok doesn't call fallback function
+   declare
+      function Compute_Fallback return Int_Res is
+        (Int_Result.Ok (999));
+      function Try_Fallback is new Int_Result.Fallback_With
+        (F => Compute_Fallback);
+      R      : constant Int_Res := Int_Result.Ok (1);
+      Result : constant Int_Res := Try_Fallback (R);
+   begin
+      Assert (Int_Result.Is_Ok (Result), "Fallback_With on Ok returns Ok");
+      Assert (Int_Result.Value (Result) = 1,
+              "Fallback_With on Ok returns original value");
+   end;
+
+   --  Fallback_With on Error calls fallback function
+   declare
+      function Compute_Fallback return Int_Res is
+        (Int_Result.Ok (999));
+      function Try_Fallback is new Int_Result.Fallback_With
+        (F => Compute_Fallback);
+      R      : constant Int_Res := Int_Result.Error (IO_Error, "failed");
+      Result : constant Int_Res := Try_Fallback (R);
+   begin
+      Assert (Int_Result.Is_Ok (Result),
+              "Fallback_With on Error can return Ok");
+      Assert (Int_Result.Value (Result) = 999,
+              "Fallback_With returns fallback value");
+   end;
+
+   Put_Line ("Test: Recover - Turn Error into Value");
+   --  Recover on Ok returns value
+   declare
+      function Handle_Error (E : Error_Type) return Integer is
+         pragma Unreferenced (E);
+      begin
+         return -1;
+      end Handle_Error;
+
+      function Do_Recover is new Int_Result.Recover (Handle => Handle_Error);
+      R      : constant Int_Res := Int_Result.Ok (42);
+      Result : constant Integer := Do_Recover (R);
+   begin
+      Assert (Result = 42, "Recover on Ok returns original value");
+   end;
+
+   --  Recover on Error returns handler result
+   declare
+      function Handle_Error (E : Error_Type) return Integer is
+         pragma Unreferenced (E);
+      begin
+         return -1;
+      end Handle_Error;
+
+      function Do_Recover is new Int_Result.Recover (Handle => Handle_Error);
+      R      : constant Int_Res := Int_Result.Error (IO_Error, "failed");
+      Result : constant Integer := Do_Recover (R);
+   begin
+      Assert (Result = -1, "Recover on Error returns handler value");
+   end;
+
+   Put_Line ("Test: Recover_With - Turn Error into Result");
+   --  Recover_With on Ok returns Ok
+   declare
+      function Handle_Error (E : Error_Type) return Int_Res is
+         pragma Unreferenced (E);
+      begin
+         return Int_Result.Ok (-1);
+      end Handle_Error;
+
+      function Do_Recover is new Int_Result.Recover_With
+        (Handle => Handle_Error);
+      R      : constant Int_Res := Int_Result.Ok (42);
+      Result : constant Int_Res := Do_Recover (R);
+   begin
+      Assert (Int_Result.Is_Ok (Result), "Recover_With on Ok returns Ok");
+      Assert (Int_Result.Value (Result) = 42,
+              "Recover_With preserves original value");
+   end;
+
+   --  Recover_With on Error returns handler result
+   declare
+      function Handle_Error (E : Error_Type) return Int_Res is
+         pragma Unreferenced (E);
+      begin
+         return Int_Result.Ok (-1);
+      end Handle_Error;
+
+      function Do_Recover is new Int_Result.Recover_With
+        (Handle => Handle_Error);
+      R      : constant Int_Res := Int_Result.Error (IO_Error, "failed");
+      Result : constant Int_Res := Do_Recover (R);
+   begin
+      Assert (Int_Result.Is_Ok (Result), "Recover_With on Error returns Ok");
+      Assert (Int_Result.Value (Result) = -1,
+              "Recover_With returns handler result");
+   end;
+
+   Put_Line ("Test: Tap - Side Effects without Changing Result");
+   --  Tap on Ok calls On_Ok procedure
+   declare
+      Ok_Called  : Boolean := False;
+      Err_Called : Boolean := False;
+
+      procedure On_Ok_Call (V : Integer) is
+         pragma Unreferenced (V);
+      begin
+         Ok_Called := True;
+      end On_Ok_Call;
+
+      procedure On_Err_Call (E : Error_Type) is
+         pragma Unreferenced (E);
+      begin
+         Err_Called := True;
+      end On_Err_Call;
+
+      function Do_Tap is new Int_Result.Tap
+        (On_Ok  => On_Ok_Call,
+         On_Err => On_Err_Call);
+
+      R      : constant Int_Res := Int_Result.Ok (42);
+      Result : constant Int_Res := Do_Tap (R);
+   begin
+      Assert (Int_Result.Is_Ok (Result), "Tap returns same Result");
+      Assert (Int_Result.Value (Result) = 42, "Tap preserves value");
+      Assert (Ok_Called, "Tap calls On_Ok for Ok result");
+      Assert (not Err_Called, "Tap does not call On_Err for Ok result");
+   end;
+
+   --  Tap on Error calls On_Err procedure
+   declare
+      Ok_Called  : Boolean := False;
+      Err_Called : Boolean := False;
+
+      procedure On_Ok_Call (V : Integer) is
+         pragma Unreferenced (V);
+      begin
+         Ok_Called := True;
+      end On_Ok_Call;
+
+      procedure On_Err_Call (E : Error_Type) is
+         pragma Unreferenced (E);
+      begin
+         Err_Called := True;
+      end On_Err_Call;
+
+      function Do_Tap is new Int_Result.Tap
+        (On_Ok  => On_Ok_Call,
+         On_Err => On_Err_Call);
+
+      R      : constant Int_Res := Int_Result.Error (IO_Error, "failed");
+      Result : constant Int_Res := Do_Tap (R);
+   begin
+      Assert (Int_Result.Is_Error (Result), "Tap returns same Error");
+      Assert (not Ok_Called, "Tap does not call On_Ok for Error result");
+      Assert (Err_Called, "Tap calls On_Err for Error result");
+   end;
+
    --  Register results with test framework
    Test_Framework.Register_Results (Test_Count, Pass_Count);
 

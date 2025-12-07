@@ -316,8 +316,8 @@ package body TZif.Infrastructure.Adapter.File_System.Zone_Repository is
       --  Try to read the symlink target using injected platform operations
       declare
          --  Read symlink - on macOS/Linux, /etc/localtime is usually a symlink
-         --  to something like /usr/share/zoneinfo/America/Los_Angeles
-         --  On Windows, this uses CLDR mapping via the Windows platform adapter
+         --  to something like /usr/share/zoneinfo/America/Los_Angeles.
+         --  On Windows, uses CLDR mapping via Windows platform adapter.
          Link_Result :
            constant Infrastructure.Platform.Platform_String_Result :=
            Platform_Ops.Read_Link (Localtime_Path);

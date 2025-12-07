@@ -15,10 +15,11 @@ with TZif.Application.Usecase.Validate_Source;
 with TZif.Infrastructure.Adapter.File_System.POSIX_Repository;
 procedure Test_Validate_Source is
    use TZif.Application.Port.Inbound.Validate_Source;
+   package Repo renames
+     TZif.Infrastructure.Adapter.File_System.POSIX_Repository;
    package UC is new
      TZif.Application.Usecase.Validate_Source.Use_Case
-       (Repository_Validate_Source =>
-         TZif.Infrastructure.Adapter.File_System.POSIX_Repository.Validate_Source);
+       (Repository_Validate_Source => Repo.Validate_Source);
    Test_Count : Natural := 0;
    Pass_Count : Natural := 0;
    procedure Assert (Condition : Boolean; Test_Name : String) is

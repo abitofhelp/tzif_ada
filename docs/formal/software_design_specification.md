@@ -1,6 +1,6 @@
 # Software Design Specification (SDS)
 
-**Version:** 1.1.0<br>
+**Version:** 1.2.0<br>
 **Date:** 2025-12-06<br>
 **SPDX-License-Identifier:** BSD-3-Clause<br>
 **License File:** See the LICENSE file in the project root<br>
@@ -385,6 +385,135 @@ end case;
 | **Dependency Inversion** | Application depends on abstractions, not implementations |
 | **Build-time Selection** | GPR selects adapter; no runtime overhead |
 
+### 4.6 Generic Repository Pattern
+
+**Pattern**: Platform-parameterized repositories via Ada generics
+**Purpose**: Achieve Dependency Inversion Principle (DIP) for cross-platform repository implementations
+**Implementation**: `Infrastructure.Adapter.File_System.Repository` and `Zone_Repository`
+
+#### 4.6.1 Design Principle
+
+The Generic Repository Pattern extends the Platform Abstraction (§4.5) to repository implementations. Rather than having repositories import platform-specific packages directly, they accept platform operations as generic formal parameters, enabling:
+
+1. **Compile-time platform selection** via GPR Excluded_Source_Files
+2. **Type-safe instantiation** guaranteed by Ada's generic system
+3. **Testability** via mock Platform_Operations for testing
+4. **No runtime overhead** - platform selection is purely compile-time
+
+#### 4.6.2 Platform Operations Interface
+
+```ada
+--  Infrastructure.Platform.Platform_Operations
+generic
+package Platform_Operations is
+   function Read_Link (Path : String) return Platform_String_Result;
+   function Get_System_Timezone_Id return Zone_Id_Result;
+end Platform_Operations;
+```
+
+#### 4.6.3 Generic Repository Definition
+
+```ada
+--  Infrastructure.Adapter.File_System.Repository (generic)
+with TZif.Infrastructure.Platform;
+
+generic
+   with package Platform_Ops is new
+     TZif.Infrastructure.Platform.Platform_Operations (<>);
+package TZif.Infrastructure.Adapter.File_System.Repository is
+   function Find_By_Id (...) return Zone_Result;
+   function Find_My_Id return Zone_Id_Result;
+   --  Implementation uses Platform_Ops.Read_Link
+end TZif.Infrastructure.Adapter.File_System.Repository;
+```
+
+```ada
+--  Infrastructure.Adapter.File_System.Zone_Repository (generic)
+with TZif.Infrastructure.Platform;
+
+generic
+   with package Platform_Ops is new
+     TZif.Infrastructure.Platform.Platform_Operations (<>);
+package TZif.Infrastructure.Adapter.File_System.Zone_Repository is
+   function Find_By_Id (...) return Zone_Result;
+   function Exists (...) return Boolean_Result;
+   --  Implementation uses Platform_Ops for platform operations
+end TZif.Infrastructure.Adapter.File_System.Zone_Repository;
+```
+
+#### 4.6.4 Platform-Specific Instantiations
+
+```ada
+--  POSIX instantiation (excluded on Windows via GPR)
+with TZif.Infrastructure.Platform.POSIX;
+with TZif.Infrastructure.Adapter.File_System.Repository;
+
+package TZif.Infrastructure.Adapter.File_System.POSIX_Repository is new
+  TZif.Infrastructure.Adapter.File_System.Repository
+    (Platform_Ops => TZif.Infrastructure.Platform.POSIX.Operations);
+
+--  Windows instantiation (excluded on Unix via GPR)
+with TZif.Infrastructure.Platform.Windows;
+with TZif.Infrastructure.Adapter.File_System.Repository;
+
+package TZif.Infrastructure.Adapter.File_System.Windows_Repository is new
+  TZif.Infrastructure.Adapter.File_System.Repository
+    (Platform_Ops => TZif.Infrastructure.Platform.Windows.Operations);
+```
+
+#### 4.6.5 File Layout
+
+```
+src/infrastructure/adapter/file_system/
+├── tzif-infrastructure-adapter-file_system-repository.ads      (generic)
+├── tzif-infrastructure-adapter-file_system-repository.adb      (generic body)
+├── tzif-infrastructure-adapter-file_system-zone_repository.ads (generic)
+├── tzif-infrastructure-adapter-file_system-zone_repository.adb (generic body)
+├── posix/
+│   ├── tzif-infrastructure-adapter-file_system-posix_repository.ads
+│   └── tzif-infrastructure-adapter-file_system-posix_zone_repository.ads
+└── windows/
+    ├── tzif-infrastructure-adapter-file_system-windows_repository.ads
+    └── tzif-infrastructure-adapter-file_system-windows_zone_repository.ads
+```
+
+#### 4.6.6 GPR Platform Selection
+
+```ada
+--  tzif.gpr
+type OS_Type is ("unix", "windows");
+OS : OS_Type := external ("TZIF_OS", "unix");
+
+case OS is
+   when "unix" =>
+      for Excluded_Source_Files use
+        ("tzif-infrastructure-adapter-file_system-windows_repository.ads",
+         "tzif-infrastructure-adapter-file_system-windows_zone_repository.ads",
+         "tzif-infrastructure-platform-windows.ads",
+         "tzif-infrastructure-platform-windows.adb");
+   when "windows" =>
+      for Excluded_Source_Files use
+        ("tzif-infrastructure-adapter-file_system-posix_repository.ads",
+         "tzif-infrastructure-adapter-file_system-posix_zone_repository.ads",
+         "tzif-infrastructure-platform-posix.ads",
+         "tzif-infrastructure-platform-posix.adb");
+end case;
+```
+
+#### 4.6.7 Benefits
+
+| Benefit | Description |
+|---------|-------------|
+| **Dependency Inversion** | Generic Repository depends on abstract Platform_Operations, not concrete POSIX or Windows implementations |
+| **Build-time Selection** | GPR Excluded_Source_Files removes wrong-platform instantiations; no runtime overhead |
+| **Type Safety** | Ada generics ensure type-safe instantiation; compiler verifies formal parameter compatibility |
+| **Testability** | Mock Platform_Operations can be injected for testing without file system access |
+| **Single Source of Truth** | Repository logic is written once in the generic; platform-specific code is isolated to instantiation files |
+
+#### 4.6.8 Diagram Reference
+
+See `docs/diagrams/generic_repository_pattern.puml` for a PlantUML visualization of this pattern.
+
 ---
 
 ## 5. Data Flow
@@ -569,12 +698,13 @@ TZif.API
 |---------|------|--------|---------|
 | 1.0.0 | 2025-11-29 | Michael Gardner | Initial release |
 | 1.1.0 | 2025-12-06 | Michael Gardner | Platform abstraction refactoring: Added dependency inversion pattern for outbound ports, platform adapter architecture (Desktop/Windows/Embedded), GPR-based platform selection, updated layer diagrams |
+| 1.2.0 | 2025-12-06 | Michael Gardner | Generic Repository Pattern: Added §4.6 documenting Repository and Zone_Repository generics with Platform_Ops formal parameters for cross-platform DIP compliance, PlantUML diagram reference |
 
 ---
 
 **Document Control**:
-- Version: 1.1.0
+- Version: 1.2.0
 - Last Updated: 2025-12-06
-- Status: Draft (Platform Abstraction Refactoring)
+- Status: Released
 - Copyright © 2025 Michael Gardner, A Bit of Help, Inc.
 - License: BSD-3-Clause

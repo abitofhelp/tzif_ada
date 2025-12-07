@@ -1,0 +1,76 @@
+@startuml generic_repository_pattern
+
+title Generic Repository Pattern\nDependency Inversion via Ada Generics
+
+skinparam classAttributeIconSize 0
+skinparam packageStyle rectangle
+
+package "Platform Abstraction" #E6F3FF {
+  interface "Platform_Operations\n<<generic>>" as PlatformOps {
+    +Read_Link(Path): String_Result
+    +Get_System_Timezone_Id(): Zone_Id_Result
+  }
+}
+
+package "Platform Implementations" #FFEBCD {
+  class "POSIX.Operations" as POSIXOps << (P,#CCFFCC) >> {
+    readlink() for symlinks
+    /etc/localtime resolution
+  }
+
+  class "Windows.Operations" as WindowsOps << (W,#FFCCCC) >> {
+    Win32 API + CLDR mapping
+  }
+}
+
+package "Generic Repositories" #E8F5E9 {
+  class "Repository\n<<generic>>" as RepoG {
+    formal: Platform_Ops
+    --
+    +Find_By_Id(): Zone_Result
+    +Find_My_Id(): Zone_Id_Result
+  }
+
+  class "Zone_Repository\n<<generic>>" as ZoneRepoG {
+    formal: Platform_Ops
+    --
+    +Find_By_Id(): Zone_Result
+    +Exists(): Boolean_Result
+  }
+}
+
+package "POSIX Instantiations" #FFF9E6 {
+  class "POSIX_Repository" as POSIXRepo << (P,#CCFFCC) >>
+  class "POSIX_Zone_Repository" as POSIXZoneRepo << (P,#CCFFCC) >>
+}
+
+package "Windows Instantiations" #FFF9E6 {
+  class "Windows_Repository" as WindowsRepo << (W,#FFCCCC) >>
+  class "Windows_Zone_Repository" as WindowsZoneRepo << (W,#FFCCCC) >>
+}
+
+PlatformOps <|.. POSIXOps : implements
+PlatformOps <|.. WindowsOps : implements
+
+RepoG --> PlatformOps : formal parameter
+ZoneRepoG --> PlatformOps : formal parameter
+
+POSIXRepo ..> RepoG : instantiates
+POSIXRepo --> POSIXOps : uses
+POSIXZoneRepo ..> ZoneRepoG : instantiates
+POSIXZoneRepo --> POSIXOps : uses
+
+WindowsRepo ..> RepoG : instantiates
+WindowsRepo --> WindowsOps : uses
+WindowsZoneRepo ..> ZoneRepoG : instantiates
+WindowsZoneRepo --> WindowsOps : uses
+
+note bottom of POSIXRepo : Excluded on Windows via GPR
+note bottom of WindowsRepo : Excluded on Unix via GPR
+
+legend bottom
+  GPR Excluded_Source_Files selects platform at build time
+  No runtime overhead - pure compile-time selection
+endlegend
+
+@enduml

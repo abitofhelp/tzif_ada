@@ -16,10 +16,11 @@ with TZif.Application.Usecase.Find_By_Pattern;
 with TZif.Infrastructure.Adapter.File_System.POSIX_Repository;
 procedure Test_Find_By_Pattern is
    use TZif.Application.Port.Inbound.Find_By_Pattern;
+   package Repo renames
+     TZif.Infrastructure.Adapter.File_System.POSIX_Repository;
    package UC is new
      TZif.Application.Usecase.Find_By_Pattern.Use_Case
-       (Repository_Find_By_Pattern =>
-         TZif.Infrastructure.Adapter.File_System.POSIX_Repository.Find_By_Pattern);
+       (Repository_Find_By_Pattern => Repo.Find_By_Pattern);
    Test_Count : Natural := 0;
    Pass_Count : Natural := 0;
    procedure Assert (Condition : Boolean; Test_Name : String) is

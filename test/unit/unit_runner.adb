@@ -25,6 +25,8 @@ with Test_IANA_Releases;
 with Test_Zone_Entity;
 with Test_Source_Cache;
 with Test_ULID;
+with Test_Version;
+with Test_Zone_Cache;
 
 procedure Unit_Runner is
 
@@ -58,6 +60,8 @@ begin
    Test_Zone_Entity;
    Test_Source_Cache;
    Test_ULID;
+   Test_Version;
+   Test_Zone_Cache;
 
    --  Get cumulative results
    Total  := Test_Framework.Grand_Total_Tests;

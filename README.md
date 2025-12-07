@@ -1,12 +1,12 @@
 # IANA Timezone Information Library
 
-[![License](https://img.shields.io/badge/license-BSD--3--Clause-blue.svg)](LICENSE) [![Ada](https://img.shields.io/badge/Ada-2022-blue.svg)](https://ada-lang.io) [![SPARK](https://img.shields.io/badge/SPARK-Friendly-green.svg)](https://www.adacore.com/about-spark) [![Alire](https://img.shields.io/badge/Alire-2.0+-blue.svg)](https://alire.ada.dev)
+[![License](https://img.shields.io/badge/license-BSD--3--Clause-blue.svg)](LICENSE) [![Ada](https://img.shields.io/badge/Ada-2022-blue.svg)](https://ada-lang.io) [![SPARK](https://img.shields.io/badge/SPARK-Friendly-green.svg)](https://www.adacore.com/about-spark) [![Alire](https://img.shields.io/badge/Alire-2.0+-blue.svg)](https://alire.ada.dev) [![Windows](https://img.shields.io/badge/Windows-11-0078D6.svg)](https://github.com/abitofhelp/tzif/actions)
 
-**Version:** 1.0.0  
-**Date:** December 02, 2025  
+**Version:** 1.1.0<br>
+**Date:** December 06, 2025<br>
 **SPDX-License-Identifier:** BSD-3-Clause<br>
 **License File:** See the LICENSE file in the project root<br>
-**Copyright:** © 2025 Michael Gardner, A Bit of Help, Inc.<br>  
+**Copyright:** © 2025 Michael Gardner, A Bit of Help, Inc.<br>
 **Status:** Released  
 
 ## Overview
@@ -37,10 +37,11 @@ git submodule update --init --recursive
 - ✅ Discover and validate timezone sources
 - ✅ Find zones by ID, pattern, region, or regex
 - ✅ Detect the system's local timezone
+- ✅ Cross-platform: Linux, macOS, BSD, Windows 11
 - ✅ 4-layer hexagonal architecture (Domain, Application, Infrastructure, API)
 - ✅ Result monad error handling (via `functional` crate)
 - ✅ Public API facade with stable interface
-- ✅ Generic I/O plugin pattern for platform portability
+- ✅ Generic Repository Pattern for platform abstraction
 - ✅ RFC 9636 compliant
 
 ## Platform Support
@@ -50,35 +51,40 @@ git submodule update --init --recursive
 | **Linux** | ✅ Full | All distributions with `/usr/share/zoneinfo` |
 | **macOS** | ✅ Full | All versions with `/var/db/timezone/zoneinfo` |
 | **FreeBSD/NetBSD/OpenBSD** | ✅ Full | Standard zoneinfo paths |
-| **Windows** | ⚠️ Not Supported | See limitations below |
+| **Windows 11** | ✅ Full | CLDR mapping from Windows timezone names to IANA |
 | **Embedded** | 🔧 Custom | Requires I/O plugin implementation |
 
-### Windows Limitations
+### Windows Support
 
-Windows does not use the IANA TZif file format natively. This library currently does not support Windows timezone detection (`Find_My_Id`). Reasons:
+Windows 11 is fully supported via the Generic Repository Pattern with platform-specific adapters:
 
-1. **Different Format**: Windows uses registry-based timezone configuration
-2. **Name Mapping Required**: Windows timezone names differ from IANA names (e.g., "Pacific Standard Time" vs "America/Los_Angeles")
-3. **API Bindings Needed**: Requires Win32 Registry and `GetDynamicTimeZoneInformation` bindings
+- **Timezone Detection**: Uses Win32 API with CLDR mapping to convert Windows timezone names (e.g., "Pacific Standard Time") to IANA identifiers (e.g., "America/Los_Angeles")
+- **Zone Lookup**: Requires bundled zoneinfo files (Windows does not ship TZif files natively)
+- **CI/CD**: Full Windows CI via GitHub Actions
 
-**Workarounds**:
-- Pre-configure the timezone ID in your application
-- Use environment variables (e.g., `TZ=America/New_York`)
-- Deploy with bundled zoneinfo files and custom paths
+**Setup for Windows**:
+```bash
+# Build for Windows
+alr build -- -XTZIF_OS=windows
 
-**Future**: Windows support may be added if demand arises. See [roadmap](docs/roadmap.md).
+# Run tests
+make test
+```
 
-### Embedded Platform Support
+**Note**: `Find_My_Id` on Windows uses CLDR mapping. Deploy bundled zoneinfo files for zone lookups.
 
-TZif uses a **three-package API pattern** with dependency injection for platform portability:
+### Platform Abstraction
+
+TZif uses a **multi-package API pattern** with dependency injection for platform portability:
 
 | Package | Purpose |
 |---------|---------|
 | `TZif.API.Operations` | Generic operations (SPARK-safe, no I/O dependencies) |
-| `TZif.API.Desktop` | Composition root for desktop (file system I/O) |
-| `TZif.API` | Public facade (uses Desktop by default) |
+| `TZif.API.Desktop` | Composition root for POSIX (Linux/macOS/BSD) |
+| `TZif.API.Windows` | Composition root for Windows 11 |
+| `TZif.API` | Public facade (auto-selects based on platform) |
 
-**Default**: Desktop platforms use file system I/O via `TZif.API.Desktop`.
+**Platform Selection**: GPR automatically selects the correct composition root based on the `TZIF_OS` scenario variable.
 
 **For embedded platforms**, create your own composition root:
 
@@ -98,22 +104,26 @@ See **[All About Our API](docs/guides/all_about_our_api.md)** for detailed archi
 ## Architecture
 
 ```
-┌─────────────────────────────────────────────────────────────┐
-│                       TZif.API                              │
-│              (Public Facade - Stable Interface)             │
-├─────────────────────────────────────────────────────────────┤
-│  API.Operations     │     API.Desktop     │   (API.Embedded)│
-│  (Generic I/O)      │ (File System DI)    │   (Future)      │
-├─────────────────────┼─────────────────────┼─────────────────┤
-│                    Application Layer                        │
-│     Use Cases  │  Ports (Inbound/Outbound)  │  Operations   │
-├─────────────────────────────────────────────────────────────┤
-│                   Infrastructure Layer                      │
-│        Adapters (File System, Parser, Repository)           │
-├─────────────────────────────────────────────────────────────┤
-│                      Domain Layer                           │
-│   Entities (Zone) │ Value Objects │ Errors │ Result Monad   │
-└─────────────────────────────────────────────────────────────┘
+┌───────────────────────────────────────────────────────────────────┐
+│                           TZif.API                                │
+│                (Public Facade - Stable Interface)                 │
+├───────────────────────────────────────────────────────────────────┤
+│  API.Operations  │  API.Desktop  │  API.Windows  │  API.Embedded  │
+│  (Generic I/O)   │  (POSIX DI)   │  (Win32 DI)   │   (Custom)     │
+├──────────────────┴───────────────┴───────────────┴────────────────┤
+│                      Application Layer                            │
+│       Use Cases  │  Ports (Inbound/Outbound)  │  Operations       │
+├───────────────────────────────────────────────────────────────────┤
+│                     Infrastructure Layer                          │
+│  ┌─────────────────────────────────────────────────────────────┐  │
+│  │  Platform Adapters: POSIX_Repository │ Windows_Repository   │  │
+│  │  Generic Repository Pattern with Platform_Ops injection     │  │
+│  └─────────────────────────────────────────────────────────────┘  │
+│              Parser  │  Repository  │  Platform Abstraction       │
+├───────────────────────────────────────────────────────────────────┤
+│                        Domain Layer                               │
+│     Entities (Zone) │ Value Objects │ Errors │ Result Monad       │
+└───────────────────────────────────────────────────────────────────┘
 ```
 
 ## Quick Start
@@ -196,7 +206,7 @@ make test-unit
 make test-integration
 ```
 
-**Test Results**: All 327 tests passing (200 unit + 116 integration + 11 examples)
+**Test Results**: All 437 tests passing (295 unit + 131 integration + 11 examples)
 
 ## Documentation
 
@@ -314,13 +324,15 @@ https://github.com/abitofhelp
 
 ## Project Status
 
-**Status**: Released (v1.0.0)
+**Status**: Released (v1.1.0)
 
 - ✅ TZif v2/v3 binary parsing (RFC 9636)
 - ✅ 4-layer hexagonal architecture
 - ✅ Public API facade with stable interface
-- ✅ Desktop platform support (file system)
-- ✅ Full test suite (327 tests)
+- ✅ Cross-platform: POSIX (Linux/macOS/BSD) and Windows 11
+- ✅ Generic Repository Pattern for platform abstraction
+- ✅ Full test suite (437 tests)
+- ✅ Windows CI via GitHub Actions
 - ✅ Comprehensive documentation
 - ✅ 11 example programs
 - ✅ Alire publication
