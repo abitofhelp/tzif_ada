@@ -1,6 +1,6 @@
 pragma Ada_2022;
 --  ===========================================================================
---  Tzif.Infrastructure.ULID_Generic
+--  TZif.Infrastructure.ULID_Generic
 --  ===========================================================================
 --  Copyright (c) 2025 Michael Gardner, A Bit of Help, Inc.
 --  SPDX-License-Identifier: BSD-3-Clause

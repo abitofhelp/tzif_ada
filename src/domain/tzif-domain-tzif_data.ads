@@ -1,13 +1,13 @@
 pragma Ada_2022;
 pragma Unevaluated_Use_Of_Old (Allow);
 --  ===========================================================================
---  Tzif.Domain.Tzif_Data
+--  TZif.Domain.TZif_Data
 --  ===========================================================================
 --  Copyright (c) 2025 Michael Gardner, A Bit of Help, Inc.
 --  SPDX-License-Identifier: BSD-3-Clause
 --
 --  Purpose:
---    Tzif Data interface and type definitions.
+--    TZif Data interface and type definitions.
 --
 --  Key Types:
 --    Transition
@@ -172,7 +172,8 @@ is
    --  Find the timezone type in effect at a given epoch time
    --  Returns Some(type_index) or None if no timezone types available
    function Find_Type_At_Time
-     (Data : TZif_Data_Type; Time : Epoch_Seconds_Type) return Type_Index_Option;
+     (Data : TZif_Data_Type; Time : Epoch_Seconds_Type)
+      return Type_Index_Option;
 
    --  Get timezone type by index (0-based, matching TZif file format)
    --  Internally converts to 1-based for Ada vector access

@@ -12,7 +12,7 @@ with Ada.Command_Line;
 with Test_Framework;
 with TZif.Application.Port.Inbound.Get_Version;
 with TZif.Application.Usecase.Get_Version;
-with TZif.Infrastructure.Adapter.File_System.Repository;
+with TZif.Infrastructure.Adapter.File_System.POSIX_Repository;
 with TZif.Domain.Value_Object.Source_Info;
 procedure Test_Get_Version is
    use TZif.Application.Port.Inbound.Get_Version;
@@ -20,7 +20,7 @@ procedure Test_Get_Version is
    package Get_Version_UC is new
      TZif.Application.Usecase.Get_Version.Use_Case
        (Repository_Get_Version =>
-         TZif.Infrastructure.Adapter.File_System.Repository.Get_Version);
+         TZif.Infrastructure.Adapter.File_System.POSIX_Repository.Get_Version);
    Test_Count : Natural := 0;
    Pass_Count : Natural := 0;
    procedure Assert (Condition : Boolean; Test_Name : String) is

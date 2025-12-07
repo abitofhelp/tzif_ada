@@ -1,7 +1,7 @@
 # Software Test Guide
 
-**Version:** 1.0.0<br>
-**Date:** 2025-12-02<br>
+**Version:** 1.1.0<br>
+**Date:** 2025-12-06<br>
 **SPDX-License-Identifier:** BSD-3-Clause<br>
 **License File:** See the LICENSE file in the project root<br>
 **Copyright:** © 2025 Michael Gardner, A Bit of Help, Inc.<br>
@@ -233,9 +233,123 @@ Each use case has a corresponding integration test file:
 
 ---
 
-## 7. Test Data
+## 7. Platform Adapter Testing
 
-### 7.1 Test Timezone Data
+### 7.1 Platform Abstraction Test Strategy
+
+The TZif library uses hexagonal architecture with platform-specific adapters. This requires a multi-tier testing approach:
+
+| Test Tier | Purpose | Runs On |
+|-----------|---------|---------|
+| Unit Tests (Mock) | Test port contracts with mock adapters | All platforms |
+| Platform Integration | Test real platform adapters | Native platform only |
+| CI Validation | Validate platform support in CI | GitHub Actions runners |
+
+### 7.2 Platform Adapter Components
+
+Each platform adapter implements the same outbound port contracts:
+
+| Port | Desktop Adapter | Windows Adapter | Embedded Adapter |
+|------|-----------------|-----------------|------------------|
+| `Get_System_Timezone_Id` | POSIX symlink resolution | Win32 API + CLDR mapping | Config/env variable |
+| File I/O | Standard Ada.Direct_IO | Standard Ada.Direct_IO | RAM filesystem |
+
+### 7.3 Windows Platform Tests
+
+**Location**: `test/integration/windows_platform_tests.gpr`
+
+**Purpose**: Standalone test project for Windows CI that validates:
+- Win32 `GetDynamicTimeZoneInformation` API binding
+- Windows-to-IANA timezone mapping via CLDR data
+- Platform adapter compilation on Windows
+
+**Test File**: `test_windows_platform.adb`
+
+| Test Category | Description |
+|--------------|-------------|
+| Win32 API binding | Verify FFI to Windows timezone API |
+| CLDR mapping | Windows timezone name → IANA zone ID |
+| Error handling | Invalid/unknown timezone mapping |
+
+**CI Workflow**: `.github/workflows/windows-release.yml`
+
+```yaml
+# Windows CI runs standalone platform tests
+- name: Build Windows platform tests
+  run: alr exec -- gprbuild -P test/integration/windows_platform_tests.gpr
+
+- name: Run Windows platform tests
+  run: alr exec -- ./test/bin/test_windows_platform
+```
+
+### 7.4 Desktop (POSIX) Platform Tests
+
+**Location**: Integrated in standard integration tests
+
+**Purpose**: Validate POSIX platform adapter functionality:
+- `/etc/localtime` symlink resolution
+- Canonical path normalization
+- Standard zoneinfo directory traversal
+
+**Tested By**: `test_find_my_id.adb` (detects local system timezone)
+
+### 7.5 Embedded Platform Tests
+
+**Purpose**: Validate embedded platform adapter for STM32F769I and similar boards.
+
+**Test Strategy**:
+
+| Approach | Description |
+|----------|-------------|
+| Mock Testing | Use mock adapter returning configured zone ID |
+| QEMU Emulation | Run on ARM Cortex-M emulator with RAM filesystem |
+| Hardware-in-Loop | Run on actual STM32F769I-DK board (manual) |
+
+**Mock Adapter Test Pattern**:
+
+```ada
+--  Test using mock adapter that returns configured value
+package Mock_System_Timezone is
+   Configured_Zone : constant String := "America/New_York";
+
+   function Get_System_Timezone_Id return Zone_Id_Result is
+     (Zone_Id_Result.Make_Ok (Make_Zone_Id (Configured_Zone)));
+end Mock_System_Timezone;
+
+--  Instantiate port with mock adapter
+package Test_TZ_Port is new Application.Port.Outbound.System_Timezone
+  (Get_System_Timezone_Id => Mock_System_Timezone.Get_System_Timezone_Id);
+```
+
+### 7.6 Cross-Platform Test Matrix
+
+| Test Suite | Desktop/POSIX | Windows | Embedded |
+|------------|---------------|---------|----------|
+| Unit Tests | ✓ | ✓ | ✓ |
+| Integration Tests | ✓ | ✗ (platform tests only) | ✓ (mock) |
+| Platform Tests | ✓ | ✓ | ✓ (QEMU/hardware) |
+| Examples | ✓ | ✗ | ✓ (selected) |
+
+### 7.7 GPR Scenario Variables for Platform Testing
+
+Platform selection is controlled via GPR scenario variables:
+
+```bash
+# Test on POSIX (default)
+gprbuild -P integration_tests.gpr -XTZIF_OS=unix
+
+# Test on Windows
+gprbuild -P windows_platform_tests.gpr -XTZIF_OS=windows
+
+# Test for embedded (with mock adapters)
+gprbuild -P embedded_tests.gpr -XTZIF_PROFILE=embedded
+```
+
+---
+
+## 8. Test Data
+
+### 8.1 Test Timezone Data
 
 **Location**: `/usr/share/zoneinfo` (system default)
 
@@ -246,15 +360,15 @@ Each use case has a corresponding integration test file:
 - `UTC`: Special timezone with no transitions
 - `America/Phoenix`: No DST timezone
 
-### 7.2 Test Fixtures
+### 8.2 Test Fixtures
 
 Integration tests use the system timezone database when available, with fallback to test fixtures for deterministic testing.
 
 ---
 
-## 8. Writing Tests
+## 9. Writing Tests
 
-### 8.1 Unit Test Structure
+### 9.1 Unit Test Structure
 
 ```ada
 pragma Ada_2022;
@@ -291,7 +405,7 @@ begin
 end Test_Zone_Id;
 ```
 
-### 8.2 Integration Test Structure
+### 9.2 Integration Test Structure
 
 ```ada
 pragma Ada_2022;
@@ -318,9 +432,9 @@ end Test_Find_By_Id;
 
 ---
 
-## 9. Test Coverage
+## 10. Test Coverage
 
-### 9.1 Coverage Goals
+### 10.1 Coverage Goals
 
 | Layer | Target |
 |-------|--------|
@@ -329,7 +443,7 @@ end Test_Find_By_Id;
 | Infrastructure | 90%+ (adapter code, error paths) |
 | Overall | 90%+ |
 
-### 9.2 Running Coverage Analysis
+### 10.2 Running Coverage Analysis
 
 ```bash
 # Generate coverage report
@@ -341,9 +455,9 @@ open coverage/report/index.html
 
 ---
 
-## 10. Continuous Integration
+## 11. Continuous Integration
 
-### 10.1 CI Pipeline
+### 11.1 CI Pipeline
 
 ```yaml
 steps:
@@ -360,7 +474,24 @@ steps:
     run: make test-examples
 ```
 
-### 10.2 Success Criteria
+### 11.2 Windows CI Workflow
+
+Windows platform validation runs via `.github/workflows/windows-release.yml`:
+
+```yaml
+steps:
+  - name: Build Windows platform tests
+    run: alr exec -- gprbuild -P test/integration/windows_platform_tests.gpr
+
+  - name: Run Windows platform tests
+    run: alr exec -- ./test/bin/test_windows_platform
+```
+
+**Trigger**: Manual dispatch (called by `release.py prepare` or GitHub Actions UI)
+
+**Purpose**: Pre-flight validation of Windows compatibility before release.
+
+### 11.3 Success Criteria
 
 All must pass:
 - Zero build warnings
@@ -370,9 +501,9 @@ All must pass:
 
 ---
 
-## 11. Appendices
+## 12. Appendices
 
-### 11.1 Test Statistics
+### 12.1 Test Statistics
 
 | Category | Count |
 |----------|-------|
@@ -381,7 +512,7 @@ All must pass:
 | Example programs | 11 |
 | **Total test assets** | **327** |
 
-### 11.2 Test Commands Reference
+### 12.2 Test Commands Reference
 
 ```bash
 make test-all          # Run all tests
@@ -395,8 +526,14 @@ make clean-coverage    # Remove coverage data
 ---
 
 **Document Control**:
-- Version: 1.0.0
-- Last Updated: 2025-12-02
-- Status: Released
+- Version: 1.1.0
+- Last Updated: 2025-12-06
+- Status: Draft (Platform Abstraction Refactoring)
 - Copyright © 2025 Michael Gardner, A Bit of Help, Inc.
 - License: BSD-3-Clause
+
+**Change History**:
+| Version | Date | Author | Changes |
+|---------|------|--------|---------|
+| 1.0.0 | 2025-12-02 | Michael Gardner | Initial release |
+| 1.1.0 | 2025-12-06 | Michael Gardner | Added Section 7 Platform Adapter Testing for multi-platform test strategy |

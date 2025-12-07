@@ -11,6 +11,7 @@ with Ada.Text_IO; use Ada.Text_IO;
 with Ada.Command_Line;
 with TZif.Domain.Value_Object.IANA_Releases;
 with TZif.Domain.Value_Object.Source_Info;
+with Test_Framework;
 procedure Test_IANA_Releases is
    use TZif.Domain.Value_Object.IANA_Releases;
    use TZif.Domain.Value_Object.Source_Info;
@@ -169,9 +170,10 @@ begin
    Put_Line ("====================================================");
    Put_Line ("  Tests Passed: " & Pass_Count'Image & " /" & Test_Count'Image);
    Put_Line ("====================================================");
-   if Pass_Count = Test_Count then
-      Ada.Command_Line.Set_Exit_Status (Ada.Command_Line.Success);
-   else
+
+   Test_Framework.Register_Results (Test_Count, Pass_Count);
+
+   if Pass_Count /= Test_Count then
       Ada.Command_Line.Set_Exit_Status (Ada.Command_Line.Failure);
    end if;
 end Test_IANA_Releases;

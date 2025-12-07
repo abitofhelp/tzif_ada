@@ -12,7 +12,7 @@ with Ada.Command_Line;
 with Test_Framework;
 with TZif.Application.Port.Inbound.Find_By_Id;
 with TZif.Application.Usecase.Find_By_Id;
-with TZif.Infrastructure.Adapter.File_System.Repository;
+with TZif.Infrastructure.Adapter.File_System.POSIX_Repository;
 with TZif.Domain.Value_Object.Zone_Id;
 procedure Test_Find_By_Id is
    use TZif.Application.Port.Inbound.Find_By_Id;
@@ -20,7 +20,7 @@ procedure Test_Find_By_Id is
    package Find_By_Id_UC is new
      TZif.Application.Usecase.Find_By_Id.Use_Case
        (Repository_Find_By_Id =>
-          TZif.Infrastructure.Adapter.File_System.Repository
+          TZif.Infrastructure.Adapter.File_System.POSIX_Repository
           .Find_By_Id);
    Test_Count : Natural := 0;
    Pass_Count : Natural := 0;

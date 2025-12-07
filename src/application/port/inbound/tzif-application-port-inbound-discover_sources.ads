@@ -1,6 +1,6 @@
 pragma Ada_2022;
 --  ===========================================================================
---  Tzif.Application.Port.Inbound.Discover_Sources
+--  TZif.Application.Port.Inbound.Discover_Sources
 --  ===========================================================================
 --  Copyright (c) 2025 Michael Gardner, A Bit of Help, Inc.
 --  SPDX-License-Identifier: BSD-3-Clause

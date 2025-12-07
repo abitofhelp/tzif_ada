@@ -1,6 +1,6 @@
 pragma Ada_2022;
 --  ===========================================================================
---  Tzif.Domain.Value_Object
+--  TZif.Domain.Value_Object
 --  ===========================================================================
 --  Copyright (c) 2025 Michael Gardner, A Bit of Help, Inc.
 --  SPDX-License-Identifier: BSD-3-Clause

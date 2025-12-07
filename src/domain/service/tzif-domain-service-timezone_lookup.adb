@@ -1,6 +1,6 @@
 pragma Ada_2022;
 --  ===========================================================================
---  Tzif.Domain.Service.Timezone_Lookup
+--  TZif.Domain.Service.Timezone_Lookup
 --  ===========================================================================
 --  Copyright (c) 2025 Michael Gardner, A Bit of Help, Inc.
 --  SPDX-License-Identifier: BSD-3-Clause
@@ -21,7 +21,8 @@ package body TZif.Domain.Service.Timezone_Lookup is
    --  ========================================================================
 
    function Find_Type_Index_At_Time
-     (Data : TZif_Data_Type; Time : Epoch_Seconds_Type) return Type_Index_Option
+     (Data : TZif_Data_Type; Time : Epoch_Seconds_Type)
+      return Type_Index_Option
    is
       use Transition_Vectors;
       use Timezone_Type_Vectors;

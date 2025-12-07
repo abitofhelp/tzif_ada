@@ -13,13 +13,14 @@ with Test_Framework;
 with Test_Spies.Find_By_Regex_Spy;
 with TZif.Application.Port.Inbound.Find_By_Regex;
 with TZif.Application.Usecase.Find_By_Regex;
-with TZif.Infrastructure.Adapter.File_System.Repository;
+with TZif.Infrastructure.Adapter.File_System.POSIX_Repository;
 procedure Test_Find_By_Regex is
    use TZif.Application.Port.Inbound.Find_By_Regex;
+   package Repo renames
+     TZif.Infrastructure.Adapter.File_System.POSIX_Repository;
    package UC is new
      TZif.Application.Usecase.Find_By_Regex.Use_Case
-       (Repository_Find_By_Regex =>
-         TZif.Infrastructure.Adapter.File_System.Repository.Find_By_Regex);
+       (Repository_Find_By_Regex => Repo.Find_By_Regex);
    Test_Count : Natural := 0;
    Pass_Count : Natural := 0;
    procedure Assert (Condition : Boolean; Test_Name : String) is

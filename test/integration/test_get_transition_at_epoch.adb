@@ -12,7 +12,7 @@ with Ada.Command_Line;
 with Test_Framework;
 with TZif.Application.Port.Inbound.Get_Transition_At_Epoch;
 with TZif.Application.Usecase.Get_Transition_At_Epoch;
-with TZif.Infrastructure.Adapter.File_System.Repository;
+with TZif.Infrastructure.Adapter.File_System.POSIX_Repository;
 with TZif.Domain.Value_Object.Transition_Info;
 with TZif.Domain.Value_Object.Epoch_Seconds;
 procedure Test_Get_Transition_At_Epoch is
@@ -25,7 +25,7 @@ procedure Test_Get_Transition_At_Epoch is
             .Infrastructure
             .Adapter
             .File_System
-            .Repository
+            .POSIX_Repository
             .Get_Transition_At_Epoch);
    Test_Count : Natural := 0;
    Pass_Count : Natural := 0;

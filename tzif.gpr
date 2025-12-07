@@ -91,17 +91,29 @@ library project TZif is
    --  =======================================================================
    case OS is
       when "unix" =>
+         --  Exclude Windows platform, Windows IO, Windows API, and Windows repos
+         --  Keep Desktop IO and Embedded IO for POSIX systems
          for Excluded_Source_Files use
            ("tzif-infrastructure-platform-windows.ads",
-            "tzif-infrastructure-platform-windows.adb");
+            "tzif-infrastructure-platform-windows.adb",
+            "tzif-infrastructure-io-windows.ads",
+            "tzif-infrastructure-io-windows.adb",
+            "tzif-api-windows.ads",
+            "tzif-api__windows.adb",
+            "tzif-infrastructure-adapter-file_system-windows_zone_repository.ads",
+            "tzif-infrastructure-adapter-file_system-windows_repository.ads");
       when "windows" =>
-         --  Exclude POSIX platform and desktop IO (uses POSIX symlinks)
-         --  Windows uses Win32 API for timezone detection instead
+         --  Exclude POSIX platform, Desktop IO, Desktop API, and POSIX repos
+         --  Use Windows API body instead of default tzif-api.adb
          for Excluded_Source_Files use
            ("tzif-infrastructure-platform-posix.ads",
             "tzif-infrastructure-platform-posix.adb",
             "tzif-infrastructure-io-desktop.ads",
-            "tzif-infrastructure-io-desktop.adb");
+            "tzif-infrastructure-io-desktop.adb",
+            "tzif-api-desktop.ads",
+            "tzif-api.adb",
+            "tzif-infrastructure-adapter-file_system-posix_zone_repository.ads",
+            "tzif-infrastructure-adapter-file_system-posix_repository.ads");
    end case;
 
    for Object_Dir use "obj/" & TZif_Config.Build_Profile;
@@ -162,6 +174,22 @@ library project TZif is
       "TZif.Domain.Value_Object.Unit",
       "TZif.Domain.Value_Object.UTC_Offset",
       "TZif.Domain.Value_Object.Zone_Id");
+
+   -- ==========================================================================
+   -- Platform-Specific Naming
+   -- ==========================================================================
+   -- On Windows, use the alternate body file for TZif.API that references
+   -- the Windows adapter instead of the Desktop adapter.
+   -- ==========================================================================
+
+   package Naming is
+      case OS is
+         when "unix" =>
+            null;  --  Use default naming (tzif-api.adb)
+         when "windows" =>
+            for Body ("TZif.API") use "tzif-api__windows.adb";
+      end case;
+   end Naming;
 
    -- ==========================================================================
    -- Package References: Inherit from Shared_Config

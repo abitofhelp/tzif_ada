@@ -1,11 +1,11 @@
 pragma Ada_2022;
 --  ======================================================================
---  Test_Tzif_Data
+--  Test_TZif_Data
 --  ======================================================================
 --  Copyright (c) 2025 Michael Gardner, A Bit of Help, Inc.
 --  SPDX-License-Identifier: BSD-3-Clause
 --  Purpose:
---    Unit tests for Tzif Data functionality.
+--    Unit tests for TZif Data functionality.
 --  ======================================================================
 with Ada.Text_IO; use Ada.Text_IO;
 with Ada.Command_Line;
@@ -164,7 +164,7 @@ procedure Test_TZif_Data is
       Transition_Vectors.Unchecked_Append (Data.Transitions, Trans2);
       Type_Index := Find_Type_At_Time (Data, 150);
       Assert
-        (Type_Index_Equals (Type_Index, 1), "Between: should use correct type");
+        (Type_Index_Equals (Type_Index, 1), "Between: correct type");
    end Test_Find_Type_Between;
 
    --  =====================================================================

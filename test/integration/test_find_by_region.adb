@@ -13,13 +13,14 @@ with Test_Framework;
 with Test_Spies.Find_By_Region_Spy;
 with TZif.Application.Port.Inbound.Find_By_Region;
 with TZif.Application.Usecase.Find_By_Region;
-with TZif.Infrastructure.Adapter.File_System.Repository;
+with TZif.Infrastructure.Adapter.File_System.POSIX_Repository;
 procedure Test_Find_By_Region is
    use TZif.Application.Port.Inbound.Find_By_Region;
+   package Repo renames
+     TZif.Infrastructure.Adapter.File_System.POSIX_Repository;
    package UC is new
      TZif.Application.Usecase.Find_By_Region.Use_Case
-       (Repository_Find_By_Region =>
-         TZif.Infrastructure.Adapter.File_System.Repository.Find_By_Region);
+       (Repository_Find_By_Region => Repo.Find_By_Region);
    Test_Count : Natural := 0;
    Pass_Count : Natural := 0;
    procedure Assert (Condition : Boolean; Test_Name : String) is

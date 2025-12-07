@@ -6,6 +6,10 @@
 #   Called by release.py prepare script BEFORE tags are created.
 #   Development is done on macOS; this workflow ensures Windows compatibility.
 #
+# Note: This workflow runs ONLY the Windows platform-specific tests
+#   (a quick smoke test). For full Windows CI with all tests, see windows-ci.yml
+#   which runs on every push/PR.
+#
 # Triggers:
 #   - Manual dispatch only (called by release.py prepare)
 #   - Can also be triggered manually from GitHub Actions UI for testing
@@ -13,7 +17,6 @@
 # Tests:
 #   - Windows platform timezone detection via Win32 API
 #   - Windows-to-IANA timezone mapping (CLDR data)
-#   - All cross-platform tests with Windows platform code
 #
 # Note:
 #   The xmlada dependency requires running from MSYS2 shell for configure

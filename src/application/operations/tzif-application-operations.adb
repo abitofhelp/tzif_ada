@@ -1,6 +1,6 @@
 pragma Ada_2022;
 --  ===========================================================================
---  Tzif.Application.Operations
+--  TZif.Application.Operations
 --  ===========================================================================
 --  Copyright (c) 2025 Michael Gardner, A Bit of Help, Inc.
 --  SPDX-License-Identifier: BSD-3-Clause
@@ -219,14 +219,14 @@ is
 
          --  Step 6: Find transition type at specified epoch
          declare
-            TZif_Data   : constant TZif.Domain.TZif_Data.TZif_Data_Type :=
+            TZif_Data : constant TZif.Domain.TZif_Data.TZif_Data_Type :=
               Parse_Result.Value (Parse_Res);
-            Type_Index_Opt : constant TZif.Domain.TZif_Data.Type_Index_Option :=
+            Type_Idx_Opt : constant TZif.Domain.TZif_Data.Type_Index_Option :=
               TZif.Domain.TZif_Data.Find_Type_At_Time (TZif_Data, Epoch);
+            use TZif.Domain.TZif_Data.Type_Index_Options;
          begin
             --  Handle zones with no timezone types (None = empty TZif file)
-            if TZif.Domain.TZif_Data.Type_Index_Options.Is_None (Type_Index_Opt)
-            then
+            if Is_None (Type_Idx_Opt) then
                declare
                   Info : constant Transition_Info_Type :=
                     Make_Transition_Info
@@ -239,9 +239,7 @@ is
                end;
             else
                declare
-                  Type_Index : constant Natural :=
-                    TZif.Domain.TZif_Data.Type_Index_Options.Value
-                      (Type_Index_Opt);
+                  Type_Index : constant Natural := Value (Type_Idx_Opt);
                   TZ_Type    : constant Timezone_Type_Record :=
                     TZif.Domain.TZif_Data.Get_Type (TZif_Data, Type_Index);
                   Info       : constant Transition_Info_Type :=

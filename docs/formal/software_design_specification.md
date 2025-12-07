@@ -1,7 +1,7 @@
 # Software Design Specification (SDS)
 
-**Version:** 1.0.0<br>
-**Date:** 2025-12-02<br>
+**Version:** 1.2.0<br>
+**Date:** 2025-12-06<br>
 **SPDX-License-Identifier:** BSD-3-Clause<br>
 **License File:** See the LICENSE file in the project root<br>
 **Copyright:** © 2025 Michael Gardner, A Bit of Help, Inc.<br>
@@ -45,21 +45,71 @@ TZif uses **Hexagonal Architecture** (Ports and Adapters), also known as Clean A
 │                         API Layer                            │
 │              (Public Facade - Stable Interface)              │
 ├─────────────────────────────────────────────────────────────┤
-│  API.Operations     │     API.Desktop     │   (API.Embedded) │
-│  (Generic I/O)      │ (File System DI)    │   (Future)       │
-├─────────────────────┼─────────────────────┼──────────────────┤
-│                    Application Layer                         │
-│     Use Cases  │  Ports (Inbound/Outbound)  │  Operations    │
-├─────────────────────────────────────────────────────────────┤
-│                   Infrastructure Layer                       │
-│        Adapters (File System, Parser, Repository)            │
-├─────────────────────────────────────────────────────────────┤
-│                      Domain Layer                            │
-│   Entities (Zone) │ Value Objects │ Errors │ Result Monad    │
-└─────────────────────────────────────────────────────────────┘
+│  API.Operations     │  API.Desktop  │  API.Windows  │  API.Embedded  │
+│  (SPARK-safe)       │  (POSIX)      │  (Win32)      │  (STM32)       │
+├─────────────────────┴───────────────┴───────────────┴────────────────┤
+│                    Application Layer                                  │
+│     Use Cases (Generic)  │  Outbound Ports (Abstract Signatures)     │
+├───────────────────────────────────────────────────────────────────────┤
+│                   Infrastructure Layer                                │
+│  ┌──────────────────┬───────────────────┬──────────────────────┐     │
+│  │ Adapter.Desktop  │  Adapter.Windows  │  Adapter.Embedded    │     │
+│  │ (POSIX symlinks) │  (Win32 API)      │  (Config-based)      │     │
+│  └──────────────────┴───────────────────┴──────────────────────┘     │
+│  Parser, Repository, Cache (Platform-Independent)                     │
+├───────────────────────────────────────────────────────────────────────┤
+│                      Domain Layer                                     │
+│   Entities (Zone) │ Value Objects │ Errors │ Result Monad (Pure)     │
+└───────────────────────────────────────────────────────────────────────┘
 ```
 
-### 2.3 Layer Responsibilities
+### 2.3 Dependency Flow (Hexagonal Architecture)
+
+```
+                    ┌──────────────────┐
+                    │   Client Code    │
+                    └────────┬─────────┘
+                             │
+                             ▼
+┌────────────────────────────────────────────────────────────────────┐
+│                          API Layer                                  │
+│  ┌─────────────┐   ┌─────────────┐   ┌─────────────────────────┐  │
+│  │ Operations  │   │   Desktop   │   │  Windows / Embedded     │  │
+│  │ (Pure)      │   │ (Comp Root) │   │  (Composition Roots)    │  │
+│  └─────────────┘   └──────┬──────┘   └────────────┬────────────┘  │
+└────────────────────────────┼──────────────────────┼────────────────┘
+                             │                      │
+         ┌───────────────────┴──────────────────────┘
+         │           Wires adapters to ports
+         ▼
+┌────────────────────────────────────────────────────────────────────┐
+│                     Application Layer                               │
+│  ┌────────────────────────┐    ┌─────────────────────────────────┐│
+│  │     Use Cases          │    │     Outbound Ports              ││
+│  │  (Generic packages     │    │  (Abstract function signatures) ││
+│  │   with function params)│    │                                 ││
+│  └────────────────────────┘    └─────────────────────────────────┘│
+└────────────────────────────────────────────────────────────────────┘
+         ▲                                     ▲
+         │ Implements                          │ Implements
+         │                                     │
+┌────────────────────────────────────────────────────────────────────┐
+│                   Infrastructure Layer                              │
+│  ┌──────────────┐  ┌──────────────┐  ┌──────────────────────────┐ │
+│  │   Desktop    │  │   Windows    │  │      Embedded            │ │
+│  │   Adapter    │  │   Adapter    │  │      Adapter             │ │
+│  │ (Implements) │  │ (Implements) │  │    (Implements)          │ │
+│  └──────────────┘  └──────────────┘  └──────────────────────────┘ │
+└────────────────────────────────────────────────────────────────────┘
+         │
+         ▼
+┌────────────────────────────────────────────────────────────────────┐
+│                      Domain Layer (Pure)                            │
+│        Value Objects │ Entities │ Domain Services │ Errors         │
+└────────────────────────────────────────────────────────────────────┘
+```
+
+### 2.4 Layer Responsibilities
 
 #### Domain Layer
 - **Purpose**: Pure business logic, no dependencies
@@ -229,37 +279,240 @@ function Find_By_Id (Zone_Id) return Zone_Result;
 
 ### 4.5 Platform Abstraction
 
-**Pattern**: Platform-specific implementations behind common interface
-**Purpose**: Support POSIX and Windows platforms consistently
-**Implementation**: `TZif.Infrastructure.Platform.*`
+**Pattern**: Platform-specific implementations behind abstract port interfaces
+**Purpose**: Support POSIX, Windows, and Embedded platforms with dependency inversion
+**Implementation**: `TZif.Application.Port.Outbound.*` + `TZif.Infrastructure.Adapter.*`
 
-#### 4.5.1 Package Structure
+#### 4.5.1 Design Principle: Dependency Inversion
+
+The platform abstraction follows the zoneinfo project pattern (proven correct):
+
+1. **Application layer defines abstract ports** using pure function signatures
+2. **Infrastructure layer provides adapters** implementing those signatures
+3. **Composition roots wire adapters to ports** at build time
+4. **No infrastructure types in port signatures** - only Domain types
+
+#### 4.5.2 Outbound Port Definition (Application Layer)
+
+```ada
+--  Application.Port.Outbound.System_Timezone
+generic
+   with function Get_System_Timezone_Id return Zone_Id_Result;
+package Application.Port.Outbound.System_Timezone;
+```
+
+**Key Characteristics**:
+- Pure function signatures only
+- Return types are Domain types (Zone_Id_Result)
+- No infrastructure package dependencies
+- Formally verifiable (SPARK-safe)
+
+#### 4.5.3 Platform Adapters (Infrastructure Layer)
 
 ```
-TZif.Infrastructure.Platform           -- Generic interface definition
-TZif.Infrastructure.Platform.POSIX     -- Linux, macOS, BSD implementation
-TZif.Infrastructure.Platform.Windows   -- Windows 10/Server 2022+ implementation
+src/infrastructure/adapter/
+├── desktop/                    -- POSIX systems (Linux, macOS, BSD)
+│   └── tzif-infrastructure-adapter-desktop.adb
+│       └── Get_System_Timezone_Id → Resolve /etc/localtime symlink
+│
+├── windows/                    -- Windows 10/Server 2022+
+│   └── tzif-infrastructure-adapter-windows.adb
+│       └── Get_System_Timezone_Id → Win32 API + CLDR mapping
+│
+└── embedded/                   -- STM32F769I, ARM Cortex-M
+    └── tzif-infrastructure-adapter-embedded.adb
+        └── Get_System_Timezone_Id → Config file, env var, or constant
 ```
 
-#### 4.5.2 POSIX Implementation
+#### 4.5.4 Composition Roots (API Layer)
 
-| Operation | Implementation |
-|-----------|----------------|
-| `Read_Symbolic_Link` | POSIX `readlink(2)` syscall |
-| Local TZ detection | Read `/etc/localtime` symlink target |
+```ada
+--  API.Desktop - Wires Desktop adapter to ports
+package TZ_Port is new Application.Port.Outbound.System_Timezone
+  (Get_System_Timezone_Id => Infrastructure.Adapter.Desktop.Get_System_Timezone_Id);
 
-#### 4.5.3 Windows Implementation
+--  API.Windows - Wires Windows adapter to ports
+package TZ_Port is new Application.Port.Outbound.System_Timezone
+  (Get_System_Timezone_Id => Infrastructure.Adapter.Windows.Get_System_Timezone_Id);
 
-| Operation | Implementation |
-|-----------|----------------|
-| `Read_Symbolic_Link` | Win32 `GetDynamicTimeZoneInformation` API |
-| Local TZ detection | Query Windows timezone, map to IANA via CLDR |
-| TZif file access | User-provided tzdata directory path |
+--  API.Embedded - Wires Embedded adapter to ports
+package TZ_Port is new Application.Port.Outbound.System_Timezone
+  (Get_System_Timezone_Id => Infrastructure.Adapter.Embedded.Get_System_Timezone_Id);
+```
+
+#### 4.5.5 GPR Platform Selection
+
+```ada
+--  tzif.gpr
+type Platform_Type is ("desktop", "windows", "embedded");
+Platform : Platform_Type := external ("TZIF_PLATFORM", "desktop");
+
+case Platform is
+   when "desktop" =>
+      for Source_Dirs use ("src/**", "src/infrastructure/adapter/desktop");
+   when "windows" =>
+      for Source_Dirs use ("src/**", "src/infrastructure/adapter/windows");
+   when "embedded" =>
+      for Source_Dirs use ("src/**", "src/infrastructure/adapter/embedded");
+end case;
+```
+
+#### 4.5.6 Platform-Specific Implementations
+
+| Platform | System TZ Detection | File Access | RAM FS Support |
+|----------|---------------------|-------------|----------------|
+| Desktop (POSIX) | `/etc/localtime` symlink | Ada.Directories | N/A |
+| Windows | Win32 API + CLDR mapping | Ada.Directories | N/A |
+| Embedded | Config file / env var | RAM-based FS | Yes |
 
 **Windows-to-IANA Mapping**:
 - Uses CLDR `windowsZones.xml` mapping data
 - ~50 common timezone mappings embedded in code
 - Returns error for unmapped Windows timezones
+
+**Embedded Timezone Configuration**:
+- Environment variable: `TZ=America/New_York`
+- Config file: `/etc/timezone` (first line)
+- Compile-time constant: `Embedded_Config.Default_Timezone`
+
+#### 4.5.7 Benefits of This Design
+
+| Benefit | Description |
+|---------|-------------|
+| **Extensibility** | Add new platform without modifying Application layer |
+| **Testability** | Mock adapters can implement port signatures for testing |
+| **SPARK Verification** | Ports are pure, formally verifiable |
+| **Dependency Inversion** | Application depends on abstractions, not implementations |
+| **Build-time Selection** | GPR selects adapter; no runtime overhead |
+
+### 4.6 Generic Repository Pattern
+
+**Pattern**: Platform-parameterized repositories via Ada generics
+**Purpose**: Achieve Dependency Inversion Principle (DIP) for cross-platform repository implementations
+**Implementation**: `Infrastructure.Adapter.File_System.Repository` and `Zone_Repository`
+
+#### 4.6.1 Design Principle
+
+The Generic Repository Pattern extends the Platform Abstraction (§4.5) to repository implementations. Rather than having repositories import platform-specific packages directly, they accept platform operations as generic formal parameters, enabling:
+
+1. **Compile-time platform selection** via GPR Excluded_Source_Files
+2. **Type-safe instantiation** guaranteed by Ada's generic system
+3. **Testability** via mock Platform_Operations for testing
+4. **No runtime overhead** - platform selection is purely compile-time
+
+#### 4.6.2 Platform Operations Interface
+
+```ada
+--  Infrastructure.Platform.Platform_Operations
+generic
+package Platform_Operations is
+   function Read_Link (Path : String) return Platform_String_Result;
+   function Get_System_Timezone_Id return Zone_Id_Result;
+end Platform_Operations;
+```
+
+#### 4.6.3 Generic Repository Definition
+
+```ada
+--  Infrastructure.Adapter.File_System.Repository (generic)
+with TZif.Infrastructure.Platform;
+
+generic
+   with package Platform_Ops is new
+     TZif.Infrastructure.Platform.Platform_Operations (<>);
+package TZif.Infrastructure.Adapter.File_System.Repository is
+   function Find_By_Id (...) return Zone_Result;
+   function Find_My_Id return Zone_Id_Result;
+   --  Implementation uses Platform_Ops.Read_Link
+end TZif.Infrastructure.Adapter.File_System.Repository;
+```
+
+```ada
+--  Infrastructure.Adapter.File_System.Zone_Repository (generic)
+with TZif.Infrastructure.Platform;
+
+generic
+   with package Platform_Ops is new
+     TZif.Infrastructure.Platform.Platform_Operations (<>);
+package TZif.Infrastructure.Adapter.File_System.Zone_Repository is
+   function Find_By_Id (...) return Zone_Result;
+   function Exists (...) return Boolean_Result;
+   --  Implementation uses Platform_Ops for platform operations
+end TZif.Infrastructure.Adapter.File_System.Zone_Repository;
+```
+
+#### 4.6.4 Platform-Specific Instantiations
+
+```ada
+--  POSIX instantiation (excluded on Windows via GPR)
+with TZif.Infrastructure.Platform.POSIX;
+with TZif.Infrastructure.Adapter.File_System.Repository;
+
+package TZif.Infrastructure.Adapter.File_System.POSIX_Repository is new
+  TZif.Infrastructure.Adapter.File_System.Repository
+    (Platform_Ops => TZif.Infrastructure.Platform.POSIX.Operations);
+
+--  Windows instantiation (excluded on Unix via GPR)
+with TZif.Infrastructure.Platform.Windows;
+with TZif.Infrastructure.Adapter.File_System.Repository;
+
+package TZif.Infrastructure.Adapter.File_System.Windows_Repository is new
+  TZif.Infrastructure.Adapter.File_System.Repository
+    (Platform_Ops => TZif.Infrastructure.Platform.Windows.Operations);
+```
+
+#### 4.6.5 File Layout
+
+```
+src/infrastructure/adapter/file_system/
+├── tzif-infrastructure-adapter-file_system-repository.ads      (generic)
+├── tzif-infrastructure-adapter-file_system-repository.adb      (generic body)
+├── tzif-infrastructure-adapter-file_system-zone_repository.ads (generic)
+├── tzif-infrastructure-adapter-file_system-zone_repository.adb (generic body)
+├── posix/
+│   ├── tzif-infrastructure-adapter-file_system-posix_repository.ads
+│   └── tzif-infrastructure-adapter-file_system-posix_zone_repository.ads
+└── windows/
+    ├── tzif-infrastructure-adapter-file_system-windows_repository.ads
+    └── tzif-infrastructure-adapter-file_system-windows_zone_repository.ads
+```
+
+#### 4.6.6 GPR Platform Selection
+
+```ada
+--  tzif.gpr
+type OS_Type is ("unix", "windows");
+OS : OS_Type := external ("TZIF_OS", "unix");
+
+case OS is
+   when "unix" =>
+      for Excluded_Source_Files use
+        ("tzif-infrastructure-adapter-file_system-windows_repository.ads",
+         "tzif-infrastructure-adapter-file_system-windows_zone_repository.ads",
+         "tzif-infrastructure-platform-windows.ads",
+         "tzif-infrastructure-platform-windows.adb");
+   when "windows" =>
+      for Excluded_Source_Files use
+        ("tzif-infrastructure-adapter-file_system-posix_repository.ads",
+         "tzif-infrastructure-adapter-file_system-posix_zone_repository.ads",
+         "tzif-infrastructure-platform-posix.ads",
+         "tzif-infrastructure-platform-posix.adb");
+end case;
+```
+
+#### 4.6.7 Benefits
+
+| Benefit | Description |
+|---------|-------------|
+| **Dependency Inversion** | Generic Repository depends on abstract Platform_Operations, not concrete POSIX or Windows implementations |
+| **Build-time Selection** | GPR Excluded_Source_Files removes wrong-platform instantiations; no runtime overhead |
+| **Type Safety** | Ada generics ensure type-safe instantiation; compiler verifies formal parameter compatibility |
+| **Testability** | Mock Platform_Operations can be injected for testing without file system access |
+| **Single Source of Truth** | Repository logic is written once in the generic; platform-specific code is isolated to instantiation files |
+
+#### 4.6.8 Diagram Reference
+
+See `docs/diagrams/generic_repository_pattern.puml` for a PlantUML visualization of this pattern.
 
 ---
 
@@ -444,12 +697,14 @@ TZif.API
 | Version | Date | Author | Changes |
 |---------|------|--------|---------|
 | 1.0.0 | 2025-11-29 | Michael Gardner | Initial release |
+| 1.1.0 | 2025-12-06 | Michael Gardner | Platform abstraction refactoring: Added dependency inversion pattern for outbound ports, platform adapter architecture (Desktop/Windows/Embedded), GPR-based platform selection, updated layer diagrams |
+| 1.2.0 | 2025-12-06 | Michael Gardner | Generic Repository Pattern: Added §4.6 documenting Repository and Zone_Repository generics with Platform_Ops formal parameters for cross-platform DIP compliance, PlantUML diagram reference |
 
 ---
 
 **Document Control**:
-- Version: 1.0.0
-- Last Updated: 2025-12-02
+- Version: 1.2.0
+- Last Updated: 2025-12-06
 - Status: Released
 - Copyright © 2025 Michael Gardner, A Bit of Help, Inc.
 - License: BSD-3-Clause

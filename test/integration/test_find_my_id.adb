@@ -12,13 +12,13 @@ with Ada.Command_Line;
 with Test_Framework;
 with TZif.Application.Port.Inbound.Find_My_Id;
 with TZif.Application.Usecase.Find_My_Id;
-with TZif.Infrastructure.Adapter.File_System.Repository;
+with TZif.Infrastructure.Adapter.File_System.POSIX_Repository;
 procedure Test_Find_My_Id is
    use TZif.Application.Port.Inbound.Find_My_Id;
    package UC is new
      TZif.Application.Usecase.Find_My_Id.Use_Case
        (Repository_Find_My_Id =>
-         TZif.Infrastructure.Adapter.File_System.Repository.Find_My_Id);
+         TZif.Infrastructure.Adapter.File_System.POSIX_Repository.Find_My_Id);
    Test_Count : Natural := 0;
    Pass_Count : Natural := 0;
    procedure Assert (Condition : Boolean; Test_Name : String) is

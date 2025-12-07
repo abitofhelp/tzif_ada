@@ -10,12 +10,12 @@ pragma Ada_2022;
 with Ada.Text_IO; use Ada.Text_IO;
 with Ada.Command_Line;
 with TZif.Application.Port.Outbound.Zone_Repository;
-with TZif.Infrastructure.Adapter.File_System.Zone_Repository;
+with TZif.Infrastructure.Adapter.File_System.POSIX_Zone_Repository;
 with TZif.Domain.Value_Object.Zone_Id;
 with Test_Framework;
 procedure Test_Zone_Repository_Errors is
    use TZif.Application.Port.Outbound.Zone_Repository;
-   use TZif.Infrastructure.Adapter.File_System.Zone_Repository;
+   use TZif.Infrastructure.Adapter.File_System.POSIX_Zone_Repository;
    use TZif.Domain.Value_Object.Zone_Id;
    Test_Count : Natural := 0;
    Pass_Count : Natural := 0;

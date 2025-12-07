@@ -1,15 +1,15 @@
 pragma Ada_2022;
 --  ===========================================================================
---  Tzif.Domain.Value_Object.Tzif_Header
+--  TZif.Domain.Value_Object.TZif_Header
 --  ===========================================================================
 --  Copyright (c) 2025 Michael Gardner, A Bit of Help, Inc.
 --  SPDX-License-Identifier: BSD-3-Clause
 --
 --  Purpose:
---    Tzif Header value object - immutable domain data.
+--    TZif Header value object - immutable domain data.
 --
 --  Responsibilities:
---    - Define Tzif Header type and operations
+--    - Define TZif Header type and operations
 --    - Provide constructors and accessors
 --
 --  Key Types:

@@ -12,15 +12,16 @@ with Ada.Command_Line;
 with Test_Framework;
 with TZif.Application.Port.Inbound.List_All_Order_By_Id;
 with TZif.Application.Usecase.List_All_Order_By_Id;
-with TZif.Infrastructure.Adapter.File_System.Repository;
+with TZif.Infrastructure.Adapter.File_System.POSIX_Repository;
 with TZif.Domain.Value_Object.Source_Info;
 procedure Test_List_All_Order_By_Id is
    use TZif.Application.Port.Inbound.List_All_Order_By_Id;
    use TZif.Domain.Value_Object.Source_Info;
+   package Repo renames
+     TZif.Infrastructure.Adapter.File_System.POSIX_Repository;
    package UC is new
      TZif.Application.Usecase.List_All_Order_By_Id.Use_Case
-       (Repository_List_All_Order_By_Id =>
-          TZif.Infrastructure.Adapter.File_System.Repository.List_All_Zones);
+       (Repository_List_All_Order_By_Id => Repo.List_All_Zones);
    Test_Count : Natural := 0;
    Pass_Count : Natural := 0;
    procedure Assert (Condition : Boolean; Test_Name : String) is

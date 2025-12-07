@@ -1,12 +1,12 @@
 pragma Ada_2022;
 --  ===========================================================================
---  Tzif.Domain.Tzif_Data
+--  TZif.Domain.TZif_Data
 --  ===========================================================================
 --  Copyright (c) 2025 Michael Gardner, A Bit of Help, Inc.
 --  SPDX-License-Identifier: BSD-3-Clause
 --
 --  Purpose:
---    Tzif Data implementation.
+--    TZif Data implementation.
 --
 --  ===========================================================================
 
@@ -25,7 +25,8 @@ package body TZif.Domain.TZif_Data is
    --  ========================================================================
 
    function Find_Type_At_Time
-     (Data : TZif_Data_Type; Time : Epoch_Seconds_Type) return Type_Index_Option
+     (Data : TZif_Data_Type; Time : Epoch_Seconds_Type)
+      return Type_Index_Option
    is
       use Transition_Vectors;
    begin

@@ -1,6 +1,6 @@
 pragma Ada_2022;
 --  ===========================================================================
---  Tzif.Application.Port.Inbound.Get_Transition_At_Epoch
+--  TZif.Application.Port.Inbound.Get_Transition_At_Epoch
 --  ===========================================================================
 --  Copyright (c) 2025 Michael Gardner, A Bit of Help, Inc.
 --  SPDX-License-Identifier: BSD-3-Clause
