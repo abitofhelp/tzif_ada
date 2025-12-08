@@ -29,7 +29,7 @@ with TZif.Domain.Error.Result;
 with TZif.Domain.TZif_Data;
 
 package TZif.Domain.Parser with
-  SPARK_Mode => Off  --  Generic_Result.And_Then uses access-to-subprogram
+  SPARK_Mode => On
 is
 
    use Interfaces;

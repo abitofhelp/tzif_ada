@@ -18,7 +18,7 @@ PROJECT_NAME := tzif
         clean clean-clutter clean-coverage clean-deep compress deps \
 		help prereqs rebuild refresh stats test test-all test-coverage test-framework \
 		test-integration test-unit test-python test-windows install-tools build-coverage-runtime \
-		submodule-init submodule-update submodule-status
+		submodule-init submodule-update submodule-status spark-check spark-prove
 # FIX: ENABLE AFTER THE TARGETS CONVERT TO USING OUR ADAFMT TOOL, WHICH IS IN DEVELOPMENT.
 #       format format-all format-src format-tests
 
@@ -129,6 +129,8 @@ help: ## Display this help message
 	@echo "$(YELLOW)Quality & Architecture Commands:$(NC)"
 	@echo "  check              - Run static analysis"
 	@echo "  check-arch         - Validate hexagonal architecture boundaries"
+	@echo "  spark-check        - Run SPARK formal verification on domain layer"
+	@echo "  spark-prove        - Run SPARK PROVE formal verification"
 # FIX: ENABLE AFTER THE TARGETS CONVERT TO USING OUR ADAFMT TOOL, WHICH IS IN DEVELOPMENT.
 # 	@echo "  format-src         - Auto-format source code only"
 # 	@echo "  format-tests       - Auto-format test code only"
@@ -462,6 +464,34 @@ check-arch: ## Validate hexagonal architecture boundaries
 		echo "$(GREEN)✓ Architecture validation passed$(NC)"; \
 	else \
 		echo "$(RED)✗ Architecture validation failed$(NC)"; \
+		exit 1; \
+	fi
+
+spark-check: ## Run SPARK formal verification on domain layer
+	@echo "$(GREEN)Running SPARK verification...$(NC)"
+	@if [ ! -f "$(PROJECT_NAME)_spark.gpr" ]; then \
+		echo "$(RED)✗ SPARK project file not found: $(PROJECT_NAME)_spark.gpr$(NC)"; \
+		exit 1; \
+	fi
+	@cd $(TEST_DIR) && $(ALR) exec -- gnatprove -j12 -P ../$(PROJECT_NAME)_spark.gpr --mode=check 2>&1; \
+	if [ $$? -eq 0 ]; then \
+		echo "$(GREEN)✓ SPARK verification passed$(NC)"; \
+	else \
+		echo "$(RED)✗ SPARK verification failed$(NC)"; \
+		exit 1; \
+	fi
+
+spark-prove: ## Run SPARK PROVE formal verification
+	@echo "$(GREEN)Running SPARK PROVE verification...$(NC)"
+	@if [ ! -f "$(PROJECT_NAME)_spark.gpr" ]; then \
+		echo "$(RED)✗ SPARK project file not found: $(PROJECT_NAME)_spark.gpr$(NC)"; \
+		exit 1; \
+	fi
+	@cd $(TEST_DIR) && $(ALR) exec -- gnatprove -j12 -P ../$(PROJECT_NAME)_spark.gpr --mode=prove --level=2 2>&1; \
+	if [ $$? -eq 0 ]; then \
+		echo "$(GREEN)✓ SPARK PROVE verification passed$(NC)"; \
+	else \
+		echo "$(RED)✗ SPARK PROVE verification failed$(NC)"; \
 		exit 1; \
 	fi
 

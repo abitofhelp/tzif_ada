@@ -25,7 +25,7 @@ with TZif.Domain.Value_Object.Epoch_Seconds;
 with TZif.Domain.Value_Object.UTC_Offset;
 
 package body TZif.Domain.Parser with
-  SPARK_Mode => Off  --  Generic_Result.And_Then uses access-to-subprogram
+  SPARK_Mode => On
 is
 
    use TZif.Domain.Value_Object.TZif_Header;

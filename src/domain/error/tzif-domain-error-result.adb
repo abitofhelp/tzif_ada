@@ -85,11 +85,7 @@ package body TZif.Domain.Error.Result is
       -- And_Then --
       --------------
 
-      function And_Then
-        (Self : Result; F : not null access function (X : T) return Result)
-         return Result
-      is
-         pragma SPARK_Mode (Off);
+      function And_Then (Self : Result) return Result is
       begin
          if Self.State = Ok_State then
             return F (Self.Success_Value);

@@ -86,4 +86,22 @@ package TZif_Config is
    --  Zone capacity: Entire IANA database
    Default_Zone_Capacity : constant Count_Type := 600;
 
+   --  =======================================================================
+   --  Application Layer Bounded Vector Capacities
+   --  =======================================================================
+   --  These capacities support SPARK-compatible bounded vectors in the
+   --  application layer, replacing unbounded Ada.Containers.Vectors.
+
+   --  Maximum search paths for source discovery
+   Max_Search_Paths : constant := 100;
+
+   --  Maximum discovered timezone sources
+   Max_Sources : constant := 100;
+
+   --  Maximum non-fatal errors during discovery
+   Max_Discovery_Errors : constant := 100;
+
+   --  Maximum zone IDs in a list result
+   Max_Zone_Ids : constant := 1_000;
+
 end TZif_Config;

@@ -32,7 +32,7 @@ begin
    Put_Line ("Test: TZif.Version accessors");
 
    --  Note: These are compile-time verifiable assertions.
-   --  The compiler correctly identifies them as always-true, which is expected.
+   --  The compiler identifies them as always-true, which is expected.
    pragma Warnings (Off, "condition is always True");
 
    --  Test Major version

@@ -41,7 +41,7 @@ with TZif.Domain.Types.Bounded_Vector;
 with TZif.Domain.Value_Object.Source_Info;
 
 package TZif.Application.Port.Inbound.Discover_Sources with
-  SPARK_Mode => Off,  --  Generic_Result.And_Then uses access-to-subprogram
+  SPARK_Mode => On,
   Preelaborate
 is
 

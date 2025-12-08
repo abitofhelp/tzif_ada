@@ -2,7 +2,7 @@
 pragma Restrictions (No_Elaboration_Code);
 pragma Style_Checks (Off);
 
-package TZif_Tests_Config is
+package Tzif_Tests_Config is
    pragma Pure;
 
    Crate_Version : constant String := "1.0.0";
@@ -17,4 +17,4 @@ package TZif_Tests_Config is
    type Build_Profile_Kind is (release, validation, development);
    Build_Profile : constant Build_Profile_Kind := development;
 
-end TZif_Tests_Config;
+end Tzif_Tests_Config;

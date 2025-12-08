@@ -688,6 +688,118 @@ begin
       Assert (Err_Called, "Tap calls On_Err for Error result");
    end;
 
+   Put_Line ("Test: Expect - Extract or Raise");
+   --  Expect on Ok returns value
+   declare
+      R      : constant Int_Res := Int_Result.Ok (42);
+      Result : constant Integer := Int_Result.Expect (R, "Should have value");
+   begin
+      Assert (Result = 42, "Expect on Ok returns value");
+   end;
+
+   --  Note: Expect on Error raises Program_Error due to precondition.
+   --  We don't test this as it's a contract violation.
+
+   Put_Line ("Test: And_Then_Into - Cross-Type Chaining");
+   --  And_Then_Into for type transformation (Integer -> Float)
+   declare
+      --  Second Result type for Float (definite type)
+      package Float_Result is new TZif.Domain.Error.Result.Generic_Result
+        (T => Float);
+
+      --  Transform Integer to Float (fallible)
+      function Int_To_Float (X : Integer) return Float_Result.Result is
+      begin
+         if X >= 0 then
+            return Float_Result.Ok (Float (X) * 1.5);
+         else
+            return Float_Result.Error (Validation_Error, "Negative value");
+         end if;
+      end Int_To_Float;
+
+      --  Instantiate And_Then_Into
+      function Chain_To_Float is new
+        TZif.Domain.Error.Result.And_Then_Into
+          (T             => Integer,
+           U             => Float,
+           Source_Result => Int_Result,
+           Target_Result => Float_Result,
+           F             => Int_To_Float);
+
+      R1      : constant Int_Res := Int_Result.Ok (42);
+      Result1 : constant Float_Result.Result := Chain_To_Float (R1);
+   begin
+      Assert (Float_Result.Is_Ok (Result1),
+              "And_Then_Into on Ok with successful F returns Ok");
+      Assert (Float_Result.Value (Result1) = 63.0,
+              "And_Then_Into applies transformation correctly");
+   end;
+
+   --  And_Then_Into with F returning Error
+   declare
+      package Float_Result is new TZif.Domain.Error.Result.Generic_Result
+        (T => Float);
+
+      function Int_To_Float (X : Integer) return Float_Result.Result is
+      begin
+         if X >= 0 then
+            return Float_Result.Ok (Float (X) * 1.5);
+         else
+            return Float_Result.Error (Validation_Error, "Negative value");
+         end if;
+      end Int_To_Float;
+
+      function Chain_To_Float is new
+        TZif.Domain.Error.Result.And_Then_Into
+          (T             => Integer,
+           U             => Float,
+           Source_Result => Int_Result,
+           Target_Result => Float_Result,
+           F             => Int_To_Float);
+
+      R2      : constant Int_Res := Int_Result.Ok (-5);
+      Result2 : constant Float_Result.Result := Chain_To_Float (R2);
+   begin
+      Assert (Float_Result.Is_Error (Result2),
+              "And_Then_Into on Ok with failing F returns Error");
+      Assert (Float_Result.Error_Info (Result2).Kind = Validation_Error,
+              "And_Then_Into preserves error kind from F");
+   end;
+
+   --  And_Then_Into on Error short-circuits
+   declare
+      package Float_Result is new TZif.Domain.Error.Result.Generic_Result
+        (T => Float);
+
+      function Int_To_Float (X : Integer) return Float_Result.Result is
+      begin
+         if X >= 0 then
+            return Float_Result.Ok (Float (X) * 1.5);
+         else
+            return Float_Result.Error (Validation_Error, "Negative value");
+         end if;
+      end Int_To_Float;
+
+      function Chain_To_Float is new
+        TZif.Domain.Error.Result.And_Then_Into
+          (T             => Integer,
+           U             => Float,
+           Source_Result => Int_Result,
+           Target_Result => Float_Result,
+           F             => Int_To_Float);
+
+      R3      : constant Int_Res := Int_Result.Error (IO_Error, "original");
+      Result3 : constant Float_Result.Result := Chain_To_Float (R3);
+   begin
+      Assert (Float_Result.Is_Error (Result3),
+              "And_Then_Into on Error returns Error");
+      Assert (Float_Result.Error_Info (Result3).Kind = IO_Error,
+              "And_Then_Into preserves original error kind");
+      Assert
+        (To_String (Float_Result.Error_Info (Result3).Message) = "original",
+         "And_Then_Into preserves original error message");
+   end;
+
    --  Register results with test framework
    Test_Framework.Register_Results (Test_Count, Pass_Count);
 

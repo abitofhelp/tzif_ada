@@ -44,7 +44,7 @@ with TZif.Domain.Value_Object.Source_Info;
 with TZif.Domain.Error.Result;
 
 package TZif.Application.Port.Outbound.Zone_Repository with
-  SPARK_Mode => Off,  --  Generic_Result.And_Then uses access-to-subprogram
+  SPARK_Mode => On,
   Preelaborate
 is
 

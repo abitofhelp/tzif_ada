@@ -29,6 +29,9 @@ Makefile linguist-vendored
 *.yml linguist-vendored
 *.json linguist-vendored
 
+# IANA Timezone Data
+data/** linguist-vendored
+
 # Documentation
 *.md linguist-documentation
 *.txt linguist-documentation

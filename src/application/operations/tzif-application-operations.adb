@@ -19,7 +19,7 @@ with TZif.Domain.Value_Object.Transition_Info;
 with TZif.Domain.Error;
 
 package body TZif.Application.Operations with
-  SPARK_Mode => Off  --  Uses Result types with access-to-subprogram
+  SPARK_Mode => On
 is
 
    package body All_Operations is

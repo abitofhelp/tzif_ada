@@ -40,7 +40,7 @@ with TZif.Domain.Value_Object.Epoch_Seconds;
 with TZif.Domain.Value_Object.Source_Info;
 
 package TZif.Application.Operations with
-  SPARK_Mode => Off  --  Uses Result types with access-to-subprogram
+  SPARK_Mode => On
 is
 
    use Interfaces;

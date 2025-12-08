@@ -257,6 +257,27 @@ TZif is a standalone Ada library implementing hexagonal (ports and adapters) arc
 | NFR-05.2 | Working examples for all use cases |
 | NFR-05.3 | Comprehensive error messages |
 
+### 4.7 SPARK Formal Verification (NFR-07)
+
+| ID | Requirement |
+|----|-------------|
+| NFR-07.1 | Domain layer shall pass SPARK legality checking (gnatprove --mode=check) |
+| NFR-07.2 | All domain packages shall use `SPARK_Mode => On` |
+| NFR-07.3 | No runtime errors provable in domain layer (overflow, range, division) |
+| NFR-07.4 | All domain variables shall be properly initialized before use |
+| NFR-07.5 | Pre/postconditions on domain operations shall be proven correct |
+| NFR-07.6 | SPARK verification shall be runnable via `make spark-check` |
+| NFR-07.7 | Infrastructure/API layers may use `SPARK_Mode => Off` for I/O operations |
+
+**Verification Scope:**
+
+| Layer | SPARK_Mode | Rationale |
+|-------|-----------|-----------|
+| Domain | On | Pure business logic, provable |
+| Application | On (ports) | Interface contracts |
+| Infrastructure | Off | I/O operations |
+| API | Off | Facade over infrastructure |
+
 ---
 
 ## 5. System Requirements

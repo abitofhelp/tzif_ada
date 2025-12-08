@@ -73,4 +73,22 @@ package TZif_Config is
    Default_Cache_Capacity : constant Count_Type := 5;
    Default_Zone_Capacity : constant Count_Type := 5;
 
+   --  =======================================================================
+   --  Application Layer Bounded Vector Capacities
+   --  =======================================================================
+   --  These capacities support SPARK-compatible bounded vectors in the
+   --  application layer, replacing unbounded Ada.Containers.Vectors.
+
+   --  Maximum search paths for source discovery
+   Max_Search_Paths : constant := 5;
+
+   --  Maximum discovered timezone sources
+   Max_Sources : constant := 5;
+
+   --  Maximum non-fatal errors during discovery
+   Max_Discovery_Errors : constant := 10;
+
+   --  Maximum zone IDs in a list result
+   Max_Zone_Ids : constant := 50;
+
 end TZif_Config;

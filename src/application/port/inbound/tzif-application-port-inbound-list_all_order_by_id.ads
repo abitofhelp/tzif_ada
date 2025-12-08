@@ -34,7 +34,7 @@ with TZif.Domain.Types.Bounded_Vector;
 with TZif.Domain.Value_Object.Zone_Id;
 
 package TZif.Application.Port.Inbound.List_All_Order_By_Id with
-  SPARK_Mode => Off,  --  Generic_Result.And_Then uses access-to-subprogram
+  SPARK_Mode => On,
   Preelaborate
 is
 
