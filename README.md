@@ -9,6 +9,10 @@
 **Copyright:** 2025 Michael Gardner, A Bit of Help, Inc.<br>  
 **Status:** Released  
 
+## Important
+In a few days, I will release a library that provides higher level 
+functions for working with timezones and durations in Ada 2022.
+
 ## Overview
 
 TZif is an Ada 2022 library for parsing and querying IANA's compiled timezone information (TZif format, RFC 9636) files. It provides a clean, functional API with Result monad error handling, hexagonal architecture, and embedded-safe patterns.
