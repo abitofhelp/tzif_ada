@@ -186,7 +186,7 @@ make test-unit
 make test-integration
 ```
 
-**Test Results:** 200 unit + 116 integration + 11 examples = **327 tests passing**
+**Test Results:** 425 unit + 131 integration + 11 examples = **567 tests passing**
 
 ## Documentation
 
@@ -268,6 +268,6 @@ https://github.com/abitofhelp
 - 4-layer hexagonal architecture
 - Public API facade with stable interface
 - Cross-platform: POSIX and Windows
-- Full test suite (327 tests)
+- Comprehensive test coverage (90%+)
 - Comprehensive documentation
 - 11 example programs

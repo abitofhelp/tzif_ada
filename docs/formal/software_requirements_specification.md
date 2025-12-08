@@ -281,16 +281,7 @@ The TZif API provides 11 operations:
 
 ## 7. Verification and Validation
 
-### 7.1 Test Coverage
-
-| Test Type | Count |
-|-----------|-------|
-| Unit tests | 200 |
-| Integration tests | 116 |
-| Example programs | 11 |
-| **Total** | **327** |
-
-### 7.2 Verification Methods
+### 7.1 Verification Methods
 
 | Method | Description |
 |--------|-------------|

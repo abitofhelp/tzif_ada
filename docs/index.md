@@ -117,19 +117,6 @@ TZif provides 11 operations through `TZif.API`:
 
 ---
 
-## Test Summary
-
-| Category | Count | Status |
-|----------|-------|--------|
-| Unit Tests | 200 | Pass |
-| Integration Tests | 116 | Pass |
-| Example Programs | 11 | Pass |
-| **Total** | **327** | **All Pass** |
-
-Run tests: `make test-all`
-
----
-
 ## Quick Example
 
 ```ada

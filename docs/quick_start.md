@@ -241,8 +241,6 @@ make test-integration
 make test-examples
 ```
 
-**Test Summary:** 200 unit + 116 integration + 11 examples = **327 tests**
-
 ---
 
 ## Example Programs
