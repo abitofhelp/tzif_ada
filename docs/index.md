@@ -1,22 +1,25 @@
 # TZif Documentation
 
-**Version:** 1.0.0  
-**Date:** December 02, 2025  
+**Version:** 1.0.0<br>
+**Date:** December 07, 2025<br>
 **SPDX-License-Identifier:** BSD-3-Clause<br>
 **License File:** See the LICENSE file in the project root<br>
-**Copyright:** © 2025 Michael Gardner, A Bit of Help, Inc.<br>  
-**Status:** Released  
+**Copyright:** 2025 Michael Gardner, A Bit of Help, Inc.<br>
+**Status:** Released
 
 ---
 
-## Welcome
+## Overview
 
-Welcome to the documentation for **tzif**, a canonical Ada 2022 library demonstrating hexagonal architecture (DDD/Clean/Hex) with:
+TZif is an Ada 2022 library for parsing and querying IANA's compiled timezone information (TZif binary format, RFC 9636). It provides a clean, functional API with Result monad error handling, hexagonal architecture, and SPARK-verified domain logic.
 
-- **Functional error handling** via Result monad
-- **SPARK-compatible design** for formal verification
-- **Static dependency injection** via Ada generics
-- **Embedded-safe patterns** (no heap allocation)
+**Key Capabilities:**
+- Parse TZif binary files (versions 1, 2, and 3)
+- Query timezone transitions at any Unix epoch time
+- Discover and validate timezone data sources
+- Find zones by ID, pattern, region, or regex
+- Detect the system's local timezone
+- Cross-platform: Linux, macOS, BSD, Windows
 
 ---
 
@@ -24,82 +27,104 @@ Welcome to the documentation for **tzif**, a canonical Ada 2022 library demonstr
 
 ### Getting Started
 
-- **[Quick Start Guide](quick_start.md)** - Get up and running in minutes
-- **[Build Profiles](common/guides/build_profiles.md)** - Profile configuration for different targets
+- **[Quick Start Guide](quick_start.md)** - Installation and first program
+- **[Build Profiles](common/guides/build_profiles.md)** - Configure for different targets
 
 ### Formal Documentation
 
-- **[Software Requirements Specification](formal/software_requirements_specification.md)** - What the library must do
-- **[Software Design Specification](formal/software_design_specification.md)** - How the library is structured
+- **[Software Requirements Specification](formal/software_requirements_specification.md)** - Functional and non-functional requirements
+- **[Software Design Specification](formal/software_design_specification.md)** - Architecture and detailed design
 - **[Software Test Guide](formal/software_test_guide.md)** - Testing strategy and execution
 
 ### Developer Guides
 
-- **[All About Our API](common/guides/all_about_our_api.md)** - API layer architecture and usage
-- **[Architecture Enforcement](common/guides/architecture_enforcement.md)** - Hexagonal architecture rules
-- **[Embedded Platform Guide](guides/embedded_platform_guide.md)** - STM32, Ravenscar, and embedded targets
+- **[All About Our API](common/guides/all_about_our_api.md)** - Three-package API pattern
+- **[Architecture Enforcement](common/guides/architecture_enforcement.md)** - Layer dependency rules
 - **[Error Handling Strategy](common/guides/error_handling_strategy.md)** - Result monad patterns
 
 ### Reference
 
 - **[CHANGELOG](../CHANGELOG.md)** - Release history
 - **[README](../README.md)** - Project overview
+- **[Roadmap](roadmap.md)** - Future development plans
 
 ---
 
-## Architecture Overview
+## Architecture
 
-TZif follows a **4-layer library architecture**:
+TZif implements a 4-layer hexagonal architecture:
 
 ```
-┌─────────────────────────────────────────────────────────┐
-│                        API Layer                         │
-│  Public facade + composition roots + SPARK operations   │
-│  - TZif.API (facade)                          │
-│  - TZif.API.Desktop (composition root)        │
-│  - TZif.API.Operations (SPARK-safe)           │
-└─────────────────────────┬───────────────────────────────┘
-                          │
-┌─────────────────────────┼───────────────────────────────┐
-│              Infrastructure Layer                        │
-│  Concrete adapters implementing ports                    │
-│  - Infrastructure.Adapter.Console_Writer                 │
-└─────────────────────────┬───────────────────────────────┘
-                          │
-┌─────────────────────────┼───────────────────────────────┐
-│               Application Layer                          │
-│  Use cases, commands, ports                              │
-│  - Application.Usecase.Greet                            │
-│  - Application.Command.Greet                            │
-│  - Application.Port.Outbound.Writer                     │
-└─────────────────────────┬───────────────────────────────┘
-                          │
-┌─────────────────────────┼───────────────────────────────┐
-│                 Domain Layer                             │
-│  Pure business logic, value objects, errors              │
-│  - Domain.Value_Object.Person                           │
-│  - Domain.Error + Domain.Error.Result                   │
-│  - Domain.Unit                                          │
-└─────────────────────────────────────────────────────────┘
++-----------------------------------------------------------------+
+|                          API Layer                               |
+|  TZif.API (facade) + TZif.API.Desktop/Windows/Embedded (roots)  |
++----------------------------------+------------------------------+
+                                   |
++----------------------------------v------------------------------+
+|                      Application Layer                           |
+|  Use Cases (11 operations) + Inbound/Outbound Ports             |
++----------------------------------+------------------------------+
+                                   |
++----------------------------------v------------------------------+
+|                    Infrastructure Layer                          |
+|  I/O Adapters (Desktop, Windows, Embedded) + Platform Ops       |
++----------------------------------+------------------------------+
+                                   |
++----------------------------------v------------------------------+
+|                       Domain Layer                               |
+|  Entities (Zone) + Value Objects + Parser + Result Monad        |
++-----------------------------------------------------------------+
 ```
 
-**Key Principles:**
-- Dependencies flow **inward** (toward Domain)
-- Domain has **zero dependencies**
-- Infrastructure implements **ports** defined in Application
-- API is the **public surface** for library consumers
+**Design Principles:**
+- Dependencies flow inward (toward Domain)
+- Domain layer has zero external dependencies
+- Infrastructure implements ports defined in Application
+- API provides stable public interface
+- Generic I/O plugin pattern enables platform portability
+
+---
+
+## API Operations
+
+TZif provides 11 operations through `TZif.API`:
+
+| Operation | Description |
+|-----------|-------------|
+| `Find_By_Id` | Lookup timezone by exact IANA identifier |
+| `Find_By_Pattern` | Search zones by substring match |
+| `Find_By_Region` | Search zones by geographic region |
+| `Find_By_Regex` | Search zones using regular expressions |
+| `Find_My_Id` | Detect the system's local timezone |
+| `Get_Transition_At_Epoch` | Query UTC offset and DST at any time |
+| `Get_Version` | Retrieve IANA database version |
+| `List_All_Zones` | Enumerate all available timezones |
+| `Discover_Sources` | Find timezone data directories |
+| `Load_Source` | Load a specific timezone data source |
+| `Validate_Source` | Validate timezone data integrity |
+
+---
+
+## Platform Support
+
+| Platform | Status | Timezone Source |
+|----------|--------|-----------------|
+| **Linux** | Full | `/usr/share/zoneinfo` |
+| **macOS** | Full | `/var/db/timezone/zoneinfo` |
+| **BSD** | Full | `/usr/share/zoneinfo` |
+| **Windows** | Full | User-provided IANA tzdata |
+| **Embedded** | Stub | Custom adapter required |
 
 ---
 
 ## Test Summary
 
-| Category | Tests | Status |
+| Category | Count | Status |
 |----------|-------|--------|
-| Unit Tests (Domain) | 41 | ✅ Pass |
-| Unit Tests (Application) | 33 | ✅ Pass |
-| Unit Tests (API.Operations) | 14 | ✅ Pass |
-| Integration Tests (API) | 10 | ✅ Pass |
-| **Total** | **98** | **✅ All Pass** |
+| Unit Tests | 200 | Pass |
+| Integration Tests | 116 | Pass |
+| Example Programs | 11 | Pass |
+| **Total** | **327** | **All Pass** |
 
 Run tests: `make test-all`
 
@@ -110,38 +135,28 @@ Run tests: `make test-all`
 ```ada
 with TZif.API;
 
-procedure Main is
+procedure Show_Local_Timezone is
    use TZif.API;
-
-   Cmd    : constant Greet_Command := Create_Greet_Command ("World");
-   Result : constant Unit_Result.Result := Greet (Cmd);
+   Result : constant My_Zone_Result := Find_My_Id;
 begin
-   if Unit_Result.Is_Ok (Result) then
-      --  Output: "Hello, World!"
-      null;
+   if Is_Ok (Result) then
+      Put_Line ("Local timezone: " & To_String (Value (Result)));
+   else
+      Put_Line ("Could not detect local timezone");
    end if;
-end Main;
+end Show_Local_Timezone;
 ```
 
 ---
 
-## Document Conventions
+## Dependencies
 
-- **MUST/SHALL** - Absolute requirement
-- **SHOULD** - Recommended but not required
-- **MAY** - Optional feature
-- **Code blocks** - Can be copied and executed
-- **Diagrams** - PlantUML source in `docs/common/diagrams/`
+| Package | Version | Purpose |
+|---------|---------|---------|
+| `functional` | ^3.0.0 | Result/Option monads for infrastructure |
+| `gnatcoll` | ^25.0.0 | GNAT Components Collection |
 
----
-
-## Contributing to Documentation
-
-Documentation follows the standards defined in the [Documentation Agent](~/.claude/agents/documentation.md):
-
-- All files use metadata headers
-- Code examples must compile and run
-- Diagrams kept as .puml source + .svg rendered
+**Note:** Domain layer has zero external dependencies (pure Ada 2022).
 
 ---
 
@@ -149,4 +164,9 @@ Documentation follows the standards defined in the [Documentation Agent](~/.clau
 
 - Check the [Quick Start Guide](quick_start.md) for common issues
 - Review the [Software Test Guide](formal/software_test_guide.md) for testing help
-- See [All About Our API](common/guides/all_about_our_api.md) for API architecture details
+- See [Error Handling Strategy](common/guides/error_handling_strategy.md) for Result monad usage
+
+---
+
+**License:** BSD-3-Clause
+**Copyright:** 2025 Michael Gardner, A Bit of Help, Inc.

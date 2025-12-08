@@ -329,7 +329,7 @@ is
    --  ========================================================================
 
    --  Reverses the order of elements in place
-   procedure Reverse_Elements (V : in Out Vector) with
+   procedure Reverse_Elements (V : in out Vector) with
      Post => Length (V) = Length (V)'Old;
 
    --  ========================================================================
@@ -338,7 +338,7 @@ is
 
    --  Swaps two elements at given indices
    procedure Swap
-     (V : in Out Vector;
+     (V : in out Vector;
       I : Index_Type;
       J : Index_Type) with
      Pre  => I <= Length (V) and then J <= Length (V),

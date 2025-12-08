@@ -563,7 +563,8 @@ is
                              and then Name /= "+VERSION"
                            then
                               begin
-                                 if not List_All.Zone_Id_Vectors.Is_Full (Zones)
+                                 if not List_All.Zone_Id_Vectors.Is_Full
+                                   (Zones)
                                  then
                                     List_All.Zone_Id_Vectors.Unchecked_Append
                                       (Zones, Make_Zone_Id (Zone_Name));

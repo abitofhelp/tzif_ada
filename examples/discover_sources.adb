@@ -40,12 +40,14 @@ begin
 
    --  Build list of paths to search
    declare
-      Paths  : API.Path_List;
+      Paths  : API.Path_List := Port.Path_Vectors.Empty_Vector;
       Result : API.Discovery_Result;
    begin
       --  Add common system paths (platform-dependent)
-      Paths.Append (Port.Make_Path ("/usr/share/zoneinfo"));
-      Paths.Append (Port.Make_Path ("/var/db/timezone/zoneinfo"));
+      Port.Path_Vectors.Unchecked_Append
+        (Paths, Port.Make_Path ("/usr/share/zoneinfo"));
+      Port.Path_Vectors.Unchecked_Append
+        (Paths, Port.Make_Path ("/var/db/timezone/zoneinfo"));
 
       Result := API.Discover_Sources (Paths);
 
@@ -53,35 +55,53 @@ begin
          declare
             Data : constant Port.Discovery_Data_Type :=
               Port.Discovery_Result_Package.Value (Result);
+            Src_Count : constant Natural :=
+              Natural (Port.Source_Info_Vectors.Length (Data.Sources));
          begin
-            Put_Line
-              ("[OK] Found" & Natural'Image (Natural (Data.Sources.Length))
-               & " source(s)");
+            Put_Line ("[OK] Found" & Natural'Image (Src_Count) & " source(s)");
             New_Line;
 
             --  Display each discovered source
-            for Source of Data.Sources loop
-               Put_Line
-                 ("  - "
-                  & Source_Info.To_String (Source_Info.Get_Path (Source))
-                  & " ("
-                  & Source_Info.To_String (Source_Info.Get_Version (Source))
-                  & ","
-                  & Natural'Image (Source_Info.Get_Zone_Count (Source))
-                  & " zones)");
+            for I in 1 .. Src_Count loop
+               declare
+                  Source : constant Source_Info.Source_Info_Type :=
+                    Port.Source_Info_Vectors.Unchecked_Element
+                      (Data.Sources, I);
+               begin
+                  Put_Line
+                    ("  - "
+                     & Source_Info.To_String (Source_Info.Get_Path (Source))
+                     & " ("
+                     & Source_Info.To_String
+                         (Source_Info.Get_Version (Source))
+                     & ","
+                     & Natural'Image (Source_Info.Get_Zone_Count (Source))
+                     & " zones)");
+               end;
             end loop;
 
             --  Show any non-fatal errors encountered
-            if not Data.Errors.Is_Empty then
-               New_Line;
-               Put_Line
-                 ("Warnings:" & Natural'Image (Natural (Data.Errors.Length)));
-               for Err of Data.Errors loop
-                  Put_Line
-                    ("  - "
-                     & TZif.Domain.Error.Error_Strings.To_String (Err.Message));
-               end loop;
-            end if;
+            declare
+               Err_Count : constant Natural :=
+                 Natural (Port.Error_Vectors.Length (Data.Errors));
+            begin
+               if Err_Count > 0 then
+                  New_Line;
+                  Put_Line ("Warnings:" & Natural'Image (Err_Count));
+                  for I in 1 .. Err_Count loop
+                     declare
+                        Err : constant TZif.Domain.Error.Error_Type :=
+                          Port.Error_Vectors.Unchecked_Element
+                            (Data.Errors, I);
+                     begin
+                        Put_Line
+                          ("  - "
+                           & TZif.Domain.Error.Error_Strings.To_String
+                               (Err.Message));
+                     end;
+                  end loop;
+               end if;
+            end;
          end;
       else
          Put_Line ("[ERROR] Discovery failed");

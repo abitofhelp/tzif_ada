@@ -153,7 +153,7 @@ is
    end Unchecked_Delete_Last;
 
    procedure Unchecked_Replace
-     (V     : in Out Vector;
+     (V     : in out Vector;
       Index : Index_Type;
       E     : Element_Type)
    is
@@ -166,7 +166,7 @@ is
    --  ========================================================================
 
    procedure Swap
-     (V : in Out Vector;
+     (V : in out Vector;
       I : Index_Type;
       J : Index_Type)
    is
@@ -180,7 +180,7 @@ is
    --  Reverse Operation
    --  ========================================================================
 
-   procedure Reverse_Elements (V : in Out Vector) is
+   procedure Reverse_Elements (V : in out Vector) is
       Left  : Index_Type := 1;
       Right : Extended_Index := V.Last;
    begin
@@ -206,7 +206,7 @@ is
    --  - Stable sort (equal elements maintain relative order)
    --  ========================================================================
 
-   procedure Generic_Sort (V : in Out Vector) is
+   procedure Generic_Sort (V : in out Vector) is
       J    : Extended_Index;
       Key  : Element_Type;
    begin
@@ -222,7 +222,7 @@ is
          Key := V.Data (I);
          J := I - 1;
 
-         --  Shift larger elements to the right (use "<" since we only have that)
+         --  Shift larger elements right (use "<" since we only have that)
          while J >= 1 and then Key < V.Data (J) loop
             pragma Loop_Invariant (J < I);
             pragma Loop_Invariant (V.Last = V.Last'Loop_Entry);

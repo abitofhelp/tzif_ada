@@ -530,7 +530,6 @@ package body TZif.Infrastructure.Adapter.File_System.Zone_Repository is
 
    function List_Sources return Repository_Source_List_Result is
       use TZif.Domain.Value_Object.Source_Info;
-      use TZif.Application.Port.Outbound.Zone_Repository.Source_Info_Vectors;
 
       Sources : Source_Info_List;
 

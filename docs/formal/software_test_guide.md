@@ -1,10 +1,10 @@
-# Software Test Guide
+# Software Test Guide (STG)
 
-**Version:** 1.1.0<br>
-**Date:** 2025-12-06<br>
+**Version:** 1.0.0<br>
+**Date:** December 07, 2025<br>
 **SPDX-License-Identifier:** BSD-3-Clause<br>
 **License File:** See the LICENSE file in the project root<br>
-**Copyright:** © 2025 Michael Gardner, A Bit of Help, Inc.<br>
+**Copyright:** 2025 Michael Gardner, A Bit of Help, Inc.<br>
 **Status:** Released
 
 ---
@@ -13,46 +13,26 @@
 
 ### 1.1 Purpose
 
-This Software Test Guide describes the testing approach, test organization, and procedures for the TZif library.
+This Software Test Guide describes the testing strategy, test organization, and execution procedures for the TZif library.
 
 ### 1.2 Scope
 
 This document covers:
-- Test strategy and levels
-- Test organization
-- Running tests
-- Writing new tests
-- Test coverage analysis
+- Test architecture and organization
+- Unit, integration, and example tests
+- Test execution commands
+- Test framework usage
 
 ---
 
-## 2. Test Strategy
+## 2. Test Summary
 
-### 2.1 Testing Levels
-
-**Unit Tests**:
-- Test individual packages in isolation
-- Focus on domain value objects and services
-- Count: 200 tests
-
-**Integration Tests**:
-- Test full stack with real TZif data
-- Test use cases end-to-end
-- Test error conditions and edge cases
-- Count: 116 tests
-
-**Examples as Tests**:
-- Working examples that demonstrate usage
-- Validate real-world scenarios
-- Count: 11 examples
-
-### 2.2 Testing Approach
-
-- **Integration First**: Test real TZif file parsing with actual timezone data
-- **Unit Tests for Calculations**: Domain services and value object operations
-- **Railway-Oriented**: Test both success and error paths
-- **Comprehensive**: Cover normal, edge, and error cases
-- **Automated**: All tests runnable via `make test-all`
+| Category | Count | Status |
+|----------|-------|--------|
+| Unit Tests | 200 | Pass |
+| Integration Tests | 116 | Pass |
+| Example Programs | 11 | Pass |
+| **Total** | **327** | **All Pass** |
 
 ---
 
@@ -62,478 +42,311 @@ This document covers:
 
 ```
 test/
-├── unit/                          # Unit tests
-│   ├── unit_tests.gpr             # GPR project
-│   ├── unit_runner.adb            # Main test runner
-│   ├── test_zone_id.adb           # Zone ID validation tests
-│   ├── test_iana_releases.adb     # IANA release parsing tests
-│   ├── test_ulid.adb              # ULID generation/validation tests
-│   ├── test_tzif_data.adb         # TZif data structure tests
-│   ├── test_timezone_lookup.adb   # Timezone lookup service tests
-│   ├── test_zone_entity.adb       # Zone entity tests
-│   └── test_value_object_accessors.adb
-│
-├── integration/                   # Integration tests
-│   ├── integration_tests.gpr      # GPR project
-│   ├── integration_runner.adb     # Main test runner
-│   ├── test_find_by_id.adb        # Find zone by ID tests
-│   ├── test_find_by_pattern.adb   # Pattern search tests
-│   ├── test_find_by_regex.adb     # Regex search tests
-│   ├── test_find_by_region.adb    # Region search tests
-│   ├── test_find_my_id.adb        # Local timezone detection tests
-│   ├── test_get_transition_at_epoch.adb  # Transition lookup tests
-│   ├── test_get_version.adb       # Version query tests
-│   ├── test_list_all_order_by_id.adb     # Zone listing tests
-│   ├── test_discover_sources.adb  # Source discovery tests
-│   ├── test_load_source.adb       # Source loading tests
-│   ├── test_validate_source.adb   # Source validation tests
-│   ├── test_tzif_parser_errors.adb       # Parser error handling
-│   └── test_zone_repository_errors.adb   # Repository error handling
-│
-├── common/                        # Shared test infrastructure
-│   ├── test_framework.ads         # Result tracking, summaries
-│   └── test_framework.adb
-│
-└── python/                        # Python-based tests
-    └── test_arch_guard_ada.py     # Architecture boundary validation
+  +-- unit/                      -- Unit tests (domain, value objects)
+  |     +-- unit_runner.adb      -- Unit test runner
+  |     +-- unit_tests.gpr       -- Unit test project file
+  |     +-- test_bounded_vector.adb
+  |     +-- test_option_combinators.adb
+  |     +-- test_result_combinators.adb
+  |     +-- test_timezone_lookup.adb
+  |     +-- test_tzif_data.adb
+  |     +-- test_zone_id.adb
+  |     +-- test_value_object_accessors.adb
+  |     +-- test_iana_releases.adb
+  |     +-- test_zone_entity.adb
+  |     +-- test_source_cache.adb
+  |     +-- test_ulid.adb
+  |     +-- test_version.adb
+  |     +-- test_zone_cache.adb
+  +-- integration/               -- Integration tests (cross-layer)
+  |     +-- integration_runner.adb
+  |     +-- integration_tests.gpr
+  |     +-- test_api.adb
+  |     +-- test_discover_sources.adb
+  |     +-- test_find_by_id.adb
+  |     +-- test_find_by_pattern.adb
+  |     +-- test_find_by_regex.adb
+  |     +-- test_find_by_region.adb
+  |     +-- test_find_my_id.adb
+  |     +-- test_get_transition_at_epoch.adb
+  |     +-- test_get_version.adb
+  |     +-- test_list_all_order_by_id.adb
+  |     +-- test_load_source.adb
+  |     +-- test_query_timezone_info.adb
+  |     +-- test_tzif_parser_errors.adb
+  |     +-- test_validate_source.adb
+  |     +-- test_zone_repository_errors.adb
+  +-- common/                    -- Shared test utilities
+  +-- support/                   -- Test framework
+  +-- data/                      -- Test fixtures
+  +-- python/                    -- Python test scripts (submodule)
+examples/
+  +-- examples.gpr               -- Examples project file
+  +-- find_by_id.adb
+  +-- find_my_id.adb
+  +-- find_by_pattern.adb
+  +-- find_by_region.adb
+  +-- find_by_regex.adb
+  +-- get_transition_at_epoch.adb
+  +-- list_all_zones.adb
+  +-- discover_sources.adb
+  +-- load_source.adb
+  +-- validate_source.adb
+  +-- get_version.adb
 ```
 
-### 3.2 Test Naming Convention
+### 3.2 Test Categories
 
-- **Pattern**: `test_<component>.adb`
-- **Example**: `test_zone_id.adb` tests `Domain.Value_Object.Zone_Id`
-- **Runner**: Each level has a runner executable
+#### Unit Tests
+
+Test individual domain components in isolation:
+- Value object constructors and validators
+- Result monad operations and combinators
+- Option monad operations
+- Bounded vector operations
+- Parser logic (with byte arrays)
+- ULID generation
+
+#### Integration Tests
+
+Test cross-layer interactions with real infrastructure:
+- API operations end-to-end
+- Filesystem I/O with real TZif files
+- Parser with system timezone data
+- Repository operations
+- Error propagation across layers
+
+#### Example Programs
+
+Demonstrate API usage and serve as acceptance tests:
+- Each example exercises one primary operation
+- Validates that public API works correctly
+- Documents expected usage patterns
 
 ---
 
-## 4. Running Tests
+## 4. Test Framework
 
-### 4.1 Quick Start
+### 4.1 Test_Framework Package
+
+Tests use a custom lightweight framework in `test/support/`:
+
+```ada
+package Test_Framework is
+   procedure Reset;
+   procedure Run_Test (Name : String; Passed : Boolean);
+   function Grand_Total_Tests return Natural;
+   function Grand_Total_Passed return Natural;
+   function Print_Category_Summary (...) return Integer;
+end Test_Framework;
+```
+
+### 4.2 Test Pattern
+
+```ada
+procedure Test_Something is
+begin
+   --  Arrange
+   declare
+      Input : constant String := "America/New_York";
+   begin
+      --  Act
+      Result : constant Zone_Result := Find_By_Id (Make_Zone_Id (Input));
+
+      --  Assert
+      Test_Framework.Run_Test
+        ("Find valid zone returns Ok",
+         Is_Ok (Result));
+   end;
+end Test_Something;
+```
+
+---
+
+## 5. Test Execution
+
+### 5.1 Running All Tests
 
 ```bash
-# Run all tests (unit + integration)
 make test-all
+```
 
-# Run only unit tests
+Runs unit tests, integration tests, and examples in sequence.
+
+### 5.2 Running Specific Suites
+
+```bash
+# Unit tests only
 make test-unit
 
-# Run only integration tests
+# Integration tests only
 make test-integration
+
+# Examples only
+make test-examples
 ```
 
-### 4.2 Individual Test Execution
+### 5.3 Running Individual Test Files
 
 ```bash
-# Run unit test runner
-./test/bin/unit_runner
+# Build tests
+cd test && alr build
 
-# Run integration test runner
-./test/bin/integration_runner
+# Run unit tests
+./bin/unit_runner
+
+# Run integration tests
+./bin/integration_runner
 ```
 
-### 4.3 Test Output
+### 5.4 Running Python Tests
 
-**Success**:
-```
-========================================
-        GRAND TOTAL - ALL UNIT TESTS
-========================================
-Total tests:   200
-Passed:        200
-Failed:        0
-
-########################################
-###                                  ###
-###    UNIT TESTS: SUCCESS
-###    All  200 tests passed!
-###                                  ###
-########################################
-```
-
-**Failure**:
-```
-========================================
-  Results: 125 / 126 passed
-  Status: TESTS FAILED
-========================================
+```bash
+# Architecture enforcement tests
+make test-python
 ```
 
 ---
 
-## 5. Unit Tests
+## 6. Unit Test Details
 
-### 5.1 Domain Layer Tests
+### 6.1 Test Files
 
-#### test_zone_id.adb
-**Package Under Test:** `TZif.Domain.Value_Object.Zone_Id`
+| File | Tests | Description |
+|------|-------|-------------|
+| test_bounded_vector.adb | ~30 | Bounded vector operations |
+| test_option_combinators.adb | ~25 | Option monad combinators |
+| test_result_combinators.adb | ~40 | Result monad combinators |
+| test_timezone_lookup.adb | ~20 | Timezone lookup service |
+| test_tzif_data.adb | ~25 | TZif data structures |
+| test_zone_id.adb | ~15 | Zone ID validation |
+| test_value_object_accessors.adb | ~20 | Value object getters |
+| test_iana_releases.adb | ~10 | IANA release metadata |
+| test_zone_entity.adb | ~15 | Zone entity operations |
+| test_source_cache.adb | ~10 | Source cache operations |
+| test_ulid.adb | ~15 | ULID generation |
+| test_version.adb | ~5 | Version queries |
+| test_zone_cache.adb | ~10 | Zone cache operations |
 
-| Test Category | Description |
-|--------------|-------------|
-| Valid zone IDs | Test creation with valid IANA zone IDs |
-| Invalid zone IDs | Test rejection of malformed zone IDs |
-| Zone ID comparison | Test equality and ordering |
-| Zone ID string conversion | Test To_String and Make_Zone_Id |
+### 6.2 Coverage Focus
 
-#### test_ulid.adb
-**Package Under Test:** `TZif.Infrastructure.ULID`
-
-| Test Category | Description |
-|--------------|-------------|
-| ULID generation | Unique ID generation |
-| ULID parsing | Parse ULID strings |
-| ULID validation | Validate ULID format |
-| ULID ordering | Lexicographic ordering |
-
-#### test_timezone_lookup.adb
-**Package Under Test:** `TZif.Domain.Service.Timezone_Lookup`
-
-| Test Category | Description |
-|--------------|-------------|
-| Transition lookup | Find transition at epoch |
-| Edge cases | Before/after transition data |
-| DST handling | Daylight saving transitions |
-
-#### test_tzif_data.adb
-**Package Under Test:** TZif data structures
-
-| Test Category | Description |
-|--------------|-------------|
-| Data construction | Create TZif data records |
-| Data accessors | Read transition data |
-| Data validation | Validate data integrity |
+- Constructor validation (valid and invalid inputs)
+- Accessor correctness
+- Combinator behavior (And_Then, Map, etc.)
+- Edge cases (empty, boundary values)
+- Error path verification
 
 ---
 
-## 6. Integration Tests
+## 7. Integration Test Details
 
-### 6.1 Use Case Tests
+### 7.1 Test Files
 
-Each use case has a corresponding integration test file:
+| File | Tests | Description |
+|------|-------|-------------|
+| test_api.adb | ~15 | Public API operations |
+| test_discover_sources.adb | ~10 | Source discovery |
+| test_find_by_id.adb | ~15 | Zone lookup by ID |
+| test_find_by_pattern.adb | ~12 | Pattern matching |
+| test_find_by_regex.adb | ~15 | Regex search |
+| test_find_by_region.adb | ~10 | Region filtering |
+| test_find_my_id.adb | ~8 | Local timezone detection |
+| test_get_transition_at_epoch.adb | ~12 | Transition queries |
+| test_get_version.adb | ~8 | Version queries |
+| test_list_all_order_by_id.adb | ~10 | Zone enumeration |
+| test_load_source.adb | ~8 | Source loading |
+| test_query_timezone_info.adb | ~10 | Timezone info queries |
+| test_tzif_parser_errors.adb | ~29 | Parser error handling |
+| test_validate_source.adb | ~8 | Source validation |
+| test_zone_repository_errors.adb | ~14 | Repository error paths |
 
-| Test File | Use Case | Description |
-|-----------|----------|-------------|
-| test_find_by_id.adb | Find_By_Id | Lookup zones by exact ID |
-| test_find_by_pattern.adb | Find_By_Pattern | Pattern matching search |
-| test_find_by_regex.adb | Find_By_Regex | Regex search |
-| test_find_by_region.adb | Find_By_Region | Region-based search |
-| test_find_my_id.adb | Find_My_Id | Local timezone detection |
-| test_get_transition_at_epoch.adb | Get_Transition_At_Epoch | Transition lookup |
-| test_get_version.adb | Get_Version | Database version query |
-| test_list_all_order_by_id.adb | List_All_Order_By_Id | Zone enumeration |
-| test_discover_sources.adb | Discover_Sources | Source discovery |
-| test_load_source.adb | Load_Source | Source loading |
-| test_validate_source.adb | Validate_Source | Source validation |
+### 7.2 Fixtures
 
-### 6.2 Error Handling Tests
-
-| Test File | Description |
-|-----------|-------------|
-| test_tzif_parser_errors.adb | Parser error scenarios |
-| test_zone_repository_errors.adb | Repository error scenarios |
+Integration tests use:
+- System timezone data (`/usr/share/zoneinfo` or `/var/db/timezone/zoneinfo`)
+- Test fixtures in `test/data/`
 
 ---
 
-## 7. Platform Adapter Testing
+## 8. Example Programs
 
-### 7.1 Platform Abstraction Test Strategy
+### 8.1 Program List
 
-The TZif library uses hexagonal architecture with platform-specific adapters. This requires a multi-tier testing approach:
+| Example | Primary Operation | Success Criteria |
+|---------|-------------------|------------------|
+| find_by_id | Find_By_Id | Finds America/Phoenix |
+| find_my_id | Find_My_Id | Returns local zone |
+| find_by_pattern | Find_By_Pattern | Matches substring |
+| find_by_region | Find_By_Region | Filters by region |
+| find_by_regex | Find_By_Regex | Matches regex |
+| get_transition_at_epoch | Get_Transition_At_Epoch | Returns transition info |
+| list_all_zones | List_All_Zones | Enumerates zones |
+| discover_sources | Discover_Sources | Finds sources |
+| load_source | Load_Source | Loads source |
+| validate_source | Validate_Source | Validates path |
+| get_version | Get_Version | Returns version |
 
-| Test Tier | Purpose | Runs On |
-|-----------|---------|---------|
-| Unit Tests (Mock) | Test port contracts with mock adapters | All platforms |
-| Platform Integration | Test real platform adapters | Native platform only |
-| CI Validation | Validate platform support in CI | GitHub Actions runners |
+### 8.2 Running Examples
 
-### 7.2 Platform Adapter Components
+```bash
+# Build examples
+make build-examples
 
-Each platform adapter implements the same outbound port contracts:
+# Run individual example
+./bin/examples/find_by_id
+./bin/examples/get_transition_at_epoch
+```
 
-| Port | Desktop Adapter | Windows Adapter | Embedded Adapter |
-|------|-----------------|-----------------|------------------|
-| `Get_System_Timezone_Id` | POSIX symlink resolution | Win32 API + CLDR mapping | Config/env variable |
-| File I/O | Standard Ada.Direct_IO | Standard Ada.Direct_IO | RAM filesystem |
+---
 
-### 7.3 Windows Platform Tests
+## 9. Continuous Integration
 
-**Location**: `test/integration/windows_platform_tests.gpr`
-
-**Purpose**: Standalone test project for Windows CI that validates:
-- Win32 `GetDynamicTimeZoneInformation` API binding
-- Windows-to-IANA timezone mapping via CLDR data
-- Platform adapter compilation on Windows
-
-**Test File**: `test_windows_platform.adb`
-
-| Test Category | Description |
-|--------------|-------------|
-| Win32 API binding | Verify FFI to Windows timezone API |
-| CLDR mapping | Windows timezone name → IANA zone ID |
-| Error handling | Invalid/unknown timezone mapping |
-
-**CI Workflow**: `.github/workflows/windows-release.yml`
+### 9.1 CI Workflow
 
 ```yaml
-# Windows CI runs standalone platform tests
-- name: Build Windows platform tests
-  run: alr exec -- gprbuild -P test/integration/windows_platform_tests.gpr
-
-- name: Run Windows platform tests
-  run: alr exec -- ./test/bin/test_windows_platform
+# Simplified CI steps
+- Build library
+- Run unit tests
+- Run integration tests
+- Run examples
+- Check style/warnings
 ```
 
-### 7.4 Desktop (POSIX) Platform Tests
+### 9.2 Platform Matrix
 
-**Location**: Integrated in standard integration tests
-
-**Purpose**: Validate POSIX platform adapter functionality:
-- `/etc/localtime` symlink resolution
-- Canonical path normalization
-- Standard zoneinfo directory traversal
-
-**Tested By**: `test_find_my_id.adb` (detects local system timezone)
-
-### 7.5 Embedded Platform Tests
-
-**Purpose**: Validate embedded platform adapter for STM32F769I and similar boards.
-
-**Test Strategy**:
-
-| Approach | Description |
-|----------|-------------|
-| Mock Testing | Use mock adapter returning configured zone ID |
-| QEMU Emulation | Run on ARM Cortex-M emulator with RAM filesystem |
-| Hardware-in-Loop | Run on actual STM32F769I-DK board (manual) |
-
-**Mock Adapter Test Pattern**:
-
-```ada
---  Test using mock adapter that returns configured value
-package Mock_System_Timezone is
-   Configured_Zone : constant String := "America/New_York";
-
-   function Get_System_Timezone_Id return Zone_Id_Result is
-     (Zone_Id_Result.Make_Ok (Make_Zone_Id (Configured_Zone)));
-end Mock_System_Timezone;
-
---  Instantiate port with mock adapter
-package Test_TZ_Port is new Application.Port.Outbound.System_Timezone
-  (Get_System_Timezone_Id => Mock_System_Timezone.Get_System_Timezone_Id);
-```
-
-### 7.6 Cross-Platform Test Matrix
-
-| Test Suite | Desktop/POSIX | Windows | Embedded |
-|------------|---------------|---------|----------|
-| Unit Tests | ✓ | ✓ | ✓ |
-| Integration Tests | ✓ | ✗ (platform tests only) | ✓ (mock) |
-| Platform Tests | ✓ | ✓ | ✓ (QEMU/hardware) |
-| Examples | ✓ | ✗ | ✓ (selected) |
-
-### 7.7 GPR Scenario Variables for Platform Testing
-
-Platform selection is controlled via GPR scenario variables:
-
-```bash
-# Test on POSIX (default)
-gprbuild -P integration_tests.gpr -XTZIF_OS=unix
-
-# Test on Windows
-gprbuild -P windows_platform_tests.gpr -XTZIF_OS=windows
-
-# Test for embedded (with mock adapters)
-gprbuild -P embedded_tests.gpr -XTZIF_PROFILE=embedded
-```
+| Platform | Status |
+|----------|--------|
+| Linux (Ubuntu) | Full CI |
+| macOS | Full CI |
+| Windows | Partial (unit tests) |
 
 ---
 
-## 8. Test Data
+## 10. Test Maintenance
 
-### 8.1 Test Timezone Data
+### 10.1 Adding New Tests
 
-**Location**: `/usr/share/zoneinfo` (system default)
+1. Create test file in appropriate directory
+2. Import Test_Framework
+3. Write test procedures following Arrange-Act-Assert
+4. Add test procedure call to runner
+5. Run and verify
 
-**Test Zones Used**:
-- `America/New_York`: Standard US timezone
-- `America/Los_Angeles`: West coast timezone
-- `Europe/London`: European timezone with DST
-- `UTC`: Special timezone with no transitions
-- `America/Phoenix`: No DST timezone
+### 10.2 Test Naming
 
-### 8.2 Test Fixtures
-
-Integration tests use the system timezone database when available, with fallback to test fixtures for deterministic testing.
-
----
-
-## 9. Writing Tests
-
-### 9.1 Unit Test Structure
-
-```ada
-pragma Ada_2022;
-with Test_Framework;
-with TZif.Domain.Value_Object.Zone_Id;
-
-procedure Test_Zone_Id is
-   use TZif.Domain.Value_Object.Zone_Id;
-   use Test_Framework;
-
-   Total_Tests  : Natural := 0;
-   Passed_Tests : Natural := 0;
-
-   procedure Run_Test (Name : String; Passed : Boolean) is
-   begin
-      Total_Tests := Total_Tests + 1;
-      if Passed then
-         Passed_Tests := Passed_Tests + 1;
-         Put_Line ("  [PASS] " & Name);
-      else
-         Put_Line ("  [FAIL] " & Name);
-      end if;
-   end Run_Test;
-
-begin
-   Put_Line ("Test: Zone_Id");
-
-   --  Test case
-   Run_Test ("Valid zone ID creates successfully",
-             Is_Ok (Make_Zone_Id ("America/New_York")));
-
-   --  Register with framework
-   Test_Framework.Register_Results (Total_Tests, Passed_Tests);
-end Test_Zone_Id;
-```
-
-### 9.2 Integration Test Structure
-
-```ada
-pragma Ada_2022;
-with Test_Framework;
-with TZif.API;
-
-procedure Test_Find_By_Id is
-   use TZif.API;
-   use Test_Framework;
-
-begin
-   Put_Line ("Test: Find_By_Id - Real Timezone Data");
-
-   --  Test with real filesystem
-   declare
-      Result : constant Zone_Result := Find_By_Id (Make_Zone_Id ("America/New_York"));
-   begin
-      Run_Test ("Find America/New_York succeeds", Is_Ok (Result));
-   end;
-
-   Test_Framework.Register_Results (Total_Tests, Passed_Tests);
-end Test_Find_By_Id;
-```
+- File: `test_<component>.adb`
+- Procedure: Descriptive name of what is being tested
+- Run_Test name: "Operation_Condition_ExpectedResult"
 
 ---
 
-## 10. Test Coverage
+**Document Control:**
+- Version: 1.0.0
+- Last Updated: December 07, 2025
+- Status: Released
 
-### 10.1 Coverage Goals
+**Change History:**
 
-| Layer | Target |
-|-------|--------|
-| Domain | 100% (pure logic, fully testable) |
-| Application | 95%+ (use cases are orchestration) |
-| Infrastructure | 90%+ (adapter code, error paths) |
-| Overall | 90%+ |
-
-### 10.2 Running Coverage Analysis
-
-```bash
-# Generate coverage report
-make test-coverage
-
-# View HTML report
-open coverage/report/index.html
-```
-
----
-
-## 11. Continuous Integration
-
-### 11.1 CI Pipeline
-
-```yaml
-steps:
-  - name: Build
-    run: alr build
-
-  - name: Unit Tests
-    run: make test-unit
-
-  - name: Integration Tests
-    run: make test-integration
-
-  - name: Examples
-    run: make test-examples
-```
-
-### 11.2 Windows CI Workflow
-
-Windows platform validation runs via `.github/workflows/windows-release.yml`:
-
-```yaml
-steps:
-  - name: Build Windows platform tests
-    run: alr exec -- gprbuild -P test/integration/windows_platform_tests.gpr
-
-  - name: Run Windows platform tests
-    run: alr exec -- ./test/bin/test_windows_platform
-```
-
-**Trigger**: Manual dispatch (called by `release.py prepare` or GitHub Actions UI)
-
-**Purpose**: Pre-flight validation of Windows compatibility before release.
-
-### 11.3 Success Criteria
-
-All must pass:
-- Zero build warnings
-- All unit tests pass (200 tests)
-- All integration tests pass (116 tests)
-- All examples execute successfully (11 examples)
-
----
-
-## 12. Appendices
-
-### 12.1 Test Statistics
-
-| Category | Count |
-|----------|-------|
-| Unit tests | 200 |
-| Integration tests | 116 |
-| Example programs | 11 |
-| **Total test assets** | **327** |
-
-### 12.2 Test Commands Reference
-
-```bash
-make test-all          # Run all tests
-make test-unit         # Unit tests only
-make test-integration  # Integration tests only
-make test-examples     # Run examples as tests
-make test-coverage     # With coverage
-make clean-coverage    # Remove coverage data
-```
-
----
-
-**Document Control**:
-- Version: 1.1.0
-- Last Updated: 2025-12-06
-- Status: Draft (Platform Abstraction Refactoring)
-- Copyright © 2025 Michael Gardner, A Bit of Help, Inc.
-- License: BSD-3-Clause
-
-**Change History**:
 | Version | Date | Author | Changes |
 |---------|------|--------|---------|
-| 1.0.0 | 2025-12-02 | Michael Gardner | Initial release |
-| 1.1.0 | 2025-12-06 | Michael Gardner | Added Section 7 Platform Adapter Testing for multi-platform test strategy |
+| 1.0.0 | 2025-12-07 | Michael Gardner | Initial release |

@@ -92,6 +92,10 @@ procedure Test_Result_Combinators is
    --  Instantiate With_Context
    function Add_Context is new Int_Result.With_Context (Add => Add_Location);
 
+   --  Instantiate And_Then for each chain function
+   function Chain_Double is new Int_Result.And_Then (F => Double_Positive);
+   function Chain_Fail is new Int_Result.And_Then (F => Always_Fail);
+
 begin
    Put_Line ("Test: Result Constructors and Predicates");
    --  Basic constructor tests
@@ -130,8 +134,7 @@ begin
    --  And_Then on Ok with function returning Ok
    declare
       R       : constant Int_Res := Int_Result.Ok (5);
-      Chained : constant Int_Res :=
-        Int_Result.And_Then (R, Double_Positive'Access);
+      Chained : constant Int_Res := Chain_Double (R);
    begin
       Assert (Int_Result.Is_Ok (Chained), "And_Then on Ok returns Ok");
       Assert (Int_Result.Value (Chained) = 10,
@@ -141,8 +144,7 @@ begin
    --  And_Then on Ok with function returning Error
    declare
       R       : constant Int_Res := Int_Result.Ok (-5);
-      Chained : constant Int_Res :=
-        Int_Result.And_Then (R, Double_Positive'Access);
+      Chained : constant Int_Res := Chain_Double (R);
    begin
       Assert (Int_Result.Is_Error (Chained),
               "And_Then on Ok can return Error from function");
@@ -153,8 +155,7 @@ begin
    --  And_Then on Ok with function that always fails
    declare
       R       : constant Int_Res := Int_Result.Ok (100);
-      Chained : constant Int_Res :=
-        Int_Result.And_Then (R, Always_Fail'Access);
+      Chained : constant Int_Res := Chain_Fail (R);
    begin
       Assert (Int_Result.Is_Error (Chained),
               "And_Then can fail on any Ok value");
@@ -167,8 +168,7 @@ begin
    declare
       R       : constant Int_Res :=
         Int_Result.Error (IO_Error, "file not found");
-      Chained : constant Int_Res :=
-        Int_Result.And_Then (R, Double_Positive'Access);
+      Chained : constant Int_Res := Chain_Double (R);
    begin
       Assert (Int_Result.Is_Error (Chained),
               "And_Then on Error returns Error");
@@ -245,10 +245,8 @@ begin
    declare
       R     : constant Int_Res := Int_Result.Ok (2);
       --  Double twice: 2 -> 4 -> 8
-      Step1 : constant Int_Res :=
-        Int_Result.And_Then (R, Double_Positive'Access);
-      Step2 : constant Int_Res :=
-        Int_Result.And_Then (Step1, Double_Positive'Access);
+      Step1 : constant Int_Res := Chain_Double (R);
+      Step2 : constant Int_Res := Chain_Double (Step1);
    begin
       Assert (Int_Result.Is_Ok (Step2), "Chained And_Then produces Ok");
       Assert (Int_Result.Value (Step2) = 8,
@@ -258,12 +256,9 @@ begin
    --  Chain And_Then with error in middle
    declare
       R     : constant Int_Res := Int_Result.Ok (2);
-      Step1 : constant Int_Res :=
-        Int_Result.And_Then (R, Double_Positive'Access);
-      Step2 : constant Int_Res :=
-        Int_Result.And_Then (Step1, Always_Fail'Access);
-      Step3 : constant Int_Res :=
-        Int_Result.And_Then (Step2, Double_Positive'Access);
+      Step1 : constant Int_Res := Chain_Double (R);
+      Step2 : constant Int_Res := Chain_Fail (Step1);
+      Step3 : constant Int_Res := Chain_Double (Step2);
    begin
       Assert (Int_Result.Is_Error (Step3), "Error propagates through chain");
       Assert (Int_Result.Error_Info (Step3).Kind = Internal_Error,
@@ -289,8 +284,7 @@ begin
    --  Combine And_Then with context on error path
    declare
       R       : constant Int_Res := Int_Result.Ok (-1);
-      Chained : constant Int_Res :=
-        Int_Result.And_Then (R, Double_Positive'Access);
+      Chained : constant Int_Res := Chain_Double (R);
       Context : constant Int_Res := Add_Context (Chained, "Test_Chain");
    begin
       Assert (Int_Result.Is_Error (Context), "Combined chain produces Error");

@@ -58,28 +58,34 @@ begin
          begin
             if List_Port.List_All_Zones_Result_Package.Is_Ok (List_Result) then
                declare
-                  Zones : constant List_Port.Zone_Id_List :=
-                    List_Port.List_All_Zones_Result_Package.Value (List_Result);
-                  Count : Natural := 0;
+                  Zones      : constant List_Port.Zone_Id_List :=
+                    List_Port.List_All_Zones_Result_Package.Value
+                      (List_Result);
+                  Zone_Count : constant Natural :=
+                    Natural (List_Port.Zone_Id_Vectors.Length (Zones));
+                  Count      : Natural := 0;
                begin
-                  Put_Line
-                    ("[OK] Found"
-                     & Natural'Image (Natural (Zones.Length)) & " zones");
+                  Put_Line ("[OK] Found" & Natural'Image (Zone_Count)
+                            & " zones");
                   New_Line;
-                  Put_Line
-                    ("First" & Natural'Image (Max_Display) & " zones:");
+                  Put_Line ("First" & Natural'Image (Max_Display) & " zones:");
 
-                  for Z of Zones loop
+                  for I in 1 .. Zone_Count loop
                      Count := Count + 1;
                      exit when Count > Max_Display;
-                     Put_Line ("  " & Zone_Id.To_String (Z));
+                     declare
+                        Z : constant Zone_Id.Zone_Id_Type :=
+                          List_Port.Zone_Id_Vectors.Unchecked_Element
+                            (Zones, I);
+                     begin
+                        Put_Line ("  " & Zone_Id.To_String (Z));
+                     end;
                   end loop;
 
-                  if Natural (Zones.Length) > Max_Display then
-                     Put_Line
-                       ("  ... and"
-                        & Natural'Image (Natural (Zones.Length) - Max_Display)
-                        & " more");
+                  if Zone_Count > Max_Display then
+                     Put_Line ("  ... and"
+                               & Natural'Image (Zone_Count - Max_Display)
+                               & " more");
                   end if;
                end;
             else
