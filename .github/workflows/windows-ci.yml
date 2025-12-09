@@ -59,9 +59,9 @@ jobs:
       - name: Update functional pin for CI
         shell: bash
         run: |
-          # Replace local path pin with GitHub URL pin (v2.2.1 tag commit SHA)
-          sed -i "s|path = '../functional'|url = \"https://github.com/abitofhelp/functional.git\", commit = \"7375a09b789cc5fc5ad4e6a09ff1882a978f2248\"|" alire.toml
-          echo "Updated pin to use GitHub URL (functional v2.2.1)"
+          # Replace local path pin with GitHub URL pin (v3.0.0 tag commit SHA)
+          sed -i "s|path = '../functional'|url = \"https://github.com/abitofhelp/functional.git\", commit = \"d00678ad7e432f26b4311a9cb5a4b727117216d7\"|" alire.toml
+          echo "Updated pin to use GitHub URL (functional v3.0.0)"
 
       # -----------------------------------------------------------------------
       # Download IANA timezone data
