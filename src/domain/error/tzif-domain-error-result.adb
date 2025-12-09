@@ -121,16 +121,6 @@ package body TZif.Domain.Error.Result is
          return Map_E (Self);
       end With_Context;
 
-      ------------
-      -- Expect --
-      ------------
-
-      function Expect (Self : Result; Msg : String) return T is
-         pragma Unreferenced (Msg);
-      begin
-         return Self.Success_Value;
-      end Expect;
-
       ---------------
       -- Unwrap_Or --
       ---------------

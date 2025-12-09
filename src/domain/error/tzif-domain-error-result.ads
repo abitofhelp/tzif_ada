@@ -109,11 +109,6 @@ is
       --  Extractors with defaults
       --  =====================================================================
 
-      --  Expect: extract value or raise with custom message
-      --  Forces programmer to document why they believe Result is Ok
-      function Expect (Self : Result; Msg : String) return T with
-        Pre => Is_Ok (Self) or else raise Program_Error with Msg;
-
       --  Unwrap_Or: extract value or return default
       function Unwrap_Or (Self : Result; Default : T) return T with
         Post =>
