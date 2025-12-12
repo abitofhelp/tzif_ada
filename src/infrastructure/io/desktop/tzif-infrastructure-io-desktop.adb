@@ -947,6 +947,9 @@ is
    --  Validate_Source_Path
    --
    --  Validates that a path is a valid timezone source.
+   --
+   --  Implementation:
+   --    Uses Functional.Try for exception-to-Result conversion.
    ----------------------------------------------------------------------
    procedure Validate_Source_Path
      (Path   : TZif.Application.Port.Inbound.Validate_Source.Path_String;
@@ -954,25 +957,14 @@ is
         .Validation_Result)
    is
       use Ada.Directories;
-      use Ada.Exceptions;
       package Validate_Source renames
         TZif.Application.Port.Inbound.Validate_Source;
 
       Path_Str : constant String :=
         Validate_Source.Path_Strings.To_String (Path);
-   begin
-      if not Exists (Path_Str) then
-         Result := Validate_Source.Validation_Result_Package.Ok (False);
-         return;
-      end if;
 
-      if Kind (Path_Str) /= Directory then
-         Result := Validate_Source.Validation_Result_Package.Ok (False);
-         return;
-      end if;
-
-      --  Check for at least one TZif file
-      declare
+      --  Raw action that may raise
+      function Raw_Validate return Boolean is
          Search     : Search_Type;
          pragma Warnings (Off, Search);
          Item       : Directory_Entry_Type;
@@ -986,19 +978,35 @@ is
             end if;
          end loop;
          End_Search (Search);
-
-         Result := Validate_Source.Validation_Result_Package.Ok (Found_TZif);
+         return Found_TZif;
       exception
          when Name_Error | Use_Error =>
-            Result := Validate_Source.Validation_Result_Package.Ok (False);
-      end;
+            --  Inaccessible directory = not valid (intentional)
+            return False;
+      end Raw_Validate;
 
-   exception
-      when E : others =>
-         Result :=
-           Validate_Source.Validation_Result_Package.Error
-             (TZif.Domain.Error.IO_Error,
-              "Error validating source: " & Exception_Message (E));
+      --  Instantiate Functional.Try
+      function Try_Validate is new Functional.Try.Try_To_Result
+        (T             => Boolean,
+         E             => TZif.Domain.Error.Error_Type,
+         Result_Type   => Validate_Source.Validation_Result,
+         Ok            => Validate_Source.Validation_Result_Package.Ok,
+         New_Error     => Validate_Source.Validation_Result_Package.From_Error,
+         Map_Exception => Map_IO_Exception,
+         Action        => Raw_Validate);
+
+   begin
+      if not Exists (Path_Str) then
+         Result := Validate_Source.Validation_Result_Package.Ok (False);
+         return;
+      end if;
+
+      if Kind (Path_Str) /= Directory then
+         Result := Validate_Source.Validation_Result_Package.Ok (False);
+         return;
+      end if;
+
+      Result := Try_Validate;
    end Validate_Source_Path;
 
    ----------------------------------------------------------------------
