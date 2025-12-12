@@ -17,6 +17,7 @@ pragma Ada_2022;
 with Ada.Directories;
 with Ada.Exceptions;
 with Ada.Text_IO;
+with Functional.Try;
 with TZif_Config;
 with TZif.Infrastructure.TZif_Parser;
 with TZif.Infrastructure.ULID;
@@ -137,17 +138,37 @@ package body TZif.Infrastructure.Adapter.File_System.Zone_Repository is
 
    function Exists (Id : Zone_Id_Type) return Repository_Boolean_Result is
       Zone_Id_Str : constant String := To_String (Id);
-      File_Path   : constant String := Find_TZif_File (Zone_Id_Str);
+
+      --  Map exception to Error_Type
+      function Map_Exists_Exception
+        (Occ : Ada.Exceptions.Exception_Occurrence)
+         return Error_Type
+      is
+      begin
+         return (Kind    => IO_Error,
+                 Message => Error_Strings.To_Bounded_String
+                   ("Error checking existence of " & Zone_Id_Str & ": " &
+                    Ada.Exceptions.Exception_Message (Occ)));
+      end Map_Exists_Exception;
+
+      --  Raw action that may raise exceptions
+      function Raw_Check_Exists return Boolean is
+         File_Path : constant String := Find_TZif_File (Zone_Id_Str);
+      begin
+         return File_Path'Length > 0;
+      end Raw_Check_Exists;
+
+      --  Instantiate Functional.Try
+      function Try_Check_Exists is new Functional.Try.Try_To_Result
+        (T             => Boolean,
+         E             => Error_Type,
+         Result_Type   => Repository_Boolean_Result,
+         Ok            => Boolean_Result.Ok,
+         New_Error     => Boolean_Result.From_Error,
+         Map_Exception => Map_Exists_Exception,
+         Action        => Raw_Check_Exists);
    begin
-      --  Return true if file was found
-      return Boolean_Result.Ok (File_Path'Length > 0);
-   exception
-      when E : others =>
-         return
-           Boolean_Result.Error
-             (IO_Error,
-              "Error checking existence of " & Zone_Id_Str & ": " &
-              Ada.Exceptions.Exception_Message (E));
+      return Try_Check_Exists;
    end Exists;
 
    --  ===========================================================
