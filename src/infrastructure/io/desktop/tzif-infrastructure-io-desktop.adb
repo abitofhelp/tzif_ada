@@ -519,32 +519,28 @@ is
    --  Read_Version_File
    --
    --  Reads the +VERSION file from the timezone source directory.
+   --
+   --  Implementation:
+   --    Uses Functional.Try for exception-to-Result conversion and
+   --    Functional.Scoped for automatic file cleanup.
    ----------------------------------------------------------------------
    procedure Read_Version_File
      (Source : TZif.Domain.Value_Object.Source_Info.Source_Info_Type;
       Result : out TZif.Application.Port.Inbound.Get_Version.Version_Result)
    is
       use Ada.Directories;
-      use Ada.Exceptions;
       package Get_Version renames TZif.Application.Port.Inbound.Get_Version;
 
       Path_Str     : constant String :=
         TZif.Domain.Value_Object.Source_Info.To_String
           (TZif.Domain.Value_Object.Source_Info.Get_Path (Source));
       Version_File : constant String := Path_Str & "/+VERSION";
-   begin
-      if not Exists (Version_File) or else Kind (Version_File) /= Ordinary_File
-      then
-         Result :=
-           Get_Version.Version_Result_Package.Error
-             (TZif.Domain.Error.Not_Found_Error,
-              "Version file not found: " & Version_File);
-         return;
-      end if;
 
-      --  Read version from file
-      declare
-         File   : SIO.File_Type;
+      --  Raw action that may raise - reads version string from file
+      function Raw_Read_Version_File return Get_Version.Version_String is
+         File   : aliased SIO.File_Type;
+         Guard  : Stream_File_Guard.Guard (File'Access);
+         pragma Unreferenced (Guard);  --  RAII: releases via Finalize
          Stream : SIO.Stream_Access;
          Buffer : String (1 .. 32) := [others => ' '];
          Len    : Natural          := 0;
@@ -561,34 +557,33 @@ is
             Buffer (Len) := Ch;
          end loop;
 
-         SIO.Close (File);
+         --  Guard.Finalize will close file automatically
+         return Get_Version.Version_Strings.To_Bounded_String
+           (Ada.Strings.Fixed.Trim (Buffer (1 .. Len), Ada.Strings.Both));
+      end Raw_Read_Version_File;
 
-         declare
-            Trimmed : constant String :=
-              Ada.Strings.Fixed.Trim (Buffer (1 .. Len), Ada.Strings.Both);
-         begin
-            Result :=
-              Get_Version.Version_Result_Package.Ok
-                (Get_Version.Version_Strings.To_Bounded_String (Trimmed));
-         end;
+      --  Instantiate Functional.Try for version file reading
+      function Try_Read_Version_File is new Functional.Try.Try_To_Result
+        (T             => Get_Version.Version_String,
+         E             => TZif.Domain.Error.Error_Type,
+         Result_Type   => Get_Version.Version_Result,
+         Ok            => Get_Version.Version_Result_Package.Ok,
+         New_Error     => Get_Version.Version_Result_Package.From_Error,
+         Map_Exception => Map_IO_Exception,
+         Action        => Raw_Read_Version_File);
 
-      exception
-         when E : others =>
-            if SIO.Is_Open (File) then
-               SIO.Close (File);
-            end if;
-            Result :=
-              Get_Version.Version_Result_Package.Error
-                (TZif.Domain.Error.IO_Error,
-                 "Error reading version: " & Exception_Message (E));
-      end;
-
-   exception
-      when E : others =>
+   begin
+      --  Check if file exists first (avoids exception for common case)
+      if not Exists (Version_File) or else Kind (Version_File) /= Ordinary_File
+      then
          Result :=
            Get_Version.Version_Result_Package.Error
-             (TZif.Domain.Error.IO_Error,
-              "Unexpected error: " & Exception_Message (E));
+             (TZif.Domain.Error.Not_Found_Error,
+              "Version file not found: " & Version_File);
+         return;
+      end if;
+
+      Result := Try_Read_Version_File;
    end Read_Version_File;
 
    ----------------------------------------------------------------------
