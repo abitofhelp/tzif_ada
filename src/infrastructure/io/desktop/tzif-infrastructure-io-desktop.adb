@@ -23,6 +23,7 @@ with Ada.Strings.Fixed;
 with Ada.Text_IO;
 with Ada.Characters.Handling;
 with Functional.Option;
+with Functional.Result;
 with Functional.Scoped;
 with Functional.Try;
 with GNAT.Regpat;
@@ -410,77 +411,160 @@ is
          end if;
       end Add_Error;
 
+      --  Process a single path and return Source_Info or error
+      --  Uses Functional.Try to catch any unexpected exceptions
+      type Path_Result_Kind is (Source_Found, Error_Found, No_Source);
+      type Path_Result (Kind : Path_Result_Kind := No_Source) is record
+         case Kind is
+            when Source_Found =>
+               Source : Source_Info_Type;
+            when Error_Found =>
+               Error : TZif.Domain.Error.Error_Type;
+            when No_Source =>
+               null;
+         end case;
+      end record;
+
+      function Process_Single_Path (Dir_Path : String) return Path_Result is
+      begin
+         --  Check if path exists
+         if not Exists (Dir_Path) then
+            return (Kind  => Error_Found,
+                    Error => (Kind    => TZif.Domain.Error.Not_Found_Error,
+                              Message => TZif.Domain.Error.Error_Strings
+                                .To_Bounded_String
+                                  ("Path not found: " & Dir_Path)));
+
+         elsif Kind (Dir_Path) /= Directory then
+            return (Kind  => Error_Found,
+                    Error => (Kind    => TZif.Domain.Error.Validation_Error,
+                              Message => TZif.Domain.Error.Error_Strings
+                                .To_Bounded_String
+                                  ("Not a directory: " & Dir_Path)));
+
+         else
+            --  Look for VERSION file
+            declare
+               Version_Path1 : constant String := Dir_Path & "/+VERSION";
+               Version_Path2 : constant String := Dir_Path & "/VERSION";
+               Version_Str   : Version_String_Type;
+            begin
+               if Exists (Version_Path1) then
+                  Version_Str :=
+                    Make_Version (Read_Version_File (Version_Path1));
+               elsif Exists (Version_Path2) then
+                  Version_Str :=
+                    Make_Version (Read_Version_File (Version_Path2));
+               else
+                  Version_Str := Make_Version ("unknown");
+               end if;
+
+               --  Count TZif files
+               declare
+                  Zone_Count : constant Natural :=
+                    Count_TZif_Files (Dir_Path);
+               begin
+                  if Zone_Count > 0 then
+                     return (Kind   => Source_Found,
+                             Source => Make_Source_Info
+                               (ULID       => Generate_Simple_ULID,
+                                Path       => Make_Path (Dir_Path),
+                                Version    => Version_Str,
+                                Zone_Count => Zone_Count));
+                  else
+                     return (Kind  => Error_Found,
+                             Error => (Kind    =>
+                                         TZif.Domain.Error.Validation_Error,
+                                       Message =>
+                                         TZif.Domain.Error.Error_Strings
+                                           .To_Bounded_String
+                                             ("No TZif files found in: " &
+                                              Dir_Path)));
+                  end if;
+               end;
+            end;
+         end if;
+      end Process_Single_Path;
+
+      --  Map exception to error for a given path
+      Current_Path : access String;  --  For error messages
+
+      function Map_Path_Exception
+        (Occ : Ada.Exceptions.Exception_Occurrence)
+         return TZif.Domain.Error.Error_Type
+      is
+         Path_Str : constant String :=
+           (if Current_Path /= null then Current_Path.all else "<unknown>");
+      begin
+         return (Kind    => TZif.Domain.Error.IO_Error,
+                 Message => TZif.Domain.Error.Error_Strings.To_Bounded_String
+                   ("Error scanning: " & Path_Str & ": " &
+                    Exception_Message (Occ)));
+      end Map_Path_Exception;
+
    begin
       --  Process each search path using index-based iteration
       for I in 1 .. Discover.Path_Vectors.Length (Search_Paths) loop
          declare
             Path_Elem : constant Discover.Path_String :=
               Discover.Path_Vectors.Unchecked_Element (Search_Paths, I);
-            Dir_Path  : constant String               :=
+            Dir_Path  : aliased String :=
               Discover.Path_Strings.To_String (Path_Elem);
+
+            --  Wrapper for Functional.Try
+            function Raw_Process return Path_Result is
+            begin
+               return Process_Single_Path (Dir_Path);
+            end Raw_Process;
+
+            package Path_Result_Pkg is new Functional.Result
+              (T => Path_Result, E => TZif.Domain.Error.Error_Type);
+
+            function Try_Process is new Functional.Try.Try_To_Result
+              (T             => Path_Result,
+               E             => TZif.Domain.Error.Error_Type,
+               Result_Type   => Path_Result_Pkg.Result,
+               Ok            => Path_Result_Pkg.Ok,
+               New_Error     => Path_Result_Pkg.From_Error,
+               Map_Exception => Map_Path_Exception,
+               Action        => Raw_Process);
+
+            Path_Res : Path_Result_Pkg.Result;
          begin
-            --  Check if path exists
-            if not Exists (Dir_Path) then
-               Add_Error
-                 (TZif.Domain.Error.Not_Found_Error,
-                  "Path not found: " & Dir_Path);
+            Current_Path := Dir_Path'Unchecked_Access;
+            Path_Res := Try_Process;
+            Current_Path := null;
 
-            elsif Kind (Dir_Path) /= Directory then
-               Add_Error
-                 (TZif.Domain.Error.Validation_Error,
-                  "Not a directory: " & Dir_Path);
-
-            else
-               --  Look for VERSION file
+            if Path_Result_Pkg.Is_Ok (Path_Res) then
                declare
-                  Version_Path1 : constant String := Dir_Path & "/+VERSION";
-                  Version_Path2 : constant String := Dir_Path & "/VERSION";
-                  Version_Str   : Version_String_Type;
+                  Inner : constant Path_Result := Path_Result_Pkg.Value (Path_Res);
                begin
-                  if Exists (Version_Path1) then
-                     Version_Str :=
-                       Make_Version (Read_Version_File (Version_Path1));
-                  elsif Exists (Version_Path2) then
-                     Version_Str :=
-                       Make_Version (Read_Version_File (Version_Path2));
-                  else
-                     Version_Str := Make_Version ("unknown");
-                  end if;
-
-                  --  Count TZif files
-                  declare
-                     Zone_Count : constant Natural :=
-                       Count_TZif_Files (Dir_Path);
-                     Source     : Source_Info_Type;
-                  begin
-                     if Zone_Count > 0 then
-                        Source :=
-                          Make_Source_Info
-                            (ULID       => Generate_Simple_ULID,
-                             Path       => Make_Path (Dir_Path),
-                             Version    => Version_Str,
-                             Zone_Count => Zone_Count);
+                  case Inner.Kind is
+                     when Source_Found =>
                         if not Discover.Source_Info_Vectors.Is_Full
                             (Data.Sources)
                         then
                            Discover.Source_Info_Vectors.Unchecked_Append
-                             (Data.Sources, Source);
+                             (Data.Sources, Inner.Source);
                         end if;
-                     else
-                        Add_Error
-                          (TZif.Domain.Error.Validation_Error,
-                           "No TZif files found in: " & Dir_Path);
-                     end if;
-                  end;
+                     when Error_Found =>
+                        Add_Error (Inner.Error.Kind,
+                          TZif.Domain.Error.Error_Strings.To_String
+                            (Inner.Error.Message));
+                     when No_Source =>
+                        null;
+                  end case;
+               end;
+            else
+               --  Exception was caught and mapped to error
+               declare
+                  Err : constant TZif.Domain.Error.Error_Type :=
+                    Path_Result_Pkg.Error (Path_Res);
+               begin
+                  Add_Error (Err.Kind,
+                    TZif.Domain.Error.Error_Strings.To_String (Err.Message));
                end;
             end if;
-
-         exception
-            when E : others =>
-               Add_Error
-                 (TZif.Domain.Error.IO_Error,
-                  "Error scanning: " & Dir_Path & ": " &
-                  Exception_Message (E));
          end;
       end loop;
 
