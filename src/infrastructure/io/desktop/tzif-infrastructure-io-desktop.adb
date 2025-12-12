@@ -808,6 +808,10 @@ is
    --  Load_Source_From_Path
    --
    --  Loads timezone source metadata from filesystem path.
+   --
+   --  Implementation:
+   --    Uses Functional.Try for exception-to-Result conversion and
+   --    Functional.Scoped for automatic file cleanup.
    ----------------------------------------------------------------------
    procedure Load_Source_From_Path
      (Path   : TZif.Application.Port.Inbound.Load_Source.Path_String;
@@ -815,12 +819,110 @@ is
         .Load_Source_Result)
    is
       use Ada.Directories;
-      use Ada.Exceptions;
       use Ada.Text_IO;
       package Load_Source renames TZif.Application.Port.Inbound.Load_Source;
 
+      --  Re-enable Text_File_Guard for this procedure
+      package Local_Text_Guard is new Functional.Scoped.Conditional_Guard_For
+        (Resource       => File_Type,
+         Should_Release => Is_Open,
+         Release        => Close);
+
       Path_Str : constant String :=
         Load_Source.Path_Strings.To_String (Path);
+
+      --  Raw action that may raise
+      function Raw_Load_Source return Source_Info_Type is
+         ULID         : constant ULID_Type        :=
+           TZif.Infrastructure.ULID.Generate;
+         Path_Val     : constant Path_String_Type := Make_Path (Path_Str);
+         Version_File : constant String           := Path_Str & "/+VERSION";
+         Version_Str  : String (1 .. 32);
+         Last         : Natural;
+         File         : aliased File_Type;
+         Guard        : Local_Text_Guard.Guard (File'Access);
+         pragma Unreferenced (Guard);  --  RAII: releases via Finalize
+
+         Zone_Count   : Natural := 0;
+
+         procedure Count_Zones (Dir_Path : String) is
+
+            procedure Count_Recursive (P : String) is
+               S : Search_Type;
+               pragma Warnings (Off, S);
+               I : Directory_Entry_Type;
+            begin
+               if Zone_Count > 1_000 then
+                  return;
+               end if;
+
+               Start_Search (S, P, "*");
+               while More_Entries (S) loop
+                  Get_Next_Entry (S, I);
+                  declare
+                     N : constant String := Simple_Name (I);
+                  begin
+                     if N'Length > 0 and then N (N'First) /= '.' then
+                        case Kind (I) is
+                           when Directory =>
+                              Count_Recursive (Full_Name (I));
+
+                           when Ordinary_File =>
+                              if N /= "zone.tab"
+                                and then N /= "zone1970.tab"
+                                and then N /= "iso3166.tab"
+                                and then N /= "leapseconds"
+                                and then N /= "tzdata.zi"
+                                and then N /= "+VERSION"
+                              then
+                                 Zone_Count := Zone_Count + 1;
+                              end if;
+
+                           when others =>
+                              null;
+                        end case;
+                     end if;
+                  end;
+               end loop;
+               End_Search (S);
+            exception
+               when Ada.Directories.Name_Error
+                  | Ada.Directories.Use_Error =>
+                  --  Skip inaccessible directories (intentional)
+                  null;
+            end Count_Recursive;
+
+         begin
+            Count_Recursive (Dir_Path);
+         end Count_Zones;
+
+         Version : Version_String_Type;
+      begin
+         if Exists (Version_File) and then Kind (Version_File) = Ordinary_File
+         then
+            Open (File, In_File, Version_File);
+            Get_Line (File, Version_Str, Last);
+            --  Guard.Finalize will close file automatically
+         else
+            Version_Str (1 .. 7) := "unknown";
+            Last                 := 7;
+         end if;
+
+         Version := Make_Version (Version_Str (1 .. Last));
+         Count_Zones (Path_Str);
+         return Make_Source_Info (ULID, Path_Val, Version, Zone_Count);
+      end Raw_Load_Source;
+
+      --  Instantiate Functional.Try
+      function Try_Load_Source is new Functional.Try.Try_To_Result
+        (T             => Source_Info_Type,
+         E             => TZif.Domain.Error.Error_Type,
+         Result_Type   => Load_Source.Load_Source_Result,
+         Ok            => Load_Source.Load_Source_Result_Package.Ok,
+         New_Error     => Load_Source.Load_Source_Result_Package.From_Error,
+         Map_Exception => Map_IO_Exception,
+         Action        => Raw_Load_Source);
+
    begin
       if not Exists (Path_Str) then
          Result :=
@@ -838,103 +940,7 @@ is
          return;
       end if;
 
-      declare
-         ULID         : constant ULID_Type        :=
-           TZif.Infrastructure.ULID.Generate;
-         Path_Val     : constant Path_String_Type := Make_Path (Path_Str);
-         Version_File : constant String           := Path_Str & "/+VERSION";
-         Version_Str  : String (1 .. 32);
-         Last         : Natural;
-         File         : File_Type;
-      begin
-         if Exists (Version_File) and then Kind (Version_File) = Ordinary_File
-         then
-            Open (File, In_File, Version_File);
-            Get_Line (File, Version_Str, Last);
-            Close (File);
-         else
-            Version_Str (1 .. 7) := "unknown";
-            Last                 := 7;
-         end if;
-
-         declare
-            Version    : constant Version_String_Type :=
-              Make_Version (Version_Str (1 .. Last));
-            Zone_Count : Natural                      := 0;
-
-            procedure Count_Zones (Dir_Path : String) is
-
-               procedure Count_Recursive (P : String) is
-                  S : Search_Type;
-                  pragma Warnings (Off, S);
-                  I : Directory_Entry_Type;
-               begin
-                  if Zone_Count > 1_000 then
-                     return;
-                  end if;
-
-                  Start_Search (S, P, "*");
-                  while More_Entries (S) loop
-                     Get_Next_Entry (S, I);
-                     declare
-                        N : constant String := Simple_Name (I);
-                     begin
-                        if N'Length > 0 and then N (N'First) /= '.' then
-                           case Kind (I) is
-                              when Directory =>
-                                 Count_Recursive (Full_Name (I));
-
-                              when Ordinary_File =>
-                                 if N /= "zone.tab"
-                                   and then N /= "zone1970.tab"
-                                   and then N /= "iso3166.tab"
-                                   and then N /= "leapseconds"
-                                   and then N /= "tzdata.zi"
-                                   and then N /= "+VERSION"
-                                 then
-                                    Zone_Count := Zone_Count + 1;
-                                 end if;
-
-                              when others =>
-                                 null;
-                           end case;
-                        end if;
-                     end;
-                  end loop;
-                  End_Search (S);
-               exception
-                  when Ada.Directories.Name_Error
-                     | Ada.Directories.Use_Error =>
-                     null;
-               end Count_Recursive;
-
-            begin
-               Count_Recursive (Dir_Path);
-            end Count_Zones;
-
-            Source : Source_Info_Type;
-         begin
-            Count_Zones (Path_Str);
-            Source := Make_Source_Info (ULID, Path_Val, Version, Zone_Count);
-            Result := Load_Source.Load_Source_Result_Package.Ok (Source);
-         end;
-      exception
-         when E : others =>
-            if Is_Open (File) then
-               Close (File);
-            end if;
-            Result :=
-              Load_Source.Load_Source_Result_Package.Error
-                (TZif.Domain.Error.IO_Error,
-                 "Error loading source: " & Exception_Message (E));
-      end;
-
-   exception
-      when E : others =>
-         Result :=
-           Load_Source.Load_Source_Result_Package.Error
-             (TZif.Domain.Error.IO_Error,
-              "Unexpected error: " & Exception_Message (E));
+      Result := Try_Load_Source;
    end Load_Source_From_Path;
 
    ----------------------------------------------------------------------
