@@ -1,7 +1,7 @@
 # Changelog
 
-**Version:** 2.0.0  
-**Date:** December 07, 2025  
+**Version:** 99.99.99  
+**Date:** December 12, 2025  
 **SPDX-License-Identifier:** BSD-3-Clause<br>
 **License File:** See the LICENSE file in the project root<br>
 **Copyright:** © 2025 Michael Gardner, A Bit of Help, Inc.<br>  
@@ -14,9 +14,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+### Added
+
+### Removed
+
+### Fixed
+
+---
+
+## [99.99.99] - 2025-12-12
+
 ## [2.0.0] - 2025-12-07
 
-**Test Coverage:** 425 unit + 131 integration + 11 examples = 567 total
+**Test Coverage:** 0 unit + 0 integration + 11 examples = 11 total
 
 ### Breaking Changes
 
@@ -83,6 +95,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `gnatcoll` ^25.0.0 (GNAT Components Collection)
 
 ---
+
 
 ## [1.0.0] - 2025-12-02
 

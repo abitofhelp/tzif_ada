@@ -2,8 +2,8 @@
 
 [![License](https://img.shields.io/badge/license-BSD--3--Clause-blue.svg)](LICENSE) [![Ada](https://img.shields.io/badge/Ada-2022-blue.svg)](https://ada-lang.io) [![Alire](https://img.shields.io/badge/Alire-2.0+-blue.svg)](https://alire.ada.dev) [![SPARK](https://img.shields.io/badge/SPARK-Proved-green.svg)](https://www.adacore.com/about-spark)
 
-**Version:** 2.0.0  
-**Date:** December 07, 2025  
+**Version:** 99.99.99  
+**Date:** December 12, 2025  
 **SPDX-License-Identifier:** BSD-3-Clause<br>
 **License File:** See the LICENSE file in the project root<br>
 **Copyright:** 2025 Michael Gardner, A Bit of Help, Inc.<br>  
@@ -190,7 +190,7 @@ make test-unit
 make test-integration
 ```
 
-**Test Results:** 425 unit + 131 integration + 11 examples = **567 tests passing**
+**Test Results:** 0 unit + 0 integration + 11 examples = **11 tests passing**
 
 ## Documentation
 

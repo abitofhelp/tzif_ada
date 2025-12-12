@@ -31,9 +31,9 @@ package TZif.Version
 is
 
    --  Semantic Version Components
-   Major : constant Natural := 2;
-   Minor : constant Natural := 0;
-   Patch : constant Natural := 0;
+   Major : constant Natural := 99;
+   Minor : constant Natural := 99;
+   Patch : constant Natural := 99;
 
    --  Pre-release identifier (e.g., "dev", "alpha.1", "beta.2", "rc.1")
    --  Empty string for stable releases
@@ -44,7 +44,7 @@ is
    Build_Metadata : constant String := "";
 
    --  Full version string (e.g., "0.1.0-dev", "1.2.3", "2.0.0-rc.1+build.456")
-   Version : constant String := "2.0.0";
+   Version : constant String := "99.99.99";
 
    --  Check if this is a pre-release version
    function Is_Prerelease return Boolean is (Prerelease'Length > 0);
