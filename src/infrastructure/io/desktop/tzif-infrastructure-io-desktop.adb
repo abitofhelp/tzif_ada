@@ -8,6 +8,12 @@ pragma Ada_2022;
 --  Purpose:
 --    Desktop implementation.
 --
+--  Implementation Notes:
+--    Uses Functional.Try and Functional.Scoped for exception boundary handling.
+--    All I/O operations that may raise exceptions are wrapped with
+--    Functional.Try.Try_To_Any_Result_With_Param, and file handles use
+--    Functional.Scoped.Conditional_Guard_For for automatic cleanup.
+--
 --  ===========================================================================
 
 with Ada.Streams.Stream_IO;
@@ -16,6 +22,9 @@ with Ada.Exceptions;
 with Ada.Strings.Fixed;
 with Ada.Text_IO;
 with Ada.Characters.Handling;
+with Functional.Option;
+with Functional.Scoped;
+with Functional.Try;
 with GNAT.Regpat;
 with TZif.Domain.Error;
 with TZif.Domain.Value_Object.Zone_Id;
@@ -33,6 +42,68 @@ is
 
    --  Rename Stream_IO to avoid namespace conflicts with Ada.Directories
    package SIO renames Ada.Streams.Stream_IO;
+
+   --  ========================================================================
+   --  Exception Mapping (used by Functional.Try)
+   --  ========================================================================
+
+   function Map_IO_Exception
+     (Occ : Ada.Exceptions.Exception_Occurrence)
+      return TZif.Domain.Error.Error_Type
+   is
+      use Ada.Exceptions;
+      use TZif.Domain.Error;
+      Exc_Name : constant String := Exception_Name (Occ);
+   begin
+      if Exc_Name = "ADA.IO_EXCEPTIONS.NAME_ERROR"
+        or else Exc_Name = "ADA.STREAMS.STREAM_IO.NAME_ERROR"
+      then
+         return (Kind    => Not_Found_Error,
+                 Message => Error_Strings.To_Bounded_String
+                   ("File not found: " & Exception_Message (Occ)));
+      elsif Exc_Name = "ADA.IO_EXCEPTIONS.USE_ERROR"
+        or else Exc_Name = "ADA.STREAMS.STREAM_IO.USE_ERROR"
+      then
+         return (Kind    => IO_Error,
+                 Message => Error_Strings.To_Bounded_String
+                   ("Cannot access file: " & Exception_Message (Occ)));
+      elsif Exc_Name = "ADA.IO_EXCEPTIONS.END_ERROR"
+        or else Exc_Name = "ADA.STREAMS.STREAM_IO.END_ERROR"
+      then
+         return (Kind    => Parse_Error,
+                 Message => Error_Strings.To_Bounded_String
+                   ("Unexpected end of file: " & Exception_Message (Occ)));
+      elsif Exc_Name = "ADA.IO_EXCEPTIONS.DATA_ERROR"
+        or else Exc_Name = "ADA.STREAMS.STREAM_IO.DATA_ERROR"
+      then
+         return (Kind    => Parse_Error,
+                 Message => Error_Strings.To_Bounded_String
+                   ("File data corrupted: " & Exception_Message (Occ)));
+      else
+         return (Kind    => IO_Error,
+                 Message => Error_Strings.To_Bounded_String
+                   ("I/O error: " & Exception_Message (Occ)));
+      end if;
+   end Map_IO_Exception;
+
+   --  ========================================================================
+   --  Scoped File Guard for Stream_IO
+   --  ========================================================================
+
+   package Stream_File_Guard is new Functional.Scoped.Conditional_Guard_For
+     (Resource       => SIO.File_Type,
+      Should_Release => SIO.Is_Open,
+      Release        => SIO.Close);
+
+   --  ========================================================================
+   --  Scoped File Guard for Text_IO
+   --  ========================================================================
+
+   package Text_File_Guard is new Functional.Scoped.Conditional_Guard_For
+     (Resource       => Ada.Text_IO.File_Type,
+      Should_Release => Ada.Text_IO.Is_Open,
+      Release        => Ada.Text_IO.Close);
+   pragma Unreferenced (Text_File_Guard);  --  Will be used in later refactoring
 
    --  ========================================================================
    --  Default Zoneinfo Path
@@ -56,97 +127,70 @@ is
    --  Read TZif binary file from filesystem.
    --
    --  Implementation:
-   --    1. Construct file path from zone ID
-   --    2. Open file for reading
-   --    3. Read bytes into buffer
-   --    4. Return byte count or error
+   --    Uses Functional.Try for exception-to-Result conversion and
+   --    Functional.Scoped for automatic file cleanup.
    ----------------------------------------------------------------------
+
+   --  Context for Read_File raw action
+   type Read_File_Context is record
+      File_Path   : access constant String;
+      Bytes       : access Byte_Array;
+      Bytes_Read  : Natural := 0;
+   end record;
+
+   --  Raw action that may raise - reads file bytes into buffer
+   function Raw_Read_File (Ctx : Read_File_Context) return Read_Info is
+      File   : aliased SIO.File_Type;
+      Guard  : Stream_File_Guard.Guard (File'Access);
+      pragma Unreferenced (Guard);  --  RAII: releases via Finalize
+      Stream : SIO.Stream_Access;
+      Length : Natural := 0;
+   begin
+      SIO.Open (File, SIO.In_File, Ctx.File_Path.all);
+      Stream := SIO.Stream (File);
+
+      --  Read bytes one at a time into buffer
+      while not SIO.End_Of_File (File)
+        and then Length < Ctx.Bytes'Length
+      loop
+         Length := Length + 1;
+         Unsigned_8'Read (Stream, Ctx.Bytes (Length));
+      end loop;
+
+      --  Guard.Finalize will close file automatically
+      return (Bytes_Read => Length);
+   end Raw_Read_File;
+
+   --  Instantiate Functional.Try for Read_File
+   function Try_Read_File is new Functional.Try.Try_To_Any_Result_With_Param
+     (T             => Read_Info,
+      E             => TZif.Domain.Error.Error_Type,
+      Param         => Read_File_Context,
+      Result_Type   => Read_File_Result.Result,
+      Ok            => Read_File_Result.Ok,
+      New_Error     => Read_File_Result.From_Error,
+      Map_Exception => Map_IO_Exception,
+      Action        => Raw_Read_File);
+
    procedure Read_File
      (Id     :     TZif.Application.Port.Inbound.Find_By_Id.Zone_Id_Input_Type;
       Bytes  : out Byte_Array; Length : out Natural;
       Result : out Read_File_Result.Result)
    is
-      use Ada.Exceptions;
-      File      : SIO.File_Type;
-      Stream    : SIO.Stream_Access;
-      File_Path : constant String := Zoneinfo_Base & To_String (Id);
+      File_Path : aliased constant String := Zoneinfo_Base & To_String (Id);
+      Ctx       : Read_File_Context;
    begin
       Length := 0;
+      Ctx := (File_Path  => File_Path'Unchecked_Access,
+              Bytes      => Bytes'Unrestricted_Access,
+              Bytes_Read => 0);
 
-      --  Step 1: Open TZif file
-      begin
-         SIO.Open (File, SIO.In_File, File_Path);
-      exception
-         when E : SIO.Name_Error =>
-            Result :=
-              Read_File_Result.Error
-                (TZif.Domain.Error.Not_Found_Error,
-                 "Zone file not found: " & File_Path & ": " &
-                 Exception_Message (E));
-            return;
-         when E : SIO.Use_Error  =>
-            Result :=
-              Read_File_Result.Error
-                (TZif.Domain.Error.IO_Error,
-                 "Cannot access zone file: " & File_Path & ": " &
-                 Exception_Message (E));
-            return;
-         when E : others         =>
-            Result :=
-              Read_File_Result.Error
-                (TZif.Domain.Error.IO_Error,
-                 "File open error for " & File_Path & ": " &
-                 Exception_Message (E));
-            return;
-      end;
+      Result := Try_Read_File (Ctx);
 
-      --  Step 2: Read file bytes
-      begin
-         Stream := SIO.Stream (File);
-
-         --  Read bytes one at a time into buffer
-         while not SIO.End_Of_File (File)
-           and then Length < Bytes'Length
-         loop
-            Length := Length + 1;
-            Unsigned_8'Read (Stream, Bytes (Length));
-         end loop;
-
-         SIO.Close (File);
-
-         --  Return success with read info
-         Result := Read_File_Result.Ok ((Bytes_Read => Length));
-
-      exception
-         when E : SIO.End_Error  =>
-            if SIO.Is_Open (File) then
-               SIO.Close (File);
-            end if;
-            Result :=
-              Read_File_Result.Error
-                (TZif.Domain.Error.Parse_Error,
-                 "Unexpected end of file for " & File_Path & ": " &
-                 Exception_Message (E));
-         when E : SIO.Data_Error =>
-            if SIO.Is_Open (File) then
-               SIO.Close (File);
-            end if;
-            Result :=
-              Read_File_Result.Error
-                (TZif.Domain.Error.Parse_Error,
-                 "File data corrupted for " & File_Path & ": " &
-                 Exception_Message (E));
-         when E : others         =>
-            if SIO.Is_Open (File) then
-               SIO.Close (File);
-            end if;
-            Result :=
-              Read_File_Result.Error
-                (TZif.Domain.Error.IO_Error,
-                 "File read error for " & File_Path & ": " &
-                 Exception_Message (E));
-      end;
-
+      --  Extract bytes read from successful result
+      if Read_File_Result.Is_Ok (Result) then
+         Length := Read_File_Result.Value (Result).Bytes_Read;
+      end if;
    end Read_File;
 
    ----------------------------------------------------------------------
@@ -178,63 +222,93 @@ is
          Errors  => Discover.Error_Vectors.Empty_Vector);
 
       --  Read first few bytes of file to check TZif magic
-      function Is_TZif_File (Path : String) return Boolean is
-         File   : SIO.File_Type;
+      --  Uses Functional.Try with Option for safe file reading
+      package Bool_Option is new Functional.Option (T => Boolean);
+
+      function Raw_Check_TZif_Magic (Path : String) return Boolean is
+         File   : aliased SIO.File_Type;
+         Guard  : Stream_File_Guard.Guard (File'Access);
+         pragma Unreferenced (Guard);  --  RAII: releases via Finalize
          Stream : SIO.Stream_Access;
          Magic  : String (1 .. 4);
       begin
          if Kind (Path) /= Ordinary_File then
             return False;
          end if;
+         SIO.Open (File, SIO.In_File, Path);
+         Stream := SIO.Stream (File);
+         String'Read (Stream, Magic);
+         return Magic = "TZif";
+      end Raw_Check_TZif_Magic;
 
-         begin
-            SIO.Open (File, SIO.In_File, Path);
-            Stream := SIO.Stream (File);
-            String'Read (Stream, Magic);
-            SIO.Close (File);
-            return Magic = "TZif";
-         exception
-            when others =>
-               if SIO.Is_Open (File) then
-                  SIO.Close (File);
-               end if;
-               return False;
-         end;
+      function Try_Check_TZif is new Functional.Try.Try_To_Option_With_Param
+        (T          => Boolean,
+         Param      => String,
+         Option_Pkg => Bool_Option,
+         Action     => Raw_Check_TZif_Magic);
+
+      function Is_TZif_File (Path : String) return Boolean is
+      begin
+         return Bool_Option.Unwrap_Or (Try_Check_TZif (Path), Default => False);
       end Is_TZif_File;
 
-      --  Read version from file
-      function Read_Version_File (Path : String) return String is
-         File   : SIO.File_Type;
+      --  Read version from file using Functional.Try + Scoped
+      Max_Version_Len : constant := 64;
+      subtype Version_Buffer is String (1 .. Max_Version_Len);
+      package Version_Option is new Functional.Option (T => Version_Buffer);
+
+      function Raw_Read_Version (Path : String) return Version_Buffer is
+         File   : aliased SIO.File_Type;
+         Guard  : Stream_File_Guard.Guard (File'Access);
+         pragma Unreferenced (Guard);  --  RAII: releases via Finalize
          Stream : SIO.Stream_Access;
-         Buffer : String (1 .. 64) := [others => ' '];
-         Len    : Natural          := 0;
+         Buffer : Version_Buffer := [others => ' '];
+         Len    : Natural := 0;
          Ch     : Character;
       begin
-         begin
-            SIO.Open (File, SIO.In_File, Path);
-            Stream := SIO.Stream (File);
+         SIO.Open (File, SIO.In_File, Path);
+         Stream := SIO.Stream (File);
 
-            --  Read until newline or buffer full
-            while not SIO.End_Of_File (File) and then Len < Buffer'Last loop
-               Character'Read (Stream, Ch);
-               exit when Ch = ASCII.LF or else Ch = ASCII.CR;
-               Len          := Len + 1;
-               Buffer (Len) := Ch;
-            end loop;
+         --  Read until newline or buffer full
+         while not SIO.End_Of_File (File) and then Len < Buffer'Last loop
+            Character'Read (Stream, Ch);
+            exit when Ch = ASCII.LF or else Ch = ASCII.CR;
+            Len := Len + 1;
+            Buffer (Len) := Ch;
+         end loop;
 
-            SIO.Close (File);
-            return Trim (Buffer (1 .. Len), Ada.Strings.Both);
-         exception
-            when others =>
-               if SIO.Is_Open (File) then
-                  SIO.Close (File);
-               end if;
-               return "unknown";
-         end;
+         return Buffer;
+      end Raw_Read_Version;
+
+      function Try_Read_Version is new Functional.Try.Try_To_Option_With_Param
+        (T          => Version_Buffer,
+         Param      => String,
+         Option_Pkg => Version_Option,
+         Action     => Raw_Read_Version);
+
+      function Read_Version_File (Path : String) return String is
+         Default_Version : Version_Buffer := [others => ' '];
+         Opt    : constant Version_Option.Option := Try_Read_Version (Path);
+         Buffer : Version_Buffer;
+         Len    : Natural := Max_Version_Len;
+      begin
+         Default_Version (1 .. 7) := "unknown";
+         Buffer := Version_Option.Unwrap_Or (Opt, Default => Default_Version);
+         --  Trim trailing spaces
+         while Len > 0 and then Buffer (Len) = ' ' loop
+            Len := Len - 1;
+         end loop;
+         return Trim (Buffer (1 .. Len), Ada.Strings.Both);
       end Read_Version_File;
 
       --  Count TZif files in directory (recursive)
-      function Count_TZif_Files (Dir_Path : String) return Natural is
+      --  Uses Functional.Try to handle directory access errors
+      package Natural_Option is new Functional.Option (T => Natural);
+
+      --  Forward declaration for recursive calls
+      function Count_TZif_Files (Dir_Path : String) return Natural;
+
+      function Raw_Count_TZif_Files (Dir_Path : String) return Natural is
          Count  : Natural := 0;
          Search : Search_Type;
          Item   : Directory_Entry_Type;
@@ -270,10 +344,17 @@ is
 
          End_Search (Search);
          return Count;
+      end Raw_Count_TZif_Files;
 
-      exception
-         when others =>
-            return Count;
+      function Try_Count_TZif is new Functional.Try.Try_To_Option_With_Param
+        (T          => Natural,
+         Param      => String,
+         Option_Pkg => Natural_Option,
+         Action     => Raw_Count_TZif_Files);
+
+      function Count_TZif_Files (Dir_Path : String) return Natural is
+      begin
+         return Natural_Option.Unwrap_Or (Try_Count_TZif (Dir_Path), Default => 0);
       end Count_TZif_Files;
 
       --  Generate simple ULID-like identifier
