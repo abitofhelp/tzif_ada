@@ -353,44 +353,60 @@ package body TZif.Infrastructure.Adapter.File_System.Repository is
 
       Path_Str     : constant String := To_String (Get_Path (Source));
       Version_File : constant String := Path_Str & "/+VERSION";
-   begin
-      if not Exists (Version_File) or else Kind (Version_File) /= Ordinary_File
-      then
+
+      --  Scoped guard for file cleanup
+      procedure Close_File (F : in out File_Type) renames Close;
+      package Text_File_Guard is new Functional.Scoped.Conditional_Guard_For
+        (Resource       => File_Type,
+         Should_Release => Is_Open,
+         Release        => Close_File);
+
+      --  Map exception to error
+      function Map_Version_Exception
+        (Occ : Ada.Exceptions.Exception_Occurrence)
+         return Version_Result
+      is
+      begin
          return
            Version_Result_Package.Error
-             (Not_Found_Error, "Version file not found: " & Version_File);
-      end if;
+             (IO_Error,
+              "Error reading version: " &
+              Ada.Exceptions.Exception_Message (Occ));
+      end Map_Version_Exception;
 
-      declare
-         File : File_Type;
-         Line : String (1 .. 32);
-         Last : Natural;
+      --  Core logic
+      function Raw_Get_Version return Version_Result is
+         File  : aliased File_Type;
+         Guard : Text_File_Guard.Guard (File'Access);
+         pragma Unreferenced (Guard);
+         Line  : String (1 .. 32);
+         Last  : Natural;
       begin
+         if not Exists (Version_File)
+           or else Kind (Version_File) /= Ordinary_File
+         then
+            return
+              Version_Result_Package.Error
+                (Not_Found_Error, "Version file not found: " & Version_File);
+         end if;
+
          Open (File, In_File, Version_File);
          Get_Line (File, Line, Last);
-         Close (File);
+         --  Guard handles Close on exit
          return
            Version_Result_Package.Ok
              (Application.Port.Inbound.Get_Version.Version_Strings
                 .To_Bounded_String
                 (Line (1 .. Last)));
-      exception
-         when E : others =>
-            if Is_Open (File) then
-               Close (File);
-            end if;
-            return
-              Version_Result_Package.Error
-                (IO_Error,
-                 "Error reading version: " &
-                 Ada.Exceptions.Exception_Message (E));
-      end;
-   exception
-      when E : others =>
-         return
-           Version_Result_Package.Error
-             (IO_Error,
-              "Unexpected error: " & Ada.Exceptions.Exception_Message (E));
+      end Raw_Get_Version;
+
+      --  Try wrapper
+      function Try_Get_Version is new Functional.Try.Try_To_Any_Result
+        (Result_Type   => Version_Result,
+         Map_Exception => Map_Version_Exception,
+         Action        => Raw_Get_Version);
+   begin
+      return Try_Get_Version;
    end Get_Version;
 
    --  ========================================================================

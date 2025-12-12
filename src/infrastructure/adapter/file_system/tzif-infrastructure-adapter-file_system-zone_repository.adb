@@ -325,48 +325,55 @@ package body TZif.Infrastructure.Adapter.File_System.Zone_Repository is
 
    function Find_My_Id return Repository_Zone_Id_Result is
       Localtime_Path : constant String := "/etc/localtime";
-   begin
-      --  Check if /etc/localtime exists
-      if not Exists (Localtime_Path) then
+
+      --  Map exception to error
+      function Map_Find_My_Id_Exception
+        (Occ : Ada.Exceptions.Exception_Occurrence)
+         return Repository_Zone_Id_Result
+      is
+      begin
          return
            Zone_Id_Result.Error
              (IO_Error,
-              "/etc/localtime not found - cannot determine local timezone");
-      end if;
+              "/etc/localtime is not a symlink-cannot determine zone ID: " &
+              Ada.Exceptions.Exception_Message (Occ));
+      end Map_Find_My_Id_Exception;
 
-      --  Try to read the symlink target using injected platform operations
-      declare
-         --  Read symlink - on macOS/Linux, /etc/localtime is usually a symlink
-         --  to something like /usr/share/zoneinfo/America/Los_Angeles.
-         --  On Windows, uses CLDR mapping via Windows platform adapter.
-         Link_Result :
-           constant Infrastructure.Platform.Platform_String_Result :=
-           Platform_Ops.Read_Link (Localtime_Path);
+      --  Core logic
+      function Raw_Find_My_Id return Repository_Zone_Id_Result is
       begin
-         --  Check if readlink succeeded
-         if not Infrastructure.Platform.String_Result.Is_Ok (Link_Result) then
+         --  Check if /etc/localtime exists
+         if not Exists (Localtime_Path) then
             return
               Zone_Id_Result.Error
                 (IO_Error,
-                 "/etc/localtime is not a symlink or cannot be read");
+                 "/etc/localtime not found - cannot determine local timezone");
          end if;
 
-         --  Extract the link target
+         --  Try to read the symlink target using injected platform operations
          declare
-            Link_Target_Bounded :
-              constant Infrastructure.Platform.Platform_String :=
-              Infrastructure.Platform.String_Result.Value (Link_Result);
-            Link_Target         : constant String :=
-              Infrastructure.Platform.Platform_Strings.To_String
-                (Link_Target_Bounded);
+            Link_Result :
+              constant Infrastructure.Platform.Platform_String_Result :=
+              Platform_Ops.Read_Link (Localtime_Path);
          begin
-            --  Extract zone ID from link target
-            --  Look for "zoneinfo/" in the path and take everything after it
-            declare
-               Zoneinfo_Marker : constant String := "zoneinfo/";
-               Marker_Index    : Natural         := 0;
-            begin
+            if not Infrastructure.Platform.String_Result.Is_Ok (Link_Result)
+            then
+               return
+                 Zone_Id_Result.Error
+                   (IO_Error,
+                    "/etc/localtime is not a symlink or cannot be read");
+            end if;
 
+            declare
+               Link_Target_Bounded :
+                 constant Infrastructure.Platform.Platform_String :=
+                 Infrastructure.Platform.String_Result.Value (Link_Result);
+               Link_Target         : constant String :=
+                 Infrastructure.Platform.Platform_Strings.To_String
+                   (Link_Target_Bounded);
+               Zoneinfo_Marker     : constant String := "zoneinfo/";
+               Marker_Index        : Natural         := 0;
+            begin
                --  Find "zoneinfo/" in the path
                for I in
                  Link_Target'First ..
@@ -390,34 +397,28 @@ package body TZif.Infrastructure.Adapter.File_System.Zone_Repository is
 
                --  Extract everything after "zoneinfo/"
                declare
-                  Zone_Id_Start : constant Positive     :=
+                  Zone_Id_Start : constant Positive :=
                     Marker_Index + Zoneinfo_Marker'Length;
-                  Zone_Id_Str   : constant String       :=
+                  Zone_Id_Str   : constant String   :=
                     Link_Target (Zone_Id_Start .. Link_Target'Last);
-                  Zone_Id       : constant Zone_Id_Type :=
-                    Make_Zone_Id (Zone_Id_Str);
                begin
-                  return Zone_Id_Result.Ok (Zone_Id);
-               exception
-                  when Constraint_Error =>
-                     return
-                       Zone_Id_Result.Error
-                         (Domain.Error.Validation_Error,
-                          "Zone ID exceeds maximum length: " & Zone_Id_Str);
+                  --  Note: If Zone_Id_Str exceeds bounded length, Make_Zone_Id
+                  --  will raise Constraint_Error which is caught by Try wrapper
+                  --  and mapped to IO_Error. This is acceptable - the error
+                  --  message includes the exception details.
+                  return Zone_Id_Result.Ok (Make_Zone_Id (Zone_Id_Str));
                end;
             end;
          end;
-      exception
-         when E : others =>
-            --  If reading symlink fails, /etc/localtime might be a regular
-            --  file (copy). In this case, we cannot easily determine the
-            --  zone ID
-            return
-              Zone_Id_Result.Error
-                (IO_Error,
-                 "/etc/localtime is not a symlink-cannot determine zone ID: " &
-                 Ada.Exceptions.Exception_Message (E));
-      end;
+      end Raw_Find_My_Id;
+
+      --  Try wrapper
+      function Try_Find_My_Id is new Functional.Try.Try_To_Any_Result
+        (Result_Type   => Repository_Zone_Id_Result,
+         Map_Exception => Map_Find_My_Id_Exception,
+         Action        => Raw_Find_My_Id);
+   begin
+      return Try_Find_My_Id;
    end Find_My_Id;
 
    --  ===========================================================
