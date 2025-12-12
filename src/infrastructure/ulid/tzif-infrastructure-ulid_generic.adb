@@ -12,6 +12,8 @@ pragma Ada_2022;
 
 with Ada.Calendar;
 with Ada.Calendar.Arithmetic;
+with Functional.Option;
+with Functional.Try;
 
 package body TZif.Infrastructure.ULID_Generic
   with SPARK_Mode => Off  --  Uses RNG (non-deterministic, non-SPARK)
@@ -33,7 +35,11 @@ is
 
    --  Get current time as milliseconds since Unix epoch
    --  Uses Calendar.Arithmetic.Difference to avoid Y2038/Duration overflow
-   function Get_Timestamp_Milliseconds return Unsigned_64 is
+   --  Uses Functional.Try for exception-safe fallback to 0
+
+   package Unsigned_64_Option is new Functional.Option (T => Unsigned_64);
+
+   function Raw_Get_Timestamp return Unsigned_64 is
       Unix_Epoch : constant Time :=
         Time_Of (Year => 1_970, Month => 1, Day => 1);
       Now        : constant Time := Clock;
@@ -50,10 +56,17 @@ is
                   + Unsigned_64 (Seconds * 1_000.0);
 
       return Total_Ms;
-   exception
-      when others =>
-         --  Fallback to epoch zero on any time calculation error
-         return 0;
+   end Raw_Get_Timestamp;
+
+   function Try_Get_Timestamp is new Functional.Try.Try_To_Functional_Option
+     (T          => Unsigned_64,
+      Option_Pkg => Unsigned_64_Option,
+      Action     => Raw_Get_Timestamp);
+
+   function Get_Timestamp_Milliseconds return Unsigned_64 is
+   begin
+      --  Fallback to epoch zero on any time calculation error
+      return Unsigned_64_Option.Unwrap_Or (Try_Get_Timestamp, Default => 0);
    end Get_Timestamp_Milliseconds;
 
    --  Encode a 64-bit value into Base32 string of specified length
@@ -90,14 +103,8 @@ is
          Current_Ms : Unsigned_64;
          ULID_Str   : String (1 .. 26) := [others => '0'];
       begin
-         --  Get timestamp with exception handling
-         begin
-            Current_Ms := Get_Timestamp_Milliseconds;
-         exception
-            when others =>
-               --  Fallback to zero timestamp on error
-               Current_Ms := 0;
-         end;
+         --  Get timestamp (uses Functional.Try internally, returns 0 on error)
+         Current_Ms := Get_Timestamp_Milliseconds;
 
          --  Initialize RNG on first use (with exception handling)
          if not Initialized then
