@@ -675,6 +675,10 @@ is
    --  List_Zones_In_Source
    --
    --  Lists all timezone IDs in a source directory, sorted.
+   --
+   --  Implementation:
+   --    Uses Functional.Try for exception-to-Result conversion.
+   --    Inner exception handlers for intentional error recovery are preserved.
    ----------------------------------------------------------------------
    procedure List_Zones_In_Source
      (Source     : TZif.Domain.Value_Object.Source_Info.Source_Info_Type;
@@ -683,81 +687,110 @@ is
         .List_All_Zones_Result)
    is
       use Ada.Directories;
-      use Ada.Exceptions;
       package List_All renames
         TZif.Application.Port.Inbound.List_All_Order_By_Id;
 
       Path_Str : constant String :=
         TZif.Domain.Value_Object.Source_Info.To_String
           (TZif.Domain.Value_Object.Source_Info.Get_Path (Source));
-      Zones    : List_All.Zone_Id_List;
 
-      procedure Scan_Directory (Dir_Path : String; Prefix : String := "") is
-         Search : Search_Type;
-         pragma Warnings (Off, Search);
-         Item : Directory_Entry_Type;
+      --  Context for raw action
+      type Scan_Context is record
+         Descending : Boolean;
+      end record;
+
+      --  Raw action that may raise
+      function Raw_Scan_And_Sort (Ctx : Scan_Context) return List_All.Zone_Id_List
+      is
+         Zones : List_All.Zone_Id_List;
+
+         procedure Scan_Directory (Dir_Path : String; Prefix : String := "") is
+            Search : Search_Type;
+            pragma Warnings (Off, Search);
+            Item : Directory_Entry_Type;
+         begin
+            Start_Search (Search, Dir_Path, "*");
+
+            while More_Entries (Search) loop
+               Get_Next_Entry (Search, Item);
+
+               declare
+                  Name : constant String := Simple_Name (Item);
+               begin
+                  if Name'Length > 0 and then Name (Name'First) /= '.' then
+                     declare
+                        Full_Path : constant String := Full_Name (Item);
+                        Zone_Name : constant String :=
+                          (if Prefix = "" then Name else Prefix & "/" & Name);
+                     begin
+                        case Kind (Item) is
+                           when Directory =>
+                              Scan_Directory (Full_Path, Zone_Name);
+
+                           when Ordinary_File =>
+                              if Name /= "zone.tab"
+                                and then Name /= "zone1970.tab"
+                                and then Name /= "iso3166.tab"
+                                and then Name /= "leapseconds"
+                                and then Name /= "tzdata.zi"
+                                and then Name /= "+VERSION"
+                              then
+                                 begin
+                                    if not List_All.Zone_Id_Vectors.Is_Full
+                                      (Zones)
+                                    then
+                                       List_All.Zone_Id_Vectors.Unchecked_Append
+                                         (Zones, Make_Zone_Id (Zone_Name));
+                                    end if;
+                                 exception
+                                    when Constraint_Error =>
+                                       --  Skip invalid zone names (intentional)
+                                       null;
+                                 end;
+                              end if;
+
+                           when others =>
+                              --  Skip non-directory/non-file entries
+                              null;
+                        end case;
+                     end;
+                  end if;
+               end;
+            end loop;
+
+            End_Search (Search);
+         exception
+            when Ada.Directories.Name_Error | Ada.Directories.Use_Error =>
+               --  Skip inaccessible directories silently (intentional)
+               null;
+         end Scan_Directory;
+
+         function Less_Than (Left, Right : Zone_Id_Type) return Boolean is
+           (To_String (Left) < To_String (Right));
+
+         procedure Sort_Zones is new List_All.Zone_Id_Vectors.Generic_Sort
+           ("<" => Less_Than);
+
       begin
-         Start_Search (Search, Dir_Path, "*");
+         Scan_Directory (Path_Str);
+         Sort_Zones (Zones);
+         if Ctx.Descending then
+            List_All.Zone_Id_Vectors.Reverse_Elements (Zones);
+         end if;
+         return Zones;
+      end Raw_Scan_And_Sort;
 
-         while More_Entries (Search) loop
-            Get_Next_Entry (Search, Item);
-
-            declare
-               Name : constant String := Simple_Name (Item);
-            begin
-               if Name'Length > 0 and then Name (Name'First) /= '.' then
-                  declare
-                     Full_Path : constant String := Full_Name (Item);
-                     Zone_Name : constant String :=
-                       (if Prefix = "" then Name else Prefix & "/" & Name);
-                  begin
-                     case Kind (Item) is
-                        when Directory =>
-                           Scan_Directory (Full_Path, Zone_Name);
-
-                        when Ordinary_File =>
-                           if Name /= "zone.tab"
-                             and then Name /= "zone1970.tab"
-                             and then Name /= "iso3166.tab"
-                             and then Name /= "leapseconds"
-                             and then Name /= "tzdata.zi"
-                             and then Name /= "+VERSION"
-                           then
-                              begin
-                                 if not List_All.Zone_Id_Vectors.Is_Full
-                                   (Zones)
-                                 then
-                                    List_All.Zone_Id_Vectors.Unchecked_Append
-                                      (Zones, Make_Zone_Id (Zone_Name));
-                                 end if;
-                              exception
-                                 when Constraint_Error =>
-                                    --  Skip invalid zone names
-                                    null;
-                              end;
-                           end if;
-
-                        when others =>
-                           --  Skip non-directory/non-file entries
-                           null;
-                     end case;
-                  end;
-               end if;
-            end;
-         end loop;
-
-         End_Search (Search);
-      exception
-         when Ada.Directories.Name_Error | Ada.Directories.Use_Error =>
-            --  Skip inaccessible directories silently
-            null;
-      end Scan_Directory;
-
-      function Less_Than (Left, Right : Zone_Id_Type) return Boolean is
-        (To_String (Left) < To_String (Right));
-
-      procedure Sort_Zones is new List_All.Zone_Id_Vectors.Generic_Sort
-        ("<" => Less_Than);
+      --  Instantiate Functional.Try
+      function Try_Scan_And_Sort is new
+        Functional.Try.Try_To_Any_Result_With_Param
+          (T             => List_All.Zone_Id_List,
+           E             => TZif.Domain.Error.Error_Type,
+           Param         => Scan_Context,
+           Result_Type   => List_All.List_All_Zones_Result,
+           Ok            => List_All.List_All_Zones_Result_Package.Ok,
+           New_Error     => List_All.List_All_Zones_Result_Package.From_Error,
+           Map_Exception => Map_IO_Exception,
+           Action        => Raw_Scan_And_Sort);
 
    begin
       if not Exists (Path_Str) or else Kind (Path_Str) /= Directory then
@@ -768,21 +801,7 @@ is
          return;
       end if;
 
-      Scan_Directory (Path_Str);
-
-      Sort_Zones (Zones);
-      if Descending then
-         List_All.Zone_Id_Vectors.Reverse_Elements (Zones);
-      end if;
-
-      Result := List_All.List_All_Zones_Result_Package.Ok (Zones);
-
-   exception
-      when E : others =>
-         Result :=
-           List_All.List_All_Zones_Result_Package.Error
-             (TZif.Domain.Error.IO_Error,
-              "Error listing zones: " & Exception_Message (E));
+      Result := Try_Scan_And_Sort ((Descending => Descending));
    end List_Zones_In_Source;
 
    ----------------------------------------------------------------------
