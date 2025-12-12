@@ -590,25 +590,21 @@ is
    --  Read_System_Timezone_Id
    --
    --  Reads the system's timezone ID from /etc/localtime symlink.
+   --
+   --  Implementation:
+   --    Uses Functional.Try for exception-to-Result conversion.
+   --    Platform.POSIX.Operations.Read_Link already returns Result type.
    ----------------------------------------------------------------------
    procedure Read_System_Timezone_Id
      (Result : out TZif.Application.Port.Inbound.Find_My_Id.Result)
    is
       use Ada.Directories;
-      use Ada.Exceptions;
       package Find_My_Id renames TZif.Application.Port.Inbound.Find_My_Id;
 
       Localtime_Path : constant String := "/etc/localtime";
-   begin
-      if not Exists (Localtime_Path) then
-         Result :=
-           Find_My_Id.Result_Zone_Id.Error
-             (TZif.Domain.Error.Not_Found_Error, "/etc/localtime not found");
-         return;
-      end if;
 
-      --  Try to resolve symlink using readlink
-      declare
+      --  Raw action that may raise - extracts zone ID from symlink target
+      function Raw_Extract_Zone_Id return Zone_Id_Type is
          use TZif.Infrastructure.Platform.POSIX;
          Link_Result :
            constant TZif.Infrastructure.Platform.Platform_String_Result :=
@@ -616,11 +612,7 @@ is
       begin
          if not TZif.Infrastructure.Platform.String_Result.Is_Ok (Link_Result)
          then
-            Result :=
-              Find_My_Id.Result_Zone_Id.Error
-                (TZif.Domain.Error.IO_Error,
-                 "/etc/localtime is not a symlink");
-            return;
+            raise Constraint_Error with "/etc/localtime is not a symlink";
          end if;
 
          declare
@@ -644,11 +636,8 @@ is
             end loop;
 
             if Marker_Pos = 0 then
-               Result :=
-                 Find_My_Id.Result_Zone_Id.Error
-                   (TZif.Domain.Error.IO_Error,
-                    "Cannot extract zone ID from: " & Link_Target);
-               return;
+               raise Constraint_Error
+                 with "Cannot extract zone ID from: " & Link_Target;
             end if;
 
             declare
@@ -656,17 +645,30 @@ is
                Zone_Id_Str   : constant String   :=
                  Link_Target (Zone_Id_Start .. Link_Target'Last);
             begin
-               Result :=
-                 Find_My_Id.Result_Zone_Id.Ok (Make_Zone_Id (Zone_Id_Str));
+               return Make_Zone_Id (Zone_Id_Str);
             end;
          end;
-      end;
-   exception
-      when E : others =>
+      end Raw_Extract_Zone_Id;
+
+      --  Instantiate Functional.Try for zone ID extraction
+      function Try_Extract_Zone_Id is new Functional.Try.Try_To_Result
+        (T             => Zone_Id_Type,
+         E             => TZif.Domain.Error.Error_Type,
+         Result_Type   => Find_My_Id.Result,
+         Ok            => Find_My_Id.Result_Zone_Id.Ok,
+         New_Error     => Find_My_Id.Result_Zone_Id.From_Error,
+         Map_Exception => Map_IO_Exception,
+         Action        => Raw_Extract_Zone_Id);
+
+   begin
+      if not Exists (Localtime_Path) then
          Result :=
            Find_My_Id.Result_Zone_Id.Error
-             (TZif.Domain.Error.IO_Error,
-              "Error detecting timezone: " & Exception_Message (E));
+             (TZif.Domain.Error.Not_Found_Error, "/etc/localtime not found");
+         return;
+      end if;
+
+      Result := Try_Extract_Zone_Id;
    end Read_System_Timezone_Id;
 
    ----------------------------------------------------------------------
