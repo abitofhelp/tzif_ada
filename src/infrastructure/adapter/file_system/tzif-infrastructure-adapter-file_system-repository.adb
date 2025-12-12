@@ -19,6 +19,7 @@ with Ada.Text_IO;
 with Ada.Exceptions;
 with Ada.Characters.Handling;
 with Ada.Strings.Fixed;
+with Functional.Try;
 with GNAT.Regpat;
 with TZif.Infrastructure.TZif_Parser;
 with TZif.Infrastructure.ULID;
@@ -108,56 +109,73 @@ package body TZif.Infrastructure.Adapter.File_System.Repository is
       return Application.Port.Inbound.Find_By_Id.Find_By_Id_Result_Type
    is
       use TZif.Application.Port.Inbound.Find_By_Id;
-      Zone_Id_Str    : constant String := To_String (Id);
-      File_Path_Opt  : constant Path_String_Option :=
-        Find_TZif_File (Zone_Id_Str);
-   begin
-      if Path_String_Options.Is_None (File_Path_Opt) then
-         return
-           Find_By_Id_Result.Error
-             (Not_Found_Error, "Zone not found: " & Zone_Id_Str);
-      end if;
+      Zone_Id_Str : constant String := To_String (Id);
 
-      declare
-         File_Path    : constant String :=
-           Path_Strings.To_String (Path_String_Options.Value (File_Path_Opt));
-         Parse_Result :
-           constant Infrastructure.TZif_Parser.Parse_Result_Type :=
-           Infrastructure.TZif_Parser.Parse_From_File (File_Path);
+      --  Map exception to error
+      function Map_Find_Exception
+        (Occ : Ada.Exceptions.Exception_Occurrence)
+         return Find_By_Id_Result_Type
+      is
       begin
-         if not Infrastructure.TZif_Parser.Parse_Result.Is_Ok (Parse_Result)
-         then
-            declare
-               Err : constant Error_Type :=
-                 Infrastructure.TZif_Parser.Parse_Result.Error_Info
-                   (Parse_Result);
-            begin
-               return
-                 Find_By_Id_Result.Error
-                   (Err.Kind,
-                    "Parse failed for " & Zone_Id_Str & ": " &
-                    Error_Strings.To_String (Err.Message));
-            end;
-         end if;
-
-         declare
-            TZif_Data : constant TZif_Data_Type :=
-              Infrastructure.TZif_Parser.Parse_Result.Value (Parse_Result);
-            --  Id is already Zone_Id_Type (from port), use it directly
-            Zone      : constant Zone_Type      :=
-              Make_Zone (Id => Id, Data => TZif_Data);
-         begin
-            --  Cache the parsed zone data for export/import
-            Zones.Insert (Id, TZif_Data);
-            return Find_By_Id_Result.Ok (Zone);
-         end;
-      end;
-   exception
-      when E : others =>
          return
            Find_By_Id_Result.Error
              (IO_Error,
-              "Unexpected error: " & Ada.Exceptions.Exception_Message (E));
+              "Unexpected error: " & Ada.Exceptions.Exception_Message (Occ));
+      end Map_Find_Exception;
+
+      --  Core lookup logic
+      function Raw_Find return Find_By_Id_Result_Type is
+         File_Path_Opt : constant Path_String_Option :=
+           Find_TZif_File (Zone_Id_Str);
+      begin
+         if Path_String_Options.Is_None (File_Path_Opt) then
+            return
+              Find_By_Id_Result.Error
+                (Not_Found_Error, "Zone not found: " & Zone_Id_Str);
+         end if;
+
+         declare
+            File_Path    : constant String :=
+              Path_Strings.To_String
+                (Path_String_Options.Value (File_Path_Opt));
+            Parse_Result :
+              constant Infrastructure.TZif_Parser.Parse_Result_Type :=
+              Infrastructure.TZif_Parser.Parse_From_File (File_Path);
+         begin
+            if not Infrastructure.TZif_Parser.Parse_Result.Is_Ok (Parse_Result)
+            then
+               declare
+                  Err : constant Error_Type :=
+                    Infrastructure.TZif_Parser.Parse_Result.Error_Info
+                      (Parse_Result);
+               begin
+                  return
+                    Find_By_Id_Result.Error
+                      (Err.Kind,
+                       "Parse failed for " & Zone_Id_Str & ": " &
+                       Error_Strings.To_String (Err.Message));
+               end;
+            end if;
+
+            declare
+               TZif_Data : constant TZif_Data_Type :=
+                 Infrastructure.TZif_Parser.Parse_Result.Value (Parse_Result);
+               Zone      : constant Zone_Type :=
+                 Make_Zone (Id => Id, Data => TZif_Data);
+            begin
+               Zones.Insert (Id, TZif_Data);
+               return Find_By_Id_Result.Ok (Zone);
+            end;
+         end;
+      end Raw_Find;
+
+      --  Try wrapper
+      function Try_Find is new Functional.Try.Try_To_Any_Result
+        (Result_Type   => Find_By_Id_Result_Type,
+         Map_Exception => Map_Find_Exception,
+         Action        => Raw_Find);
+   begin
+      return Try_Find;
    end Find_By_Id;
 
    --  ========================================================================
@@ -165,18 +183,39 @@ package body TZif.Infrastructure.Adapter.File_System.Repository is
    --  ========================================================================
 
    function Exists_By_Id (Id : Zone_Id_String) return Exists_Result is
-      Zone_Id_Str   : constant String := To_String (Id);
-      File_Path_Opt : constant Path_String_Option :=
-        Find_TZif_File (Zone_Id_Str);
+      Zone_Id_Str : constant String := To_String (Id);
+
+      --  Map exception to error
+      function Map_Exists_Exception
+        (Occ : Ada.Exceptions.Exception_Occurrence)
+         return Error_Type
+      is
+      begin
+         return (Kind    => IO_Error,
+                 Message => Error_Strings.To_Bounded_String
+                   ("Error checking existence: " &
+                    Ada.Exceptions.Exception_Message (Occ)));
+      end Map_Exists_Exception;
+
+      --  Raw check
+      function Raw_Check return Boolean is
+         File_Path_Opt : constant Path_String_Option :=
+           Find_TZif_File (Zone_Id_Str);
+      begin
+         return Path_String_Options.Is_Some (File_Path_Opt);
+      end Raw_Check;
+
+      --  Try wrapper
+      function Try_Check is new Functional.Try.Try_To_Result
+        (T             => Boolean,
+         E             => Error_Type,
+         Result_Type   => Exists_Result,
+         Ok            => Boolean_Result.Ok,
+         New_Error     => Boolean_Result.From_Error,
+         Map_Exception => Map_Exists_Exception,
+         Action        => Raw_Check);
    begin
-      return Boolean_Result.Ok (Path_String_Options.Is_Some (File_Path_Opt));
-   exception
-      when E : others =>
-         return
-           Boolean_Result.Error
-             (IO_Error,
-              "Error checking existence: " &
-              Ada.Exceptions.Exception_Message (E));
+      return Try_Check;
    end Exists_By_Id;
 
    --  ===================================================================
@@ -192,95 +231,112 @@ package body TZif.Infrastructure.Adapter.File_System.Repository is
      .Get_Transition_Result
    is
       use TZif.Application.Port.Inbound.Get_Transition_At_Epoch;
-      Zone_Id_Str   : constant String :=
+      Zone_Id_Str : constant String :=
         Application.Port.Inbound.Get_Transition_At_Epoch.Zone_Id_Strings
           .To_String
           (Id);
-      File_Path_Opt : constant Path_String_Option :=
-        Find_TZif_File (Zone_Id_Str);
-   begin
-      if Path_String_Options.Is_None (File_Path_Opt) then
-         return
-           Get_Transition_Result_Package.Error
-             (Not_Found_Error, "Zone not found: " & Zone_Id_Str);
-      end if;
 
-      declare
-         File_Path    : constant String :=
-           Path_Strings.To_String (Path_String_Options.Value (File_Path_Opt));
-         Parse_Result :
-           constant Infrastructure.TZif_Parser.Parse_Result_Type :=
-           Infrastructure.TZif_Parser.Parse_From_File (File_Path);
+      --  Map exception to error
+      function Map_Transition_Exception
+        (Occ : Ada.Exceptions.Exception_Occurrence)
+         return Get_Transition_Result
+      is
       begin
-         if not Infrastructure.TZif_Parser.Parse_Result.Is_Ok (Parse_Result)
-         then
-            declare
-               Err : constant Error_Type :=
-                 Infrastructure.TZif_Parser.Parse_Result.Error_Info
-                   (Parse_Result);
-            begin
-               return
-                 Get_Transition_Result_Package.Error
-                   (Err.Kind,
-                    "Parse failed: " & Error_Strings.To_String (Err.Message));
-            end;
-         end if;
-
-         declare
-            use TZif.Domain.Value_Object.Timezone_Type;
-            use TZif.Domain.TZif_Data.Type_Index_Options;
-            TZif_Data    : constant TZif_Data_Type :=
-              Infrastructure.TZif_Parser.Parse_Result.Value (Parse_Result);
-            --  Find_Type_At_Time returns Option; check if found
-            Type_Index_Opt : constant Type_Index_Option :=
-              Find_Type_At_Time (TZif_Data, Epoch);
-            Tz_Length    : constant Natural       :=
-              Timezone_Type_Vectors.Length (TZif_Data.Timezone_Types);
-         begin
-            --  Validate before accessing
-            if Tz_Length = 0 then
-               return
-                 Get_Transition_Result_Package.Error
-                   (Parse_Error, "No timezone types in zone file");
-            elsif Is_None (Type_Index_Opt) then
-               return
-                 Get_Transition_Result_Package.Error
-                   (Parse_Error, "No timezone type found for given time");
-            end if;
-
-            declare
-               --  Note: TZif uses 0-based indices; Get_Type expects 0-based
-               --  and adds 1 internally for vector access
-               Type_Index : constant Natural := Value (Type_Index_Opt);
-            begin
-               if Type_Index >= Tz_Length then
-                  return
-                    Get_Transition_Result_Package.Error
-                      (Parse_Error, "Invalid type index in zone file");
-               end if;
-
-               declare
-                  TZ_Type : constant Timezone_Type_Record :=
-                    Get_Type (TZif_Data, Type_Index);
-                  Info    :
-                    constant Domain.Value_Object.Transition_Info
-                      .Transition_Info_Type :=
-                    Domain.Value_Object.Transition_Info.Make_Transition_Info
-                      (Epoch_Time   => Epoch, UTC_Offset => TZ_Type.UTC_Offset,
-                       Is_DST       => TZ_Type.Is_DST,
-                       Abbreviation => Get_Abbreviation (TZ_Type));
-               begin
-                  return Get_Transition_Result_Package.Ok (Info);
-               end;
-            end;
-         end;
-      end;
-   exception
-      when E : others =>
          return
            Get_Transition_Result_Package.Error
              (IO_Error,
-              "Unexpected error: " & Ada.Exceptions.Exception_Message (E));
+              "Unexpected error: " & Ada.Exceptions.Exception_Message (Occ));
+      end Map_Transition_Exception;
+
+      --  Core logic
+      function Raw_Get_Transition return Get_Transition_Result is
+         File_Path_Opt : constant Path_String_Option :=
+           Find_TZif_File (Zone_Id_Str);
+      begin
+         if Path_String_Options.Is_None (File_Path_Opt) then
+            return
+              Get_Transition_Result_Package.Error
+                (Not_Found_Error, "Zone not found: " & Zone_Id_Str);
+         end if;
+
+         declare
+            File_Path    : constant String :=
+              Path_Strings.To_String
+                (Path_String_Options.Value (File_Path_Opt));
+            Parse_Result :
+              constant Infrastructure.TZif_Parser.Parse_Result_Type :=
+              Infrastructure.TZif_Parser.Parse_From_File (File_Path);
+         begin
+            if not Infrastructure.TZif_Parser.Parse_Result.Is_Ok (Parse_Result)
+            then
+               declare
+                  Err : constant Error_Type :=
+                    Infrastructure.TZif_Parser.Parse_Result.Error_Info
+                      (Parse_Result);
+               begin
+                  return
+                    Get_Transition_Result_Package.Error
+                      (Err.Kind,
+                       "Parse failed: " &
+                       Error_Strings.To_String (Err.Message));
+               end;
+            end if;
+
+            declare
+               use TZif.Domain.Value_Object.Timezone_Type;
+               use TZif.Domain.TZif_Data.Type_Index_Options;
+               TZif_Data      : constant TZif_Data_Type :=
+                 Infrastructure.TZif_Parser.Parse_Result.Value (Parse_Result);
+               Type_Index_Opt : constant Type_Index_Option :=
+                 Find_Type_At_Time (TZif_Data, Epoch);
+               Tz_Length      : constant Natural :=
+                 Timezone_Type_Vectors.Length (TZif_Data.Timezone_Types);
+            begin
+               if Tz_Length = 0 then
+                  return
+                    Get_Transition_Result_Package.Error
+                      (Parse_Error, "No timezone types in zone file");
+               elsif Is_None (Type_Index_Opt) then
+                  return
+                    Get_Transition_Result_Package.Error
+                      (Parse_Error, "No timezone type found for given time");
+               end if;
+
+               declare
+                  Type_Index : constant Natural := Value (Type_Index_Opt);
+               begin
+                  if Type_Index >= Tz_Length then
+                     return
+                       Get_Transition_Result_Package.Error
+                         (Parse_Error, "Invalid type index in zone file");
+                  end if;
+
+                  declare
+                     TZ_Type : constant Timezone_Type_Record :=
+                       Get_Type (TZif_Data, Type_Index);
+                     Info    :
+                       constant Domain.Value_Object.Transition_Info
+                         .Transition_Info_Type :=
+                       Domain.Value_Object.Transition_Info.Make_Transition_Info
+                         (Epoch_Time   => Epoch,
+                          UTC_Offset   => TZ_Type.UTC_Offset,
+                          Is_DST       => TZ_Type.Is_DST,
+                          Abbreviation => Get_Abbreviation (TZ_Type));
+                  begin
+                     return Get_Transition_Result_Package.Ok (Info);
+                  end;
+               end;
+            end;
+         end;
+      end Raw_Get_Transition;
+
+      --  Try wrapper
+      function Try_Get_Transition is new Functional.Try.Try_To_Any_Result
+        (Result_Type   => Get_Transition_Result,
+         Map_Exception => Map_Transition_Exception,
+         Action        => Raw_Get_Transition);
+   begin
+      return Try_Get_Transition;
    end Get_Transition_At_Epoch;
 
    --  ========================================================================
