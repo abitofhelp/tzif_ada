@@ -1013,6 +1013,10 @@ is
    --  Find_Zones_By_Pattern
    --
    --  Finds timezone IDs matching a substring pattern.
+   --
+   --  Implementation:
+   --    Uses Functional.Try for exception-to-Result conversion.
+   --    Inner exception handler for inaccessible directories preserved.
    ----------------------------------------------------------------------
    procedure Find_Zones_By_Pattern
      (Pattern : TZif.Application.Port.Inbound.Find_By_Pattern.Pattern_String;
@@ -1022,89 +1026,102 @@ is
         .Find_By_Pattern_Result)
    is
       use Ada.Directories;
-      use Ada.Exceptions;
       package Find_By_Pattern renames
         TZif.Application.Port.Inbound.Find_By_Pattern;
 
       Pattern_Str : constant String :=
         Find_By_Pattern.Pattern_Strings.To_String (Pattern);
 
-      procedure Scan_Directory (Dir_Path : String; Prefix : String := "") is
-         Search : Search_Type;
-         pragma Warnings (Off, Search);
-         Item : Directory_Entry_Type;
+      --  Raw action that may raise
+      function Raw_Scan return TZif.Domain.Value_Object.Unit.Unit_Type is
+
+         procedure Scan_Directory (Dir_Path : String; Prefix : String := "") is
+            Search : Search_Type;
+            pragma Warnings (Off, Search);
+            Item : Directory_Entry_Type;
+         begin
+            Start_Search (Search, Dir_Path, "*");
+
+            while More_Entries (Search) loop
+               Get_Next_Entry (Search, Item);
+
+               declare
+                  Name : constant String := Simple_Name (Item);
+               begin
+                  if Name'Length > 0 and then Name (Name'First) /= '.' then
+                     declare
+                        Full_Path : constant String := Full_Name (Item);
+                        Zone_Name : constant String :=
+                          (if Prefix = "" then Name else Prefix & "/" & Name);
+                     begin
+                        case Kind (Item) is
+                           when Directory =>
+                              Scan_Directory (Full_Path, Zone_Name);
+
+                           when Ordinary_File =>
+                              declare
+                                 Lower_Zone    : constant String :=
+                                   Ada.Characters.Handling.To_Lower (Zone_Name);
+                                 Lower_Pattern : constant String :=
+                                   Ada.Characters.Handling.To_Lower
+                                     (Pattern_Str);
+                              begin
+                                 if Ada.Strings.Fixed.Index
+                                     (Lower_Zone, Lower_Pattern) >
+                                   0
+                                 then
+                                    Yield
+                                      (Find_By_Pattern.Zone_Name_Strings
+                                         .To_Bounded_String
+                                         (Zone_Name));
+                                 end if;
+                              end;
+
+                           when others =>
+                              null;
+                        end case;
+                     end;
+                  end if;
+               end;
+            end loop;
+
+            End_Search (Search);
+         exception
+            when Ada.Directories.Name_Error | Ada.Directories.Use_Error =>
+               --  Skip inaccessible directories (intentional)
+               null;
+         end Scan_Directory;
+
       begin
-         Start_Search (Search, Dir_Path, "*");
+         if Exists (Zoneinfo_Base) and then Kind (Zoneinfo_Base) = Directory then
+            Scan_Directory (Zoneinfo_Base);
+         end if;
+         return TZif.Domain.Value_Object.Unit.Unit;
+      end Raw_Scan;
 
-         while More_Entries (Search) loop
-            Get_Next_Entry (Search, Item);
-
-            declare
-               Name : constant String := Simple_Name (Item);
-            begin
-               if Name'Length > 0 and then Name (Name'First) /= '.' then
-                  declare
-                     Full_Path : constant String := Full_Name (Item);
-                     Zone_Name : constant String :=
-                       (if Prefix = "" then Name else Prefix & "/" & Name);
-                  begin
-                     case Kind (Item) is
-                        when Directory =>
-                           Scan_Directory (Full_Path, Zone_Name);
-
-                        when Ordinary_File =>
-                           declare
-                              Lower_Zone    : constant String :=
-                                Ada.Characters.Handling.To_Lower (Zone_Name);
-                              Lower_Pattern : constant String :=
-                                Ada.Characters.Handling.To_Lower (Pattern_Str);
-                           begin
-                              if Ada.Strings.Fixed.Index
-                                  (Lower_Zone, Lower_Pattern) >
-                                0
-                              then
-                                 Yield
-                                   (Find_By_Pattern.Zone_Name_Strings
-                                      .To_Bounded_String
-                                      (Zone_Name));
-                              end if;
-                           end;
-
-                        when others =>
-                           null;
-                     end case;
-                  end;
-               end if;
-            end;
-         end loop;
-
-         End_Search (Search);
-      exception
-         when Ada.Directories.Name_Error | Ada.Directories.Use_Error =>
-            null;
-      end Scan_Directory;
+      --  Instantiate Functional.Try
+      function Try_Scan is new Functional.Try.Try_To_Result
+        (T             => TZif.Domain.Value_Object.Unit.Unit_Type,
+         E             => TZif.Domain.Error.Error_Type,
+         Result_Type   => Find_By_Pattern.Find_By_Pattern_Result,
+         Ok            => Find_By_Pattern.Find_By_Pattern_Result_Package.Ok,
+         New_Error     =>
+           Find_By_Pattern.Find_By_Pattern_Result_Package.From_Error,
+         Map_Exception => Map_IO_Exception,
+         Action        => Raw_Scan);
 
    begin
-      if Exists (Zoneinfo_Base) and then Kind (Zoneinfo_Base) = Directory then
-         Scan_Directory (Zoneinfo_Base);
-      end if;
-
-      Result :=
-        Find_By_Pattern.Find_By_Pattern_Result_Package.Ok
-          (TZif.Domain.Value_Object.Unit.Unit);
-
-   exception
-      when E : others =>
-         Result :=
-           Find_By_Pattern.Find_By_Pattern_Result_Package.Error
-             (TZif.Domain.Error.IO_Error,
-              "Error searching pattern: " & Exception_Message (E));
+      Result := Try_Scan;
    end Find_Zones_By_Pattern;
 
    ----------------------------------------------------------------------
    --  Find_Zones_By_Region
    --
    --  Finds timezone IDs by region prefix.
+   --
+   --  Implementation:
+   --    Uses Functional.Try for exception-to-Result conversion.
+   --    Inner exception handler for inaccessible directories preserved.
    ----------------------------------------------------------------------
    procedure Find_Zones_By_Region
      (Region : TZif.Application.Port.Inbound.Find_By_Region.Region_String;
@@ -1114,80 +1131,88 @@ is
         .Find_By_Region_Result)
    is
       use Ada.Directories;
-      use Ada.Exceptions;
       package Find_By_Region renames
         TZif.Application.Port.Inbound.Find_By_Region;
 
       Region_Str : constant String :=
         Find_By_Region.Region_Strings.To_String (Region);
 
-      procedure Scan_Directory (Dir_Path : String; Prefix : String := "") is
-         Search : Search_Type;
-         pragma Warnings (Off, Search);
-         Item : Directory_Entry_Type;
+      --  Raw action that may raise
+      function Raw_Scan return TZif.Domain.Value_Object.Unit.Unit_Type is
+
+         procedure Scan_Directory (Dir_Path : String; Prefix : String := "") is
+            Search : Search_Type;
+            pragma Warnings (Off, Search);
+            Item : Directory_Entry_Type;
+         begin
+            Start_Search (Search, Dir_Path, "*");
+
+            while More_Entries (Search) loop
+               Get_Next_Entry (Search, Item);
+
+               declare
+                  Name : constant String := Simple_Name (Item);
+               begin
+                  if Name'Length > 0 and then Name (Name'First) /= '.' then
+                     declare
+                        Full_Path : constant String := Full_Name (Item);
+                        Zone_Name : constant String :=
+                          (if Prefix = "" then Name else Prefix & "/" & Name);
+                     begin
+                        case Kind (Item) is
+                           when Directory =>
+                              Scan_Directory (Full_Path, Zone_Name);
+
+                           when Ordinary_File =>
+                              if Zone_Name'Length >= Region_Str'Length
+                                and then
+                                  Zone_Name
+                                    (Zone_Name'First ..
+                                         Zone_Name'First + Region_Str'Length -
+                                         1) =
+                                  Region_Str
+                              then
+                                 Yield
+                                   (Find_By_Region.Zone_Name_Strings
+                                      .To_Bounded_String
+                                      (Zone_Name));
+                              end if;
+
+                           when others =>
+                              null;
+                        end case;
+                     end;
+                  end if;
+               end;
+            end loop;
+
+            End_Search (Search);
+         exception
+            when Ada.Directories.Name_Error | Ada.Directories.Use_Error =>
+               --  Skip inaccessible directories (intentional)
+               null;
+         end Scan_Directory;
+
       begin
-         Start_Search (Search, Dir_Path, "*");
+         if Exists (Zoneinfo_Base) and then Kind (Zoneinfo_Base) = Directory then
+            Scan_Directory (Zoneinfo_Base);
+         end if;
+         return TZif.Domain.Value_Object.Unit.Unit;
+      end Raw_Scan;
 
-         while More_Entries (Search) loop
-            Get_Next_Entry (Search, Item);
-
-            declare
-               Name : constant String := Simple_Name (Item);
-            begin
-               if Name'Length > 0 and then Name (Name'First) /= '.' then
-                  declare
-                     Full_Path : constant String := Full_Name (Item);
-                     Zone_Name : constant String :=
-                       (if Prefix = "" then Name else Prefix & "/" & Name);
-                  begin
-                     case Kind (Item) is
-                        when Directory =>
-                           Scan_Directory (Full_Path, Zone_Name);
-
-                        when Ordinary_File =>
-                           if Zone_Name'Length >= Region_Str'Length
-                             and then
-                               Zone_Name
-                                 (Zone_Name'First ..
-                                      Zone_Name'First + Region_Str'Length -
-                                      1) =
-                               Region_Str
-                           then
-                              Yield
-                                (Find_By_Region.Zone_Name_Strings
-                                   .To_Bounded_String
-                                   (Zone_Name));
-                           end if;
-
-                        when others =>
-                           null;
-                     end case;
-                  end;
-               end if;
-            end;
-         end loop;
-
-         End_Search (Search);
-      exception
-         when Ada.Directories.Name_Error | Ada.Directories.Use_Error =>
-            null;
-      end Scan_Directory;
+      --  Instantiate Functional.Try
+      function Try_Scan is new Functional.Try.Try_To_Result
+        (T             => TZif.Domain.Value_Object.Unit.Unit_Type,
+         E             => TZif.Domain.Error.Error_Type,
+         Result_Type   => Find_By_Region.Find_By_Region_Result,
+         Ok            => Find_By_Region.Find_By_Region_Result_Package.Ok,
+         New_Error     =>
+           Find_By_Region.Find_By_Region_Result_Package.From_Error,
+         Map_Exception => Map_IO_Exception,
+         Action        => Raw_Scan);
 
    begin
-      if Exists (Zoneinfo_Base) and then Kind (Zoneinfo_Base) = Directory then
-         Scan_Directory (Zoneinfo_Base);
-      end if;
-
-      Result :=
-        Find_By_Region.Find_By_Region_Result_Package.Ok
-          (TZif.Domain.Value_Object.Unit.Unit);
-
-   exception
-      when E : others =>
-         Result :=
-           Find_By_Region.Find_By_Region_Result_Package.Error
-             (TZif.Domain.Error.IO_Error,
-              "Error searching region: " & Exception_Message (E));
+      Result := Try_Scan;
    end Find_Zones_By_Region;
 
    ----------------------------------------------------------------------
@@ -1203,13 +1228,38 @@ is
         .Find_By_Regex_Result)
    is
       use Ada.Directories;
-      use Ada.Exceptions;
       use GNAT.Regpat;
       package Find_By_Regex renames
         TZif.Application.Port.Inbound.Find_By_Regex;
 
       Regex_Str : constant String :=
         Find_By_Regex.Regex_Strings.To_String (Regex);
+
+      --  Map exceptions to domain errors (Expression_Error -> Validation_Error)
+      function Map_Regex_Exception
+        (Occ : Ada.Exceptions.Exception_Occurrence)
+         return TZif.Domain.Error.Error_Type
+      is
+         use Ada.Exceptions;
+         use TZif.Domain.Error;
+         Exc_Name : constant String := Exception_Name (Occ);
+      begin
+         if Exc_Name = "GNAT.REGPAT.EXPRESSION_ERROR" then
+            return (Kind    => Validation_Error,
+                    Message => Error_Strings.To_Bounded_String
+                      ("Invalid regex pattern: " & Regex_Str));
+         elsif Exc_Name = "ADA.DIRECTORIES.NAME_ERROR"
+           or else Exc_Name = "ADA.DIRECTORIES.USE_ERROR"
+         then
+            return (Kind    => Not_Found_Error,
+                    Message => Error_Strings.To_Bounded_String
+                      ("Directory not found: " & Exception_Message (Occ)));
+         else
+            return (Kind    => IO_Error,
+                    Message => Error_Strings.To_Bounded_String
+                      ("Error searching regex: " & Exception_Message (Occ)));
+         end if;
+      end Map_Regex_Exception;
 
       procedure Scan_Directory
         (Dir_Path : String; Prefix : String := ""; Pattern : Pattern_Matcher)
@@ -1255,34 +1305,34 @@ is
          End_Search (Search);
       exception
          when Ada.Directories.Name_Error | Ada.Directories.Use_Error =>
+            --  Skip inaccessible directories (intentional)
             null;
       end Scan_Directory;
 
-   begin
-      declare
+      --  Raw function that may raise exceptions
+      function Raw_Scan return TZif.Domain.Value_Object.Unit.Unit_Type is
          Pattern : constant Pattern_Matcher := Compile (Regex_Str);
       begin
          if Exists (Zoneinfo_Base) and then Kind (Zoneinfo_Base) = Directory
          then
             Scan_Directory (Zoneinfo_Base, "", Pattern);
          end if;
+         return TZif.Domain.Value_Object.Unit.Unit;
+      end Raw_Scan;
 
-         Result :=
-           Find_By_Regex.Find_By_Regex_Result_Package.Ok
-             (TZif.Domain.Value_Object.Unit.Unit);
-      end;
+      --  Instantiate Functional.Try with regex-aware exception mapper
+      function Try_Scan is new Functional.Try.Try_To_Result
+        (T             => TZif.Domain.Value_Object.Unit.Unit_Type,
+         E             => TZif.Domain.Error.Error_Type,
+         Result_Type   => Find_By_Regex.Find_By_Regex_Result,
+         Ok            => Find_By_Regex.Find_By_Regex_Result_Package.Ok,
+         New_Error     =>
+           Find_By_Regex.Find_By_Regex_Result_Package.From_Error,
+         Map_Exception => Map_Regex_Exception,
+         Action        => Raw_Scan);
 
-   exception
-      when Expression_Error =>
-         Result :=
-           Find_By_Regex.Find_By_Regex_Result_Package.Error
-             (TZif.Domain.Error.Validation_Error,
-              "Invalid regex pattern: " & Regex_Str);
-      when E : others       =>
-         Result :=
-           Find_By_Regex.Find_By_Regex_Result_Package.Error
-             (TZif.Domain.Error.IO_Error,
-              "Error searching regex: " & Exception_Message (E));
+   begin
+      Result := Try_Scan;
    end Find_Zones_By_Regex;
 
 end TZif.Infrastructure.IO.Desktop;
