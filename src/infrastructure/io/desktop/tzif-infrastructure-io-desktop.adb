@@ -26,6 +26,8 @@ with Functional.Option;
 with Functional.Result;
 with Functional.Scoped;
 with Functional.Try;
+with Functional.Try.Map_To_Result;
+with Functional.Try.Map_To_Result_With_Param;
 with GNAT.Regpat;
 with TZif.Domain.Error;
 with TZif.Domain.Value_Object.Zone_Id;
@@ -44,48 +46,6 @@ is
    --  Rename Stream_IO to avoid namespace conflicts with Ada.Directories
    package SIO renames Ada.Streams.Stream_IO;
 
-   --  ========================================================================
-   --  Exception Mapping (used by Functional.Try)
-   --  ========================================================================
-
-   function Map_IO_Exception
-     (Occ : Ada.Exceptions.Exception_Occurrence)
-      return TZif.Domain.Error.Error_Type
-   is
-      use Ada.Exceptions;
-      use TZif.Domain.Error;
-      Exc_Name : constant String := Exception_Name (Occ);
-   begin
-      if Exc_Name = "ADA.IO_EXCEPTIONS.NAME_ERROR"
-        or else Exc_Name = "ADA.STREAMS.STREAM_IO.NAME_ERROR"
-      then
-         return (Kind    => Not_Found_Error,
-                 Message => Error_Strings.To_Bounded_String
-                   ("File not found: " & Exception_Message (Occ)));
-      elsif Exc_Name = "ADA.IO_EXCEPTIONS.USE_ERROR"
-        or else Exc_Name = "ADA.STREAMS.STREAM_IO.USE_ERROR"
-      then
-         return (Kind    => IO_Error,
-                 Message => Error_Strings.To_Bounded_String
-                   ("Cannot access file: " & Exception_Message (Occ)));
-      elsif Exc_Name = "ADA.IO_EXCEPTIONS.END_ERROR"
-        or else Exc_Name = "ADA.STREAMS.STREAM_IO.END_ERROR"
-      then
-         return (Kind    => Parse_Error,
-                 Message => Error_Strings.To_Bounded_String
-                   ("Unexpected end of file: " & Exception_Message (Occ)));
-      elsif Exc_Name = "ADA.IO_EXCEPTIONS.DATA_ERROR"
-        or else Exc_Name = "ADA.STREAMS.STREAM_IO.DATA_ERROR"
-      then
-         return (Kind    => Parse_Error,
-                 Message => Error_Strings.To_Bounded_String
-                   ("File data corrupted: " & Exception_Message (Occ)));
-      else
-         return (Kind    => IO_Error,
-                 Message => Error_Strings.To_Bounded_String
-                   ("I/O error: " & Exception_Message (Occ)));
-      end if;
-   end Map_IO_Exception;
 
    --  ========================================================================
    --  Scoped File Guard for Stream_IO
@@ -140,7 +100,9 @@ is
    end record;
 
    --  Raw action that may raise - reads file bytes into buffer
-   function Raw_Read_File (Ctx : Read_File_Context) return Read_Info is
+   --  Returns Result type (Ok on success) for Map_To_Result_With_Param
+   function Raw_Read_File (Ctx : Read_File_Context) return Read_File_Result.Result
+   is
       File   : aliased SIO.File_Type;
       Guard  : Stream_File_Guard.Guard (File'Access);
       pragma Unreferenced (Guard);  --  RAII: releases via Finalize
@@ -159,19 +121,47 @@ is
       end loop;
 
       --  Guard.Finalize will close file automatically
-      return (Bytes_Read => Length);
+      return Read_File_Result.Ok ((Bytes_Read => Length));
    end Raw_Read_File;
 
-   --  Instantiate Functional.Try for Read_File
-   function Try_Read_File is new Functional.Try.Try_To_Any_Result_With_Param
-     (T             => Read_Info,
-      E             => TZif.Domain.Error.Error_Type,
-      Param         => Read_File_Context,
-      Result_Type   => Read_File_Result.Result,
-      Ok            => Read_File_Result.Ok,
-      New_Error     => Read_File_Result.From_Error,
-      Map_Exception => Map_IO_Exception,
-      Action        => Raw_Read_File);
+   --  Make_Error for Read_File (adds context-appropriate prefixes)
+   function Make_Read_Error
+     (Kind : TZif.Domain.Error.Error_Kind; Message : String)
+      return Read_File_Result.Result
+   is
+      use TZif.Domain.Error;
+   begin
+      case Kind is
+         when Not_Found_Error =>
+            return Read_File_Result.Error (Not_Found_Error,
+              "File not found: " & Message);
+         when IO_Error =>
+            return Read_File_Result.Error (IO_Error,
+              "Cannot access file: " & Message);
+         when Parse_Error =>
+            return Read_File_Result.Error (Parse_Error,
+              "File read error: " & Message);
+         when others =>
+            return Read_File_Result.Error (IO_Error,
+              "I/O error: " & Message);
+      end case;
+   end Make_Read_Error;
+
+   --  Instantiate Functional.Try.Map_To_Result_With_Param for Read_File
+   package Try_Read_File is new Functional.Try.Map_To_Result_With_Param
+     (Error_Kind_Type    => TZif.Domain.Error.Error_Kind,
+      Param_Type         => Read_File_Context,
+      Result_Type        => Read_File_Result.Result,
+      Make_Error         => Make_Read_Error,
+      Default_Error_Kind => TZif.Domain.Error.IO_Error,
+      Action             => Raw_Read_File);
+
+   --  Convert IO_Mappings to Try_Read_File.Mapping_Array
+   Read_File_Mappings : constant Try_Read_File.Mapping_Array :=
+     [(SIO.Name_Error'Identity, TZif.Domain.Error.Not_Found_Error),
+      (SIO.Use_Error'Identity,  TZif.Domain.Error.IO_Error),
+      (SIO.End_Error'Identity,  TZif.Domain.Error.Parse_Error),
+      (SIO.Data_Error'Identity, TZif.Domain.Error.Parse_Error)];
 
    procedure Read_File
      (Id     :     TZif.Application.Port.Inbound.Find_By_Id.Zone_Id_Input_Type;
@@ -186,7 +176,7 @@ is
               Bytes      => Bytes'Unrestricted_Access,
               Bytes_Read => 0);
 
-      Result := Try_Read_File (Ctx);
+      Result := Try_Read_File.Run (Ctx, Read_File_Mappings);
 
       --  Extract bytes read from successful result
       if Read_File_Result.Is_Ok (Result) then
@@ -621,7 +611,8 @@ is
       Version_File : constant String := Path_Str & "/+VERSION";
 
       --  Raw action that may raise - reads version string from file
-      function Raw_Read_Version_File return Get_Version.Version_String is
+      --  Returns Result type for Map_To_Result
+      function Raw_Read_Version_File return Get_Version.Version_Result is
          File   : aliased SIO.File_Type;
          Guard  : Stream_File_Guard.Guard (File'Access);
          pragma Unreferenced (Guard);  --  RAII: releases via Finalize
@@ -642,19 +633,39 @@ is
          end loop;
 
          --  Guard.Finalize will close file automatically
-         return Get_Version.Version_Strings.To_Bounded_String
-           (Ada.Strings.Fixed.Trim (Buffer (1 .. Len), Ada.Strings.Both));
+         return Get_Version.Version_Result_Package.Ok
+           (Get_Version.Version_Strings.To_Bounded_String
+              (Ada.Strings.Fixed.Trim (Buffer (1 .. Len), Ada.Strings.Both)));
       end Raw_Read_Version_File;
 
-      --  Instantiate Functional.Try for version file reading
-      function Try_Read_Version_File is new Functional.Try.Try_To_Result
-        (T             => Get_Version.Version_String,
-         E             => TZif.Domain.Error.Error_Type,
-         Result_Type   => Get_Version.Version_Result,
-         Ok            => Get_Version.Version_Result_Package.Ok,
-         New_Error     => Get_Version.Version_Result_Package.From_Error,
-         Map_Exception => Map_IO_Exception,
-         Action        => Raw_Read_Version_File);
+      --  Make_Error for version file reading
+      function Make_Version_Error
+        (Kind : TZif.Domain.Error.Error_Kind; Message : String)
+         return Get_Version.Version_Result
+      is
+         use TZif.Domain.Error;
+      begin
+         case Kind is
+            when Not_Found_Error =>
+               return Get_Version.Version_Result_Package.Error
+                 (Not_Found_Error, "Version file not found: " & Message);
+            when others =>
+               return Get_Version.Version_Result_Package.Error
+                 (IO_Error, "Error reading version: " & Message);
+         end case;
+      end Make_Version_Error;
+
+      --  Instantiate Functional.Try.Map_To_Result for version file reading
+      package Try_Read_Version is new Functional.Try.Map_To_Result
+        (Error_Kind_Type    => TZif.Domain.Error.Error_Kind,
+         Result_Type        => Get_Version.Version_Result,
+         Make_Error         => Make_Version_Error,
+         Default_Error_Kind => TZif.Domain.Error.IO_Error,
+         Action             => Raw_Read_Version_File);
+
+      Version_Mappings : constant Try_Read_Version.Mapping_Array :=
+        [(SIO.Name_Error'Identity, TZif.Domain.Error.Not_Found_Error),
+         (SIO.Use_Error'Identity,  TZif.Domain.Error.IO_Error)];
 
    begin
       --  Check if file exists first (avoids exception for common case)
@@ -667,7 +678,7 @@ is
          return;
       end if;
 
-      Result := Try_Read_Version_File;
+      Result := Try_Read_Version.Run (Version_Mappings);
    end Read_Version_File;
 
    ----------------------------------------------------------------------
@@ -676,7 +687,7 @@ is
    --  Reads the system's timezone ID from /etc/localtime symlink.
    --
    --  Implementation:
-   --    Uses Functional.Try for exception-to-Result conversion.
+   --    Uses Functional.Try.Map_To_Result for declarative exception mapping.
    --    Platform.POSIX.Operations.Read_Link already returns Result type.
    ----------------------------------------------------------------------
    procedure Read_System_Timezone_Id
@@ -688,7 +699,8 @@ is
       Localtime_Path : constant String := "/etc/localtime";
 
       --  Raw action that may raise - extracts zone ID from symlink target
-      function Raw_Extract_Zone_Id return Zone_Id_Type is
+      --  Returns Result type for Map_To_Result
+      function Raw_Extract_Zone_Id return Find_My_Id.Result is
          use TZif.Infrastructure.Platform.POSIX;
          Link_Result :
            constant TZif.Infrastructure.Platform.Platform_String_Result :=
@@ -729,20 +741,43 @@ is
                Zone_Id_Str   : constant String   :=
                  Link_Target (Zone_Id_Start .. Link_Target'Last);
             begin
-               return Make_Zone_Id (Zone_Id_Str);
+               return Find_My_Id.Result_Zone_Id.Ok (Make_Zone_Id (Zone_Id_Str));
             end;
          end;
       end Raw_Extract_Zone_Id;
 
-      --  Instantiate Functional.Try for zone ID extraction
-      function Try_Extract_Zone_Id is new Functional.Try.Try_To_Result
-        (T             => Zone_Id_Type,
-         E             => TZif.Domain.Error.Error_Type,
-         Result_Type   => Find_My_Id.Result,
-         Ok            => Find_My_Id.Result_Zone_Id.Ok,
-         New_Error     => Find_My_Id.Result_Zone_Id.From_Error,
-         Map_Exception => Map_IO_Exception,
-         Action        => Raw_Extract_Zone_Id);
+      --  Make_Error for system zone ID extraction
+      function Make_Syszone_Error
+        (Kind : TZif.Domain.Error.Error_Kind; Message : String)
+         return Find_My_Id.Result
+      is
+         use TZif.Domain.Error;
+      begin
+         case Kind is
+            when Not_Found_Error =>
+               return Find_My_Id.Result_Zone_Id.Error
+                 (Not_Found_Error, "System timezone not found: " & Message);
+            when Validation_Error =>
+               return Find_My_Id.Result_Zone_Id.Error
+                 (Validation_Error, "Invalid symlink target: " & Message);
+            when others =>
+               return Find_My_Id.Result_Zone_Id.Error
+                 (IO_Error, "Error reading system timezone: " & Message);
+         end case;
+      end Make_Syszone_Error;
+
+      --  Instantiate Functional.Try.Map_To_Result for zone ID extraction
+      package Try_Extract_Zone_Id is new Functional.Try.Map_To_Result
+        (Error_Kind_Type    => TZif.Domain.Error.Error_Kind,
+         Result_Type        => Find_My_Id.Result,
+         Make_Error         => Make_Syszone_Error,
+         Default_Error_Kind => TZif.Domain.Error.IO_Error,
+         Action             => Raw_Extract_Zone_Id);
+
+      Syszone_Mappings : constant Try_Extract_Zone_Id.Mapping_Array :=
+        [(Ada.Directories.Name_Error'Identity,
+          TZif.Domain.Error.Not_Found_Error),
+         (Constraint_Error'Identity, TZif.Domain.Error.Validation_Error)];
 
    begin
       if not Exists (Localtime_Path) then
@@ -752,7 +787,7 @@ is
          return;
       end if;
 
-      Result := Try_Extract_Zone_Id;
+      Result := Try_Extract_Zone_Id.Run (Syszone_Mappings);
    end Read_System_Timezone_Id;
 
    ----------------------------------------------------------------------
@@ -761,7 +796,7 @@ is
    --  Lists all timezone IDs in a source directory, sorted.
    --
    --  Implementation:
-   --    Uses Functional.Try for exception-to-Result conversion.
+   --    Uses Functional.Try.Map_To_Result_With_Param for declarative mapping.
    --    Inner exception handlers for intentional error recovery are preserved.
    ----------------------------------------------------------------------
    procedure List_Zones_In_Source
@@ -783,8 +818,9 @@ is
          Descending : Boolean;
       end record;
 
-      --  Raw action that may raise
-      function Raw_Scan_And_Sort (Ctx : Scan_Context) return List_All.Zone_Id_List
+      --  Raw action that may raise - returns Result type for Map_To_Result
+      function Raw_Scan_And_Sort
+        (Ctx : Scan_Context) return List_All.List_All_Zones_Result
       is
          Zones : List_All.Zone_Id_List;
 
@@ -864,20 +900,40 @@ is
          if Ctx.Descending then
             List_All.Zone_Id_Vectors.Reverse_Elements (Zones);
          end if;
-         return Zones;
+         return List_All.List_All_Zones_Result_Package.Ok (Zones);
       end Raw_Scan_And_Sort;
 
-      --  Instantiate Functional.Try
-      function Try_Scan_And_Sort is new
-        Functional.Try.Try_To_Any_Result_With_Param
-          (T             => List_All.Zone_Id_List,
-           E             => TZif.Domain.Error.Error_Type,
-           Param         => Scan_Context,
-           Result_Type   => List_All.List_All_Zones_Result,
-           Ok            => List_All.List_All_Zones_Result_Package.Ok,
-           New_Error     => List_All.List_All_Zones_Result_Package.From_Error,
-           Map_Exception => Map_IO_Exception,
-           Action        => Raw_Scan_And_Sort);
+      --  Make_Error for list zones operation
+      function Make_Listzones_Error
+        (Kind : TZif.Domain.Error.Error_Kind; Message : String)
+         return List_All.List_All_Zones_Result
+      is
+         use TZif.Domain.Error;
+      begin
+         case Kind is
+            when Not_Found_Error =>
+               return List_All.List_All_Zones_Result_Package.Error
+                 (Not_Found_Error, "Source not found: " & Message);
+            when others =>
+               return List_All.List_All_Zones_Result_Package.Error
+                 (IO_Error, "Error listing zones: " & Message);
+         end case;
+      end Make_Listzones_Error;
+
+      --  Instantiate Functional.Try.Map_To_Result_With_Param
+      package Try_Scan_And_Sort is new
+        Functional.Try.Map_To_Result_With_Param
+          (Error_Kind_Type    => TZif.Domain.Error.Error_Kind,
+           Param_Type         => Scan_Context,
+           Result_Type        => List_All.List_All_Zones_Result,
+           Make_Error         => Make_Listzones_Error,
+           Default_Error_Kind => TZif.Domain.Error.IO_Error,
+           Action             => Raw_Scan_And_Sort);
+
+      Listzones_Mappings : constant Try_Scan_And_Sort.Mapping_Array :=
+        [(Ada.Directories.Name_Error'Identity,
+          TZif.Domain.Error.Not_Found_Error),
+         (Ada.Directories.Use_Error'Identity, TZif.Domain.Error.IO_Error)];
 
    begin
       if not Exists (Path_Str) or else Kind (Path_Str) /= Directory then
@@ -888,7 +944,8 @@ is
          return;
       end if;
 
-      Result := Try_Scan_And_Sort ((Descending => Descending));
+      Result := Try_Scan_And_Sort.Run ((Descending => Descending),
+                                       Listzones_Mappings);
    end List_Zones_In_Source;
 
    ----------------------------------------------------------------------
@@ -897,8 +954,8 @@ is
    --  Loads timezone source metadata from filesystem path.
    --
    --  Implementation:
-   --    Uses Functional.Try for exception-to-Result conversion and
-   --    Functional.Scoped for automatic file cleanup.
+   --    Uses Functional.Try.Map_To_Result for declarative exception mapping
+   --    and Functional.Scoped for automatic file cleanup.
    ----------------------------------------------------------------------
    procedure Load_Source_From_Path
      (Path   : TZif.Application.Port.Inbound.Load_Source.Path_String;
@@ -918,8 +975,8 @@ is
       Path_Str : constant String :=
         Load_Source.Path_Strings.To_String (Path);
 
-      --  Raw action that may raise
-      function Raw_Load_Source return Source_Info_Type is
+      --  Raw action that may raise - returns Result type for Map_To_Result
+      function Raw_Load_Source return Load_Source.Load_Source_Result is
          ULID         : constant ULID_Type        :=
            TZif.Infrastructure.ULID.Generate;
          Path_Val     : constant Path_String_Type := Make_Path (Path_Str);
@@ -997,18 +1054,39 @@ is
 
          Version := Make_Version (Version_Str (1 .. Last));
          Count_Zones (Path_Str);
-         return Make_Source_Info (ULID, Path_Val, Version, Zone_Count);
+         return Load_Source.Load_Source_Result_Package.Ok
+           (Make_Source_Info (ULID, Path_Val, Version, Zone_Count));
       end Raw_Load_Source;
 
-      --  Instantiate Functional.Try
-      function Try_Load_Source is new Functional.Try.Try_To_Result
-        (T             => Source_Info_Type,
-         E             => TZif.Domain.Error.Error_Type,
-         Result_Type   => Load_Source.Load_Source_Result,
-         Ok            => Load_Source.Load_Source_Result_Package.Ok,
-         New_Error     => Load_Source.Load_Source_Result_Package.From_Error,
-         Map_Exception => Map_IO_Exception,
-         Action        => Raw_Load_Source);
+      --  Make_Error for load source operation
+      function Make_Loadsource_Error
+        (Kind : TZif.Domain.Error.Error_Kind; Message : String)
+         return Load_Source.Load_Source_Result
+      is
+         use TZif.Domain.Error;
+      begin
+         case Kind is
+            when Not_Found_Error =>
+               return Load_Source.Load_Source_Result_Package.Error
+                 (Not_Found_Error, "Source path not found: " & Message);
+            when others =>
+               return Load_Source.Load_Source_Result_Package.Error
+                 (IO_Error, "Error loading source: " & Message);
+         end case;
+      end Make_Loadsource_Error;
+
+      --  Instantiate Functional.Try.Map_To_Result
+      package Try_Load_Source is new Functional.Try.Map_To_Result
+        (Error_Kind_Type    => TZif.Domain.Error.Error_Kind,
+         Result_Type        => Load_Source.Load_Source_Result,
+         Make_Error         => Make_Loadsource_Error,
+         Default_Error_Kind => TZif.Domain.Error.IO_Error,
+         Action             => Raw_Load_Source);
+
+      Loadsource_Mappings : constant Try_Load_Source.Mapping_Array :=
+        [(Ada.Directories.Name_Error'Identity,
+          TZif.Domain.Error.Not_Found_Error),
+         (Ada.Directories.Use_Error'Identity, TZif.Domain.Error.IO_Error)];
 
    begin
       if not Exists (Path_Str) then
@@ -1027,7 +1105,7 @@ is
          return;
       end if;
 
-      Result := Try_Load_Source;
+      Result := Try_Load_Source.Run (Loadsource_Mappings);
    end Load_Source_From_Path;
 
    ----------------------------------------------------------------------
@@ -1036,7 +1114,7 @@ is
    --  Validates that a path is a valid timezone source.
    --
    --  Implementation:
-   --    Uses Functional.Try for exception-to-Result conversion.
+   --    Uses Functional.Try.Map_To_Result for declarative exception mapping.
    ----------------------------------------------------------------------
    procedure Validate_Source_Path
      (Path   : TZif.Application.Port.Inbound.Validate_Source.Path_String;
@@ -1050,8 +1128,8 @@ is
       Path_Str : constant String :=
         Validate_Source.Path_Strings.To_String (Path);
 
-      --  Raw action that may raise
-      function Raw_Validate return Boolean is
+      --  Raw action that may raise - returns Result type for Map_To_Result
+      function Raw_Validate return Validate_Source.Validation_Result is
          Search     : Search_Type;
          pragma Warnings (Off, Search);
          Item       : Directory_Entry_Type;
@@ -1065,22 +1143,35 @@ is
             end if;
          end loop;
          End_Search (Search);
-         return Found_TZif;
+         return Validate_Source.Validation_Result_Package.Ok (Found_TZif);
       exception
          when Name_Error | Use_Error =>
             --  Inaccessible directory = not valid (intentional)
-            return False;
+            return Validate_Source.Validation_Result_Package.Ok (False);
       end Raw_Validate;
 
-      --  Instantiate Functional.Try
-      function Try_Validate is new Functional.Try.Try_To_Result
-        (T             => Boolean,
-         E             => TZif.Domain.Error.Error_Type,
-         Result_Type   => Validate_Source.Validation_Result,
-         Ok            => Validate_Source.Validation_Result_Package.Ok,
-         New_Error     => Validate_Source.Validation_Result_Package.From_Error,
-         Map_Exception => Map_IO_Exception,
-         Action        => Raw_Validate);
+      --  Make_Error for validation operation
+      function Make_Validate_Error
+        (Kind : TZif.Domain.Error.Error_Kind; Message : String)
+         return Validate_Source.Validation_Result
+      is
+         pragma Unreferenced (Kind, Message);
+      begin
+         --  Validation errors should return Ok(False), not Err
+         return Validate_Source.Validation_Result_Package.Ok (False);
+      end Make_Validate_Error;
+
+      --  Instantiate Functional.Try.Map_To_Result
+      package Try_Validate is new Functional.Try.Map_To_Result
+        (Error_Kind_Type    => TZif.Domain.Error.Error_Kind,
+         Result_Type        => Validate_Source.Validation_Result,
+         Make_Error         => Make_Validate_Error,
+         Default_Error_Kind => TZif.Domain.Error.IO_Error,
+         Action             => Raw_Validate);
+
+      --  Empty mappings since we handle errors internally by returning False
+      Validate_Mappings : constant Try_Validate.Mapping_Array :=
+        Try_Validate.Empty_Mappings;
 
    begin
       if not Exists (Path_Str) then
@@ -1093,7 +1184,7 @@ is
          return;
       end if;
 
-      Result := Try_Validate;
+      Result := Try_Validate.Run (Validate_Mappings);
    end Validate_Source_Path;
 
    ----------------------------------------------------------------------
@@ -1102,7 +1193,7 @@ is
    --  Finds timezone IDs matching a substring pattern.
    --
    --  Implementation:
-   --    Uses Functional.Try for exception-to-Result conversion.
+   --    Uses Functional.Try.Map_To_Result for declarative exception mapping.
    --    Inner exception handler for inaccessible directories preserved.
    ----------------------------------------------------------------------
    procedure Find_Zones_By_Pattern
@@ -1119,8 +1210,8 @@ is
       Pattern_Str : constant String :=
         Find_By_Pattern.Pattern_Strings.To_String (Pattern);
 
-      --  Raw action that may raise
-      function Raw_Scan return TZif.Domain.Value_Object.Unit.Unit_Type is
+      --  Raw action that may raise - returns Result type for Map_To_Result
+      function Raw_Scan return Find_By_Pattern.Find_By_Pattern_Result is
 
          procedure Scan_Directory (Dir_Path : String; Prefix : String := "") is
             Search : Search_Type;
@@ -1183,22 +1274,42 @@ is
          if Exists (Zoneinfo_Base) and then Kind (Zoneinfo_Base) = Directory then
             Scan_Directory (Zoneinfo_Base);
          end if;
-         return TZif.Domain.Value_Object.Unit.Unit;
+         return Find_By_Pattern.Find_By_Pattern_Result_Package.Ok
+           (TZif.Domain.Value_Object.Unit.Unit);
       end Raw_Scan;
 
-      --  Instantiate Functional.Try
-      function Try_Scan is new Functional.Try.Try_To_Result
-        (T             => TZif.Domain.Value_Object.Unit.Unit_Type,
-         E             => TZif.Domain.Error.Error_Type,
-         Result_Type   => Find_By_Pattern.Find_By_Pattern_Result,
-         Ok            => Find_By_Pattern.Find_By_Pattern_Result_Package.Ok,
-         New_Error     =>
-           Find_By_Pattern.Find_By_Pattern_Result_Package.From_Error,
-         Map_Exception => Map_IO_Exception,
-         Action        => Raw_Scan);
+      --  Make_Error for pattern search operation
+      function Make_Pattern_Error
+        (Kind : TZif.Domain.Error.Error_Kind; Message : String)
+         return Find_By_Pattern.Find_By_Pattern_Result
+      is
+         use TZif.Domain.Error;
+      begin
+         case Kind is
+            when Not_Found_Error =>
+               return Find_By_Pattern.Find_By_Pattern_Result_Package.Error
+                 (Not_Found_Error, "Source not found: " & Message);
+            when others =>
+               return Find_By_Pattern.Find_By_Pattern_Result_Package.Error
+                 (IO_Error, "Error searching pattern: " & Message);
+         end case;
+      end Make_Pattern_Error;
+
+      --  Instantiate Functional.Try.Map_To_Result
+      package Try_Scan is new Functional.Try.Map_To_Result
+        (Error_Kind_Type    => TZif.Domain.Error.Error_Kind,
+         Result_Type        => Find_By_Pattern.Find_By_Pattern_Result,
+         Make_Error         => Make_Pattern_Error,
+         Default_Error_Kind => TZif.Domain.Error.IO_Error,
+         Action             => Raw_Scan);
+
+      Pattern_Mappings : constant Try_Scan.Mapping_Array :=
+        [(Ada.Directories.Name_Error'Identity,
+          TZif.Domain.Error.Not_Found_Error),
+         (Ada.Directories.Use_Error'Identity, TZif.Domain.Error.IO_Error)];
 
    begin
-      Result := Try_Scan;
+      Result := Try_Scan.Run (Pattern_Mappings);
    end Find_Zones_By_Pattern;
 
    ----------------------------------------------------------------------
@@ -1207,7 +1318,7 @@ is
    --  Finds timezone IDs by region prefix.
    --
    --  Implementation:
-   --    Uses Functional.Try for exception-to-Result conversion.
+   --    Uses Functional.Try.Map_To_Result for declarative exception mapping.
    --    Inner exception handler for inaccessible directories preserved.
    ----------------------------------------------------------------------
    procedure Find_Zones_By_Region
@@ -1224,8 +1335,8 @@ is
       Region_Str : constant String :=
         Find_By_Region.Region_Strings.To_String (Region);
 
-      --  Raw action that may raise
-      function Raw_Scan return TZif.Domain.Value_Object.Unit.Unit_Type is
+      --  Raw action that may raise - returns Result type for Map_To_Result
+      function Raw_Scan return Find_By_Region.Find_By_Region_Result is
 
          procedure Scan_Directory (Dir_Path : String; Prefix : String := "") is
             Search : Search_Type;
@@ -1284,28 +1395,52 @@ is
          if Exists (Zoneinfo_Base) and then Kind (Zoneinfo_Base) = Directory then
             Scan_Directory (Zoneinfo_Base);
          end if;
-         return TZif.Domain.Value_Object.Unit.Unit;
+         return Find_By_Region.Find_By_Region_Result_Package.Ok
+           (TZif.Domain.Value_Object.Unit.Unit);
       end Raw_Scan;
 
-      --  Instantiate Functional.Try
-      function Try_Scan is new Functional.Try.Try_To_Result
-        (T             => TZif.Domain.Value_Object.Unit.Unit_Type,
-         E             => TZif.Domain.Error.Error_Type,
-         Result_Type   => Find_By_Region.Find_By_Region_Result,
-         Ok            => Find_By_Region.Find_By_Region_Result_Package.Ok,
-         New_Error     =>
-           Find_By_Region.Find_By_Region_Result_Package.From_Error,
-         Map_Exception => Map_IO_Exception,
-         Action        => Raw_Scan);
+      --  Make_Error for region search operation
+      function Make_Region_Error
+        (Kind : TZif.Domain.Error.Error_Kind; Message : String)
+         return Find_By_Region.Find_By_Region_Result
+      is
+         use TZif.Domain.Error;
+      begin
+         case Kind is
+            when Not_Found_Error =>
+               return Find_By_Region.Find_By_Region_Result_Package.Error
+                 (Not_Found_Error, "Source not found: " & Message);
+            when others =>
+               return Find_By_Region.Find_By_Region_Result_Package.Error
+                 (IO_Error, "Error searching region: " & Message);
+         end case;
+      end Make_Region_Error;
+
+      --  Instantiate Functional.Try.Map_To_Result
+      package Try_Scan is new Functional.Try.Map_To_Result
+        (Error_Kind_Type    => TZif.Domain.Error.Error_Kind,
+         Result_Type        => Find_By_Region.Find_By_Region_Result,
+         Make_Error         => Make_Region_Error,
+         Default_Error_Kind => TZif.Domain.Error.IO_Error,
+         Action             => Raw_Scan);
+
+      Region_Mappings : constant Try_Scan.Mapping_Array :=
+        [(Ada.Directories.Name_Error'Identity,
+          TZif.Domain.Error.Not_Found_Error),
+         (Ada.Directories.Use_Error'Identity, TZif.Domain.Error.IO_Error)];
 
    begin
-      Result := Try_Scan;
+      Result := Try_Scan.Run (Region_Mappings);
    end Find_Zones_By_Region;
 
    ----------------------------------------------------------------------
    --  Find_Zones_By_Regex
    --
    --  Finds timezone IDs matching a regular expression.
+   --
+   --  Implementation:
+   --    Uses Functional.Try.Map_To_Result for declarative exception mapping.
+   --    Maps GNAT.Regpat.Expression_Error to Validation_Error for invalid regex.
    ----------------------------------------------------------------------
    procedure Find_Zones_By_Regex
      (Regex  : TZif.Application.Port.Inbound.Find_By_Regex.Regex_String;
@@ -1321,32 +1456,6 @@ is
 
       Regex_Str : constant String :=
         Find_By_Regex.Regex_Strings.To_String (Regex);
-
-      --  Map exceptions to domain errors (Expression_Error -> Validation_Error)
-      function Map_Regex_Exception
-        (Occ : Ada.Exceptions.Exception_Occurrence)
-         return TZif.Domain.Error.Error_Type
-      is
-         use Ada.Exceptions;
-         use TZif.Domain.Error;
-         Exc_Name : constant String := Exception_Name (Occ);
-      begin
-         if Exc_Name = "GNAT.REGPAT.EXPRESSION_ERROR" then
-            return (Kind    => Validation_Error,
-                    Message => Error_Strings.To_Bounded_String
-                      ("Invalid regex pattern: " & Regex_Str));
-         elsif Exc_Name = "ADA.DIRECTORIES.NAME_ERROR"
-           or else Exc_Name = "ADA.DIRECTORIES.USE_ERROR"
-         then
-            return (Kind    => Not_Found_Error,
-                    Message => Error_Strings.To_Bounded_String
-                      ("Directory not found: " & Exception_Message (Occ)));
-         else
-            return (Kind    => IO_Error,
-                    Message => Error_Strings.To_Bounded_String
-                      ("Error searching regex: " & Exception_Message (Occ)));
-         end if;
-      end Map_Regex_Exception;
 
       procedure Scan_Directory
         (Dir_Path : String; Prefix : String := ""; Pattern : Pattern_Matcher)
@@ -1396,30 +1505,54 @@ is
             null;
       end Scan_Directory;
 
-      --  Raw function that may raise exceptions
-      function Raw_Scan return TZif.Domain.Value_Object.Unit.Unit_Type is
+      --  Raw function that may raise - returns Result type for Map_To_Result
+      function Raw_Scan return Find_By_Regex.Find_By_Regex_Result is
          Pattern : constant Pattern_Matcher := Compile (Regex_Str);
       begin
          if Exists (Zoneinfo_Base) and then Kind (Zoneinfo_Base) = Directory
          then
             Scan_Directory (Zoneinfo_Base, "", Pattern);
          end if;
-         return TZif.Domain.Value_Object.Unit.Unit;
+         return Find_By_Regex.Find_By_Regex_Result_Package.Ok
+           (TZif.Domain.Value_Object.Unit.Unit);
       end Raw_Scan;
 
-      --  Instantiate Functional.Try with regex-aware exception mapper
-      function Try_Scan is new Functional.Try.Try_To_Result
-        (T             => TZif.Domain.Value_Object.Unit.Unit_Type,
-         E             => TZif.Domain.Error.Error_Type,
-         Result_Type   => Find_By_Regex.Find_By_Regex_Result,
-         Ok            => Find_By_Regex.Find_By_Regex_Result_Package.Ok,
-         New_Error     =>
-           Find_By_Regex.Find_By_Regex_Result_Package.From_Error,
-         Map_Exception => Map_Regex_Exception,
-         Action        => Raw_Scan);
+      --  Make_Error for regex search operation
+      function Make_Regex_Error
+        (Kind : TZif.Domain.Error.Error_Kind; Message : String)
+         return Find_By_Regex.Find_By_Regex_Result
+      is
+         use TZif.Domain.Error;
+      begin
+         case Kind is
+            when Validation_Error =>
+               return Find_By_Regex.Find_By_Regex_Result_Package.Error
+                 (Validation_Error, "Invalid regex pattern: " & Regex_Str);
+            when Not_Found_Error =>
+               return Find_By_Regex.Find_By_Regex_Result_Package.Error
+                 (Not_Found_Error, "Directory not found: " & Message);
+            when others =>
+               return Find_By_Regex.Find_By_Regex_Result_Package.Error
+                 (IO_Error, "Error searching regex: " & Message);
+         end case;
+      end Make_Regex_Error;
+
+      --  Instantiate Functional.Try.Map_To_Result with regex-aware mapping
+      package Try_Scan is new Functional.Try.Map_To_Result
+        (Error_Kind_Type    => TZif.Domain.Error.Error_Kind,
+         Result_Type        => Find_By_Regex.Find_By_Regex_Result,
+         Make_Error         => Make_Regex_Error,
+         Default_Error_Kind => TZif.Domain.Error.IO_Error,
+         Action             => Raw_Scan);
+
+      Regex_Mappings : constant Try_Scan.Mapping_Array :=
+        [(Expression_Error'Identity, TZif.Domain.Error.Validation_Error),
+         (Ada.Directories.Name_Error'Identity,
+          TZif.Domain.Error.Not_Found_Error),
+         (Ada.Directories.Use_Error'Identity, TZif.Domain.Error.IO_Error)];
 
    begin
-      Result := Try_Scan;
+      Result := Try_Scan.Run (Regex_Mappings);
    end Find_Zones_By_Regex;
 
 end TZif.Infrastructure.IO.Desktop;
