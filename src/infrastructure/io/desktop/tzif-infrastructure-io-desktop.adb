@@ -828,7 +828,7 @@ is
                                     end if;
                                  exception
                                     when Constraint_Error =>
-                                       --  DELIBERATE: Skip zone names exceeding
+                                       --  DESIGN DECISION: Skip zone names exceeding
                                        --  bounded string limit during batch scan.
                                        --  Functional.Try not applicable here as
                                        --  we need continue-on-error semantics.

@@ -19,7 +19,7 @@ with Ada.Text_IO;
 with Ada.Characters.Handling;
 with Ada.Environment_Variables;
 with Functional.Scoped;
-with Functional.Try;
+with Functional.Try.Map_To_Result;
 with GNAT.Regpat;
 with TZif.Domain.Error;
 with TZif.Domain.Value_Object.Zone_Id;
@@ -78,7 +78,7 @@ is
       Bytes  : out Byte_Array; Length : out Natural;
       Result : out Read_File_Result.Result)
    is
-      use Ada.Exceptions;
+      use TZif.Domain.Error;
       Zoneinfo_Base : constant String := Get_Zoneinfo_Base;
       File_Path     : constant String := Zoneinfo_Base & To_String (Id);
 
@@ -91,39 +91,33 @@ is
          Should_Release => File_Is_Open,
          Release        => Close_File);
 
-      --  Map open error
-      function Map_Open_Exception
-        (Occ : Ada.Exceptions.Exception_Occurrence)
-         return Read_File_Result.Result
+      --  Make error with file path context
+      function Make_File_Error (Kind : Error_Kind; Message : String)
+        return Read_File_Result.Result
       is
       begin
-         return
-           Read_File_Result.Error
-             (TZif.Domain.Error.IO_Error,
-              "File open error for " & File_Path & ": " &
-              Exception_Message (Occ));
-      end Map_Open_Exception;
-
-      --  Map read error
-      function Map_Read_Exception
-        (Occ : Ada.Exceptions.Exception_Occurrence)
-         return Read_File_Result.Result
-      is
-      begin
-         return
-           Read_File_Result.Error
-             (TZif.Domain.Error.IO_Error,
-              "File read error for " & File_Path & ": " &
-              Exception_Message (Occ));
-      end Map_Read_Exception;
+         case Kind is
+            when Not_Found_Error =>
+               return Read_File_Result.Error
+                 (Kind, "Zone file not found: " & File_Path & ": " & Message);
+            when IO_Error =>
+               return Read_File_Result.Error
+                 (Kind, "File access error: " & File_Path & ": " & Message);
+            when Parse_Error =>
+               return Read_File_Result.Error
+                 (Kind, "File data error: " & File_Path & ": " & Message);
+            when others =>
+               return Read_File_Result.Error
+                 (Kind, "File operation failed: " & File_Path & ": " & Message);
+         end case;
+      end Make_File_Error;
    begin
       Length := 0;
 
       if Zoneinfo_Base = "" then
          Result :=
            Read_File_Result.Error
-             (TZif.Domain.Error.Not_Found_Error,
-              "TZIF_DATA_PATH environment variable not set");
+             (Not_Found_Error, "TZIF_DATA_PATH environment variable not set");
          return;
       end if;
 
@@ -134,35 +128,26 @@ is
          pragma Unreferenced (Guard);
          Stream : SIO.Stream_Access;
 
-         --  Raw open action
-         --  DELIBERATE: Specific exception handlers inside Try-wrapped function
-         --  provide better UX by mapping known I/O exceptions to correct error
-         --  types (Not_Found vs IO_Error). Try wrapper catches unexpected errors.
+         --  Raw open action (no exception handlers - Try.Mapped handles them)
          function Raw_Open return Read_File_Result.Result is
          begin
             SIO.Open (File, SIO.In_File, File_Path);
-            return Read_File_Result.Ok ((Bytes_Read => 0));  --  Placeholder
-         exception
-            when E : SIO.Name_Error =>
-               return
-                 Read_File_Result.Error
-                   (TZif.Domain.Error.Not_Found_Error,
-                    "Zone file not found: " & File_Path & ": " &
-                    Exception_Message (E));
-            when E : SIO.Use_Error  =>
-               return
-                 Read_File_Result.Error
-                   (TZif.Domain.Error.IO_Error,
-                    "Cannot access zone file: " & File_Path & ": " &
-                    Exception_Message (E));
+            return Read_File_Result.Ok ((Bytes_Read => 0));
          end Raw_Open;
 
-         function Try_Open is new Functional.Try.Try_To_Any_Result
-           (Result_Type   => Read_File_Result.Result,
-            Map_Exception => Map_Open_Exception,
-            Action        => Raw_Open);
+         package Try_Open is new Functional.Try.Map_To_Result
+           (Error_Kind_Type    => Error_Kind,
+            Result_Type        => Read_File_Result.Result,
+            Make_Error         => Make_File_Error,
+            Default_Error_Kind => IO_Error,
+            Action             => Raw_Open);
 
-         --  Raw read action
+         --  Exception mappings for file open
+         Open_Mappings : constant Try_Open.Mapping_Array :=
+           [(SIO.Name_Error'Identity, Not_Found_Error),
+            (SIO.Use_Error'Identity,  IO_Error)];
+
+         --  Raw read action (no exception handlers - Try.Mapped handles them)
          function Raw_Read return Read_File_Result.Result is
          begin
             Stream := SIO.Stream (File);
@@ -173,37 +158,31 @@ is
             end loop;
 
             return Read_File_Result.Ok ((Bytes_Read => Length));
-         exception
-            when E : SIO.End_Error =>
-               return
-                 Read_File_Result.Error
-                   (TZif.Domain.Error.Parse_Error,
-                    "Unexpected end of file for " & File_Path & ": " &
-                    Exception_Message (E));
-            when E : SIO.Data_Error =>
-               return
-                 Read_File_Result.Error
-                   (TZif.Domain.Error.Parse_Error,
-                    "File data corrupted for " & File_Path & ": " &
-                    Exception_Message (E));
          end Raw_Read;
 
-         function Try_Read is new Functional.Try.Try_To_Any_Result
-           (Result_Type   => Read_File_Result.Result,
-            Map_Exception => Map_Read_Exception,
-            Action        => Raw_Read);
+         package Try_Read is new Functional.Try.Map_To_Result
+           (Error_Kind_Type    => Error_Kind,
+            Result_Type        => Read_File_Result.Result,
+            Make_Error         => Make_File_Error,
+            Default_Error_Kind => IO_Error,
+            Action             => Raw_Read);
+
+         --  Exception mappings for file read
+         Read_Mappings : constant Try_Read.Mapping_Array :=
+           [(SIO.End_Error'Identity,  Parse_Error),
+            (SIO.Data_Error'Identity, Parse_Error)];
 
          Open_Result : Read_File_Result.Result;
       begin
          --  Step 1: Open file
-         Open_Result := Try_Open;
+         Open_Result := Try_Open.Run (Open_Mappings);
          if not Read_File_Result.Is_Ok (Open_Result) then
             Result := Open_Result;
             return;
          end if;
 
          --  Step 2: Read file (guard handles close on exit)
-         Result := Try_Read;
+         Result := Try_Read.Run (Read_Mappings);
       end;
    end Read_File;
 

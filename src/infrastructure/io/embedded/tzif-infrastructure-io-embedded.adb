@@ -132,9 +132,10 @@ is
          Stream : SIO.Stream_Access;
 
          --  Raw open action
-         --  DELIBERATE: Specific exception handlers inside Try-wrapped function
-         --  provide better UX by mapping known I/O exceptions to correct error
-         --  types (Not_Found vs IO_Error). Try wrapper catches unexpected errors.
+         --  DESIGN DECISION: Specific exception handlers inside Try-wrapped
+         --  function provide better UX by mapping known I/O exceptions to
+         --  correct error types (Not_Found vs IO_Error). Try wrapper catches
+         --  unexpected errors.
          function Raw_Open return Read_File_Result.Result is
          begin
             SIO.Open (File, SIO.In_File, File_Path);

@@ -480,14 +480,14 @@ package body TZif.Infrastructure.Adapter.File_System.Zone_Repository is
                                  end if;
                               exception
                                  when Constraint_Error =>
-                                    --  DELIBERATE: Skip invalid zone names
+                                    --  DESIGN DECISION: Skip invalid zone names
                                     --  Malformed entries silently skipped
                                     null;
                               end;
                            end if;
 
                         when others =>
-                           --  DELIBERATE: Skip non-directory/non-file entries
+                           --  DESIGN DECISION: Skip non-directory/non-file entries
                            --  Only regular files and directories are relevant
                            null;
                      end case;
@@ -499,11 +499,11 @@ package body TZif.Infrastructure.Adapter.File_System.Zone_Repository is
          End_Search (Search);
       exception
          when Name_Error =>
-            --  DELIBERATE: Skip directories that don't exist
+            --  DESIGN DECISION: Skip directories that don't exist
             --  Missing paths don't affect the overall scan
             null;
          when Use_Error  =>
-            --  DELIBERATE: Skip permission-denied directories
+            --  DESIGN DECISION: Skip permission-denied directories
             --  Protected system directories don't affect scan
             null;
       end Scan_Directory;
