@@ -96,6 +96,11 @@ package body TZif.Infrastructure.Platform.POSIX is
 
    exception
       when others =>
+         --  DESIGN DECISION: This package is Preelaborate (required for
+         --  low-level C bindings). Functional.Try cannot be used here as it
+         --  is not preelaborable. The exception handler at this C FFI boundary
+         --  converts any unexpected exception to a Result error, which is the
+         --  correct railway-oriented pattern for boundary code.
          return
            String_Result.Error
              (IO_Error,
