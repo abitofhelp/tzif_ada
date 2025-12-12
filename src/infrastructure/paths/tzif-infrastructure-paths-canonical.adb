@@ -8,13 +8,24 @@ pragma Ada_2022;
 --  Purpose:
 --    Canonical implementation.
 --
+--  Implementation Notes:
+--    Uses Functional.Try to handle potential exceptions from Ada.Directories.
+--
 --  ===========================================================================
 
 with Ada.Characters.Handling;
 with Ada.Directories;
 with Ada.Strings.Unbounded; use Ada.Strings.Unbounded;
+with Functional.Option;
+with Functional.Try;
 
 package body TZif.Infrastructure.Paths.Canonical is
+
+   --  We need a bounded string for Option since String is indefinite
+   Max_Path_Length : constant := 4096;
+   subtype Path_String is String (1 .. Max_Path_Length);
+
+   package Path_Option is new Functional.Option (T => Path_String);
 
    function Canonicalize
      (S           : String; Case_Insensitive : Boolean := False;
@@ -23,16 +34,46 @@ package body TZif.Infrastructure.Paths.Canonical is
       use Ada.Directories;
       use Ada.Characters.Handling;
 
-      --  Step 1: Get absolute path (falls back to input on error)
-      function Get_Absolute return String is
+      --  Padded path for Option
+      function Pad_Path (P : String) return Path_String is
+         Result : Path_String := [others => ' '];
       begin
-         return Full_Name (S);
-      exception
-         when others =>
-            return S;
-      end Get_Absolute;
+         Result (1 .. P'Length) := P;
+         return Result;
+      end Pad_Path;
 
-      Absolute_Path : constant String := Get_Absolute;
+      --  Step 1: Get absolute path using Functional.Try
+      function Raw_Full_Name return Path_String is
+      begin
+         return Pad_Path (Full_Name (S));
+      end Raw_Full_Name;
+
+      function Try_Full_Name is new Functional.Try.Try_To_Functional_Option
+        (T          => Path_String,
+         Option_Pkg => Path_Option,
+         Action     => Raw_Full_Name);
+
+      --  Try to get full name, fall back to input on failure
+      function Get_Absolute_Path return String is
+         Opt : constant Path_Option.Option := Try_Full_Name;
+      begin
+         if Path_Option.Is_Some (Opt) then
+            declare
+               Padded : constant Path_String := Path_Option.Value (Opt);
+               --  Find actual length (trim trailing spaces)
+               Actual_Len : Natural := Max_Path_Length;
+            begin
+               while Actual_Len > 0 and then Padded (Actual_Len) = ' ' loop
+                  Actual_Len := Actual_Len - 1;
+               end loop;
+               return Padded (1 .. Actual_Len);
+            end;
+         else
+            return S;
+         end if;
+      end Get_Absolute_Path;
+
+      Absolute_Path : constant String := Get_Absolute_Path;
 
       --  Step 2: Unify separators + collapse duplicates
       B           : Unbounded_String := To_Unbounded_String ("");
