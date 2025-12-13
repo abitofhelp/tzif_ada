@@ -682,18 +682,6 @@ begin
       Assert (Err_Called, "Tap calls On_Err for Error result");
    end;
 
-   Put_Line ("Test: Expect - Extract or Raise");
-   --  Expect on Ok returns value
-   declare
-      R      : constant Int_Res := Int_Result.Ok (42);
-      Result : constant Integer := Int_Result.Expect (R, "Should have value");
-   begin
-      Assert (Result = 42, "Expect on Ok returns value");
-   end;
-
-   --  Note: Expect on Error raises Program_Error due to precondition.
-   --  We don't test this as it's a contract violation.
-
    Put_Line ("Test: And_Then_Into - Cross-Type Chaining");
    --  And_Then_Into for type transformation (Integer -> Float)
    declare

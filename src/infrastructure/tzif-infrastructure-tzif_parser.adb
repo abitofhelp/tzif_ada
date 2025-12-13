@@ -59,7 +59,9 @@ package body TZif.Infrastructure.TZif_Parser is
    end record;
 
    --  Raw action that may raise exceptions - wrapped by Functional.Try
-   function Raw_Parse_Stream (Ctx : Stream_Context) return Parse_Result.Result is
+   function Raw_Parse_Stream
+     (Ctx : Stream_Context) return Parse_Result.Result
+   is
       Max_Size   : constant := 65_536;
       Buffer     : TZif.Domain.Parser.Byte_Array (1 .. Max_Size);
       Total_Read : Natural := 0;
@@ -113,7 +115,7 @@ package body TZif.Infrastructure.TZif_Parser is
       Default_Error_Kind => IO_Error,
       Action             => Raw_Parse_Stream);
 
-   --  Exception mappings: Name_Error -> Not_Found, others -> default (IO_Error)
+   --  Exception mappings: Name_Error -> Not_Found, others -> IO_Error
    Stream_Mappings : constant Try_Parse_Stream.Mapping_Array :=
      [(Ada.Streams.Stream_IO.Name_Error'Identity, Not_Found_Error)];
 
@@ -159,7 +161,7 @@ package body TZif.Infrastructure.TZif_Parser is
       Default_Error_Kind => IO_Error,
       Action             => Raw_Parse_File);
 
-   --  Exception mappings: Name_Error -> Not_Found, others -> default (IO_Error)
+   --  Exception mappings: Name_Error -> Not_Found, others -> IO_Error
    File_Mappings : constant Try_Parse_File.Mapping_Array :=
      [(Ada.Streams.Stream_IO.Name_Error'Identity, Not_Found_Error)];
 

@@ -57,7 +57,8 @@ begin
 
    --  For current 99.99.99 release, verify stable status
    Assert (TZif.Version.Is_Stable, "Version 99.99.99 is stable");
-   Assert (not TZif.Version.Is_Prerelease, "Version 99.99.99 is not prerelease");
+   Assert (not TZif.Version.Is_Prerelease,
+           "Version 99.99.99 is not prerelease");
    Assert (not TZif.Version.Is_Development, "Version 99.99.99 is not dev");
 
    --  Summary

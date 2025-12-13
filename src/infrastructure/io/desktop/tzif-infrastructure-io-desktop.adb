@@ -9,8 +9,8 @@ pragma Ada_2022;
 --    Desktop implementation.
 --
 --  Implementation Notes:
---    Uses Functional.Try and Functional.Scoped for exception boundary handling.
---    All I/O operations that may raise exceptions are wrapped with
+--    Uses Functional.Try and Functional.Scoped for exception boundary
+--    handling. All I/O operations that may raise exceptions are wrapped with
 --    Functional.Try.Map_To_Result, and file handles use
 --    Functional.Scoped.Conditional_Guard_For for automatic cleanup.
 --
@@ -45,7 +45,6 @@ is
    --  Rename Stream_IO to avoid namespace conflicts with Ada.Directories
    package SIO renames Ada.Streams.Stream_IO;
 
-
    --  ========================================================================
    --  Scoped File Guard for Stream_IO
    --  ========================================================================
@@ -63,7 +62,7 @@ is
      (Resource       => Ada.Text_IO.File_Type,
       Should_Release => Ada.Text_IO.Is_Open,
       Release        => Ada.Text_IO.Close);
-   pragma Unreferenced (Text_File_Guard);  --  Will be used in later refactoring
+   pragma Unreferenced (Text_File_Guard);  --  For later refactoring
 
    --  ========================================================================
    --  Default Zoneinfo Path
@@ -100,7 +99,8 @@ is
 
    --  Raw action that may raise - reads file bytes into buffer
    --  Returns Result type (Ok on success) for Map_To_Result_With_Param
-   function Raw_Read_File (Ctx : Read_File_Context) return Read_File_Result.Result
+   function Raw_Read_File
+     (Ctx : Read_File_Context) return Read_File_Result.Result
    is
       File   : aliased SIO.File_Type;
       Guard  : Stream_File_Guard.Guard (File'Access);
@@ -237,8 +237,9 @@ is
          Action     => Raw_Check_TZif_Magic);
 
       function Is_TZif_File (Path : String) return Boolean is
+         Result : constant Bool_Option.Option := Try_Check_TZif (Path);
       begin
-         return Bool_Option.Unwrap_Or (Try_Check_TZif (Path), Default => False);
+         return Bool_Option.Unwrap_Or (Result, Default => False);
       end Is_TZif_File;
 
       --  Read version from file using Functional.Try + Scoped
@@ -342,8 +343,9 @@ is
          Action     => Raw_Count_TZif_Files);
 
       function Count_TZif_Files (Dir_Path : String) return Natural is
+         Result : constant Natural_Option.Option := Try_Count_TZif (Dir_Path);
       begin
-         return Natural_Option.Unwrap_Or (Try_Count_TZif (Dir_Path), Default => 0);
+         return Natural_Option.Unwrap_Or (Result, Default => 0);
       end Count_TZif_Files;
 
       --  Generate simple ULID-like identifier
@@ -735,7 +737,8 @@ is
                Zone_Id_Str   : constant String   :=
                  Link_Target (Zone_Id_Start .. Link_Target'Last);
             begin
-               return Find_My_Id.Result_Zone_Id.Ok (Make_Zone_Id (Zone_Id_Str));
+               return Find_My_Id.Result_Zone_Id.Ok
+                 (Make_Zone_Id (Zone_Id_Str));
             end;
          end;
       end Raw_Extract_Zone_Id;
@@ -853,15 +856,18 @@ is
                                     if not List_All.Zone_Id_Vectors.Is_Full
                                       (Zones)
                                     then
-                                       List_All.Zone_Id_Vectors.Unchecked_Append
-                                         (Zones, Make_Zone_Id (Zone_Name));
+                                       List_All.Zone_Id_Vectors
+                                         .Unchecked_Append
+                                           (Zones, Make_Zone_Id (Zone_Name));
                                     end if;
                                  exception
                                     when Constraint_Error =>
-                                       --  DESIGN DECISION: Skip zone names exceeding
-                                       --  bounded string limit during batch scan.
-                                       --  Functional.Try not applicable here as
-                                       --  we need continue-on-error semantics.
+                                       --  DESIGN DECISION: Skip zone
+                                       --  names exceeding bounded string
+                                       --  limit during batch scan.
+                                       --  Functional.Try not applicable
+                                       --  here as we need continue-on-
+                                       --  error semantics.
                                        null;
                                  end;
                               end if;
@@ -1232,8 +1238,9 @@ is
 
                            when Ordinary_File =>
                               declare
-                                 Lower_Zone    : constant String :=
-                                   Ada.Characters.Handling.To_Lower (Zone_Name);
+                                 Lower_Zone : constant String :=
+                                   Ada.Characters.Handling.To_Lower
+                                     (Zone_Name);
                                  Lower_Pattern : constant String :=
                                    Ada.Characters.Handling.To_Lower
                                      (Pattern_Str);
@@ -1265,7 +1272,9 @@ is
          end Scan_Directory;
 
       begin
-         if Exists (Zoneinfo_Base) and then Kind (Zoneinfo_Base) = Directory then
+         if Exists (Zoneinfo_Base)
+           and then Kind (Zoneinfo_Base) = Directory
+         then
             Scan_Directory (Zoneinfo_Base);
          end if;
          return Find_By_Pattern.Find_By_Pattern_Result_Package.Ok
@@ -1386,7 +1395,9 @@ is
          end Scan_Directory;
 
       begin
-         if Exists (Zoneinfo_Base) and then Kind (Zoneinfo_Base) = Directory then
+         if Exists (Zoneinfo_Base)
+           and then Kind (Zoneinfo_Base) = Directory
+         then
             Scan_Directory (Zoneinfo_Base);
          end if;
          return Find_By_Region.Find_By_Region_Result_Package.Ok
@@ -1434,7 +1445,8 @@ is
    --
    --  Implementation:
    --    Uses Functional.Try.Map_To_Result for declarative exception mapping.
-   --    Maps GNAT.Regpat.Expression_Error to Validation_Error for invalid regex.
+   --    Maps GNAT.Regpat.Expression_Error to Validation_Error for invalid
+   --    regex patterns.
    ----------------------------------------------------------------------
    procedure Find_Zones_By_Regex
      (Regex  : TZif.Application.Port.Inbound.Find_By_Regex.Regex_String;

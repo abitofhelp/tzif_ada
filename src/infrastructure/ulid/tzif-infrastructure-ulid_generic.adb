@@ -107,10 +107,11 @@ is
          Current_Ms := Get_Timestamp_Milliseconds;
 
          --  Initialize RNG on first use (with exception handling)
-         --  DESIGN DECISION: Protected bodies cannot use Functional.Try because
-         --  protected operations cannot make potentially blocking calls and
-         --  Functional.Try uses Ada.Finalization. Exception handlers here provide
-         --  deterministic fallback for fault tolerance in RNG operations.
+         --  DESIGN DECISION: Protected bodies cannot use Functional.Try
+         --  because protected operations cannot make potentially blocking
+         --  calls and Functional.Try uses Ada.Finalization. Exception
+         --  handlers here provide deterministic fallback for fault
+         --  tolerance in RNG operations.
          if not Initialized then
             begin
                Reset (RNG);

@@ -106,7 +106,8 @@ is
                  (Not_Found_Error, "Zone file not found: " & Message);
             when others =>
                return Read_File_Result.Error
-                 (IO_Error, "File open error for " & File_Path & ": " & Message);
+                 (IO_Error,
+                  "File open error for " & File_Path & ": " & Message);
          end case;
       end Make_Open_Error;
 
@@ -123,7 +124,8 @@ is
                  (Parse_Error, "File read error: " & Message);
             when others =>
                return Read_File_Result.Error
-                 (IO_Error, "File read error for " & File_Path & ": " & Message);
+                 (IO_Error,
+                  "File read error for " & File_Path & ": " & Message);
          end case;
       end Make_Read_Error;
 
@@ -574,12 +576,13 @@ is
                Zone_Id_Str : constant String :=
                  Ada.Environment_Variables.Value ("TZIF_SYSTEM_ZONE");
             begin
-               return Find_My_Id.Result_Zone_Id.Ok (Make_Zone_Id (Zone_Id_Str));
+               return Find_My_Id.Result_Zone_Id.Ok
+                 (Make_Zone_Id (Zone_Id_Str));
             end;
          else
             --  Return default UTC if not configured
-            return
-              Find_My_Id.Result_Zone_Id.Ok (Make_Zone_Id (Default_System_Zone));
+            return Find_My_Id.Result_Zone_Id.Ok
+              (Make_Zone_Id (Default_System_Zone));
          end if;
       end Raw_Read_System_Zone;
 
@@ -678,15 +681,18 @@ is
                                     if not List_All.Zone_Id_Vectors.Is_Full
                                       (Zones)
                                     then
-                                       List_All.Zone_Id_Vectors.Unchecked_Append
-                                         (Zones, Make_Zone_Id (Zone_Name));
+                                       List_All.Zone_Id_Vectors
+                                         .Unchecked_Append
+                                           (Zones, Make_Zone_Id (Zone_Name));
                                     end if;
                                  exception
                                     when Constraint_Error =>
-                                       --  DESIGN DECISION: Skip zone names exceeding
-                                       --  bounded string limit during batch scan.
-                                       --  Functional.Try not applicable here as
-                                       --  we need continue-on-error semantics.
+                                       --  DESIGN DECISION: Skip zone
+                                       --  names exceeding bounded string
+                                       --  limit during batch scan.
+                                       --  Functional.Try not applicable
+                                       --  here as we need continue-on-
+                                       --  error semantics.
                                        null;
                                  end;
                               end if;
@@ -1051,8 +1057,9 @@ is
 
                            when Ordinary_File =>
                               declare
-                                 Lower_Zone    : constant String :=
-                                   Ada.Characters.Handling.To_Lower (Zone_Name);
+                                 Lower_Zone : constant String :=
+                                   Ada.Characters.Handling.To_Lower
+                                     (Zone_Name);
                                  Lower_Pattern : constant String :=
                                    Ada.Characters.Handling.To_Lower
                                      (Pattern_Str);
@@ -1256,7 +1263,8 @@ is
    --
    --  Implementation:
    --    Uses Functional.Try.Map_To_Result for declarative exception mapping.
-   --    Maps GNAT.Regpat.Expression_Error to Validation_Error for invalid regex.
+   --    Maps GNAT.Regpat.Expression_Error to Validation_Error for invalid
+   --    regex patterns.
    ----------------------------------------------------------------------
    procedure Find_Zones_By_Regex
      (Regex  : TZif.Application.Port.Inbound.Find_By_Regex.Regex_String;

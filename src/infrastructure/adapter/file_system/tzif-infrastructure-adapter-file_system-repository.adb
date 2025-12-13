@@ -209,8 +209,10 @@ package body TZif.Infrastructure.Adapter.File_System.Repository is
       function Raw_Check return Exists_Result is
          File_Path_Opt : constant Path_String_Option :=
            Find_TZif_File (Zone_Id_Str);
+         Found : constant Boolean :=
+           Path_String_Options.Is_Some (File_Path_Opt);
       begin
-         return Boolean_Result.Ok (Path_String_Options.Is_Some (File_Path_Opt));
+         return Boolean_Result.Ok (Found);
       end Raw_Check;
 
       --  Map_To_Result wrapper
@@ -579,15 +581,17 @@ package body TZif.Infrastructure.Adapter.File_System.Repository is
                                  end if;
                               exception
                                  when Constraint_Error =>
-                                    --  DESIGN DECISION: Skip invalid zone names
-                                    --  Malformed entries silently skipped
+                                    --  DESIGN DECISION: Skip invalid zone
+                                    --  names. Malformed entries silently
+                                    --  skipped.
                                     null;
                               end;
                            end if;
 
                         when others =>
-                           --  DESIGN DECISION: Skip non-directory/non-file entries
-                           --  Only regular files and directories are relevant
+                           --  DESIGN DECISION: Skip non-directory/non-file
+                           --  entries. Only regular files and directories
+                           --  are relevant.
                            null;
                      end case;
                   end;
@@ -713,8 +717,9 @@ package body TZif.Infrastructure.Adapter.File_System.Repository is
                            end;
 
                         when others =>
-                           --  DESIGN DECISION: Skip non-directory/non-file entries
-                           --  Only regular files and directories are relevant
+                           --  DESIGN DECISION: Skip non-directory/non-file
+                           --  entries. Only regular files and directories
+                           --  are relevant.
                            null;
                      end case;
                   end;
@@ -725,7 +730,7 @@ package body TZif.Infrastructure.Adapter.File_System.Repository is
          End_Search (Search);
       exception
          when Ada.Directories.Name_Error | Ada.Directories.Use_Error =>
-            --  DESIGN DECISION: Skip inaccessible directories silently
+            --  DESIGN DECISION: Skip inaccessible directories silently.
             --  Some system directories may be permission-protected;
             --  continuing scan of other accessible directories
             null;
@@ -825,8 +830,9 @@ package body TZif.Infrastructure.Adapter.File_System.Repository is
                            end if;
 
                         when others =>
-                           --  DESIGN DECISION: Skip non-directory/non-file entries
-                           --  Only regular files and directories are relevant
+                           --  DESIGN DECISION: Skip non-directory/non-file
+                           --  entries. Only regular files and directories
+                           --  are relevant.
                            null;
                      end case;
                   end;
@@ -837,7 +843,7 @@ package body TZif.Infrastructure.Adapter.File_System.Repository is
          End_Search (Search);
       exception
          when Ada.Directories.Name_Error | Ada.Directories.Use_Error =>
-            --  DESIGN DECISION: Skip inaccessible directories silently
+            --  DESIGN DECISION: Skip inaccessible directories silently.
             --  Some system directories may be permission-protected;
             --  continuing scan of other accessible directories
             null;
@@ -931,8 +937,9 @@ package body TZif.Infrastructure.Adapter.File_System.Repository is
                            end if;
 
                         when others =>
-                           --  DESIGN DECISION: Skip non-directory/non-file entries
-                           --  Only regular files and directories are relevant
+                           --  DESIGN DECISION: Skip non-directory/non-file
+                           --  entries. Only regular files and directories
+                           --  are relevant.
                            null;
                      end case;
                   end;
@@ -943,7 +950,7 @@ package body TZif.Infrastructure.Adapter.File_System.Repository is
          End_Search (Search);
       exception
          when Ada.Directories.Name_Error | Ada.Directories.Use_Error =>
-            --  DESIGN DECISION: Skip inaccessible directories silently
+            --  DESIGN DECISION: Skip inaccessible directories silently.
             --  Some system directories may be permission-protected;
             --  continuing scan of other accessible directories
             null;
@@ -980,7 +987,7 @@ package body TZif.Infrastructure.Adapter.File_System.Repository is
          Default_Error_Kind => IO_Error,
          Action             => Raw_Find_By_Regex);
 
-      --  Expression_Error maps to Validation_Error; others to IO_Error (default)
+      --  Expression_Error -> Validation_Error; others -> IO_Error
       Find_Regex_Mappings : constant Try_Find_By_Regex.Mapping_Array :=
         [(Expression_Error'Identity, Validation_Error)];
    begin
@@ -1305,8 +1312,9 @@ package body TZif.Infrastructure.Adapter.File_System.Repository is
                                  end if;
 
                               when others =>
-                                 --  DESIGN DECISION: Skip non-directory/non-file
-                                 --  Only regular files and dirs are relevant
+                                 --  DESIGN DECISION: Skip non-directory/
+                                 --  non-file entries. Only regular files
+                                 --  and dirs are relevant.
                                  null;
                            end case;
                         end if;
@@ -1316,8 +1324,9 @@ package body TZif.Infrastructure.Adapter.File_System.Repository is
                exception
                   when Ada.Directories.Name_Error
                     | Ada.Directories.Use_Error =>
-                     --  DESIGN DECISION: Skip inaccessible directories silently
-                     --  Permission-protected dirs don't affect count
+                     --  DESIGN DECISION: Skip inaccessible directories
+                     --  silently. Permission-protected dirs don't affect
+                     --  count.
                      null;
                end Count_Recursive;
 

@@ -395,10 +395,11 @@ package body TZif.Infrastructure.Adapter.File_System.Zone_Repository is
                   Zone_Id_Str   : constant String   :=
                     Link_Target (Zone_Id_Start .. Link_Target'Last);
                begin
-                  --  Note: If Zone_Id_Str exceeds bounded length, Make_Zone_Id
-                  --  will raise Constraint_Error which is caught by Try wrapper
-                  --  and mapped to IO_Error. This is acceptable - the error
-                  --  message includes the exception details.
+                  --  Note: If Zone_Id_Str exceeds bounded length,
+                  --  Make_Zone_Id will raise Constraint_Error which is
+                  --  caught by Try wrapper and mapped to IO_Error. This is
+                  --  acceptable - the error message includes the exception
+                  --  details.
                   return Zone_Id_Result.Ok (Make_Zone_Id (Zone_Id_Str));
                end;
             end;
@@ -476,15 +477,17 @@ package body TZif.Infrastructure.Adapter.File_System.Zone_Repository is
                                  end if;
                               exception
                                  when Constraint_Error =>
-                                    --  DESIGN DECISION: Skip invalid zone names
-                                    --  Malformed entries silently skipped
+                                    --  DESIGN DECISION: Skip invalid zone
+                                    --  names. Malformed entries silently
+                                    --  skipped.
                                     null;
                               end;
                            end if;
 
                         when others =>
-                           --  DESIGN DECISION: Skip non-directory/non-file entries
-                           --  Only regular files and directories are relevant
+                           --  DESIGN DECISION: Skip non-directory/non-file
+                           --  entries. Only regular files and directories
+                           --  are relevant.
                            null;
                      end case;
                   end;
