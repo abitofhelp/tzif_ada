@@ -52,7 +52,7 @@ begin
    declare
       Result : Zone_Result.Result;
    begin
-      Result := Zone_Result.Validate_Zone_Id ("America/Los_Angeles");
+      Result := Zone_Result.Make_Zone_Id ("America/Los_Angeles");
       Assert (Zone_Result.Is_Ok (Result),
              "Valid zone ID passes validation");
       if Zone_Result.Is_Ok (Result) then
@@ -67,8 +67,7 @@ begin
    end;
    --  Test empty zone ID (should fail validation)
    declare
-      Result : constant Zone_Result.Result := Zone_Result.Validate_Zone_Id
-        ("");
+      Result : constant Zone_Result.Result := Zone_Result.Make_Zone_Id ("");
    begin
       Assert (Zone_Result.Is_Error (Result),
              "Empty zone ID fails validation");
@@ -76,8 +75,8 @@ begin
    --  Test very long zone ID (beyond max length)
    declare
       Long_Id : constant String (1 .. 100) := [others => 'A'];
-      Result  : constant Zone_Result.Result := Zone_Result.Validate_Zone_Id
-        (Long_Id);
+      Result : constant Zone_Result.Result :=
+        Zone_Result.Make_Zone_Id (Long_Id);
    begin
       Assert
         (Zone_Result.Is_Error (Result),

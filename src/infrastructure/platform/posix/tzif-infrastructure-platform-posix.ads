@@ -13,14 +13,9 @@ pragma Ada_2022;
 --    - macOS (all versions)
 --    - BSD variants (FreeBSD, OpenBSD, NetBSD)
 --
---  Dependencies:
---    Preelaborate
---
 --  ===========================================================================
 
-package TZif.Infrastructure.Platform.POSIX with
-  Preelaborate
-is
+package TZif.Infrastructure.Platform.POSIX is
 
    --  ========================================================================
    --  Read_Symbolic_Link

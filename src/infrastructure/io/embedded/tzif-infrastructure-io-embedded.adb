@@ -18,6 +18,7 @@ with Ada.Strings.Fixed;
 with Ada.Text_IO;
 with Ada.Characters.Handling;
 with Ada.Environment_Variables;
+with Functional.Option;
 with Functional.Scoped;
 with Functional.Try;
 with Functional.Try.Map_To_Result;
@@ -225,60 +226,119 @@ is
         (Sources => Discover.Source_Info_Vectors.Empty_Vector,
          Errors  => Discover.Error_Vectors.Empty_Vector);
 
-      function Is_TZif_File (Path : String) return Boolean is
-         File   : SIO.File_Type;
+      --  ================================================================
+      --  Is_TZif_File - Check if file has TZif magic header
+      --  Uses Functional.Try for exception safety
+      --  ================================================================
+      package Bool_Option is new Functional.Option (T => Boolean);
+
+      function Raw_Check_TZif (Path : String) return Boolean is
+         File   : aliased SIO.File_Type;
          Stream : SIO.Stream_Access;
          Magic  : String (1 .. 4);
+
+         --  Scoped guard for file cleanup
+         procedure Close_File (F : in out SIO.File_Type) renames SIO.Close;
+         function File_Is_Open (F : SIO.File_Type) return Boolean
+           renames SIO.Is_Open;
+         package Local_Guard is new Functional.Scoped.Conditional_Guard_For
+           (Resource       => SIO.File_Type,
+            Should_Release => File_Is_Open,
+            Release        => Close_File);
+         Guard : Local_Guard.Guard (File'Access);
+         pragma Unreferenced (Guard);
       begin
          if Kind (Path) /= Ordinary_File then
             return False;
          end if;
+         SIO.Open (File, SIO.In_File, Path);
+         Stream := SIO.Stream (File);
+         String'Read (Stream, Magic);
+         return Magic = "TZif";
+      end Raw_Check_TZif;
 
-         begin
-            SIO.Open (File, SIO.In_File, Path);
-            Stream := SIO.Stream (File);
-            String'Read (Stream, Magic);
-            SIO.Close (File);
-            return Magic = "TZif";
-         exception
-            when others =>
-               if SIO.Is_Open (File) then
-                  SIO.Close (File);
-               end if;
-               return False;
-         end;
+      function Try_Check_TZif is new Functional.Try.Try_To_Option_With_Param
+        (T          => Boolean,
+         Param      => String,
+         Option_Pkg => Bool_Option,
+         Action     => Raw_Check_TZif);
+
+      function Is_TZif_File (Path : String) return Boolean is
+         Result : constant Bool_Option.Option := Try_Check_TZif (Path);
+      begin
+         return Bool_Option.Unwrap_Or (Result, Default => False);
       end Is_TZif_File;
 
-      function Read_Version_From_File (Path : String) return String is
-         File   : SIO.File_Type;
+      --  ================================================================
+      --  Read_Version_From_File - Read version string from file
+      --  Uses Functional.Try for exception safety
+      --  ================================================================
+      Max_Version_Len : constant := 64;
+      subtype Version_Buffer is String (1 .. Max_Version_Len);
+      package Version_Option is new Functional.Option (T => Version_Buffer);
+
+      function Raw_Read_Version (Path : String) return Version_Buffer is
+         File   : aliased SIO.File_Type;
          Stream : SIO.Stream_Access;
-         Buffer : String (1 .. 64) := [others => ' '];
-         Len    : Natural          := 0;
+         Buffer : Version_Buffer := [others => ' '];
+         Len    : Natural := 0;
          Ch     : Character;
+
+         --  Scoped guard for file cleanup
+         procedure Close_File (F : in out SIO.File_Type) renames SIO.Close;
+         function File_Is_Open (F : SIO.File_Type) return Boolean
+           renames SIO.Is_Open;
+         package Local_Guard is new Functional.Scoped.Conditional_Guard_For
+           (Resource       => SIO.File_Type,
+            Should_Release => File_Is_Open,
+            Release        => Close_File);
+         Guard : Local_Guard.Guard (File'Access);
+         pragma Unreferenced (Guard);
       begin
-         begin
-            SIO.Open (File, SIO.In_File, Path);
-            Stream := SIO.Stream (File);
+         SIO.Open (File, SIO.In_File, Path);
+         Stream := SIO.Stream (File);
 
-            while not SIO.End_Of_File (File) and then Len < Buffer'Last loop
-               Character'Read (Stream, Ch);
-               exit when Ch = ASCII.LF or else Ch = ASCII.CR;
-               Len          := Len + 1;
-               Buffer (Len) := Ch;
-            end loop;
+         while not SIO.End_Of_File (File) and then Len < Buffer'Last loop
+            Character'Read (Stream, Ch);
+            exit when Ch = ASCII.LF or else Ch = ASCII.CR;
+            Len := Len + 1;
+            Buffer (Len) := Ch;
+         end loop;
 
-            SIO.Close (File);
-            return Trim (Buffer (1 .. Len), Ada.Strings.Both);
-         exception
-            when others =>
-               if SIO.Is_Open (File) then
-                  SIO.Close (File);
-               end if;
-               return "unknown";
-         end;
+         return Buffer;
+      end Raw_Read_Version;
+
+      function Try_Read_Version is new Functional.Try.Try_To_Option_With_Param
+        (T          => Version_Buffer,
+         Param      => String,
+         Option_Pkg => Version_Option,
+         Action     => Raw_Read_Version);
+
+      function Read_Version_From_File (Path : String) return String is
+         Default_Version : Version_Buffer := [others => ' '];
+         Opt    : constant Version_Option.Option := Try_Read_Version (Path);
+         Buffer : Version_Buffer;
+         Len    : Natural := Max_Version_Len;
+      begin
+         Default_Version (1 .. 7) := "unknown";
+         Buffer := Version_Option.Unwrap_Or (Opt, Default => Default_Version);
+         --  Trim trailing spaces
+         while Len > 0 and then Buffer (Len) = ' ' loop
+            Len := Len - 1;
+         end loop;
+         return Trim (Buffer (1 .. Len), Ada.Strings.Both);
       end Read_Version_From_File;
 
-      function Count_TZif_Files (Dir_Path : String) return Natural is
+      --  ================================================================
+      --  Count_TZif_Files - Count TZif files in directory tree
+      --  Uses Functional.Try for exception safety
+      --  ================================================================
+      package Natural_Option is new Functional.Option (T => Natural);
+
+      --  Forward declaration for recursive use
+      function Count_TZif_Files (Dir_Path : String) return Natural;
+
+      function Raw_Count_TZif (Dir_Path : String) return Natural is
          Count  : Natural := 0;
          Search : Search_Type;
          Item   : Directory_Entry_Type;
@@ -293,7 +353,7 @@ is
                Full_Path : constant String := Full_Name (Item);
             begin
                if Name = "." or else Name = ".." then
-                  null;
+                  null;  --  Skip . and .. entries
                elsif Kind (Item) = Directory then
                   if Name /= "posix"
                     and then Name /= "right"
@@ -311,10 +371,18 @@ is
 
          End_Search (Search);
          return Count;
+      end Raw_Count_TZif;
 
-      exception
-         when others =>
-            return Count;
+      function Try_Count_TZif is new Functional.Try.Try_To_Option_With_Param
+        (T          => Natural,
+         Param      => String,
+         Option_Pkg => Natural_Option,
+         Action     => Raw_Count_TZif);
+
+      function Count_TZif_Files (Dir_Path : String) return Natural is
+         Result : constant Natural_Option.Option := Try_Count_TZif (Dir_Path);
+      begin
+         return Natural_Option.Unwrap_Or (Result, Default => 0);
       end Count_TZif_Files;
 
       function Generate_Simple_ULID return ULID_Type is

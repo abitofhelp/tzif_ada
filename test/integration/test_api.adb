@@ -12,6 +12,7 @@ with Ada.Text_IO; use Ada.Text_IO;
 with Ada.Command_Line;
 with Test_Framework;
 with TZif.API;
+with TZif.Domain.Value_Object.Zone_Id.Result;
 with Test_API_Callbacks;
 
 procedure Test_API is
@@ -40,25 +41,49 @@ begin
 
    --  Test valid zone via API
    declare
-      Zone_Id : constant Zone_Id_Type := Make_Zone_Id ("UTC");
-      Result  : constant Zone_Result := Find_By_Id (Zone_Id);
+      Id_Result : constant Zone_Id_Result := Make_Zone_Id ("UTC");
    begin
-      Assert (Is_Ok (Result), "API.Find_By_Id should find UTC");
+      Assert
+        (TZif.Domain.Value_Object.Zone_Id.Result.Is_Ok (Id_Result),
+         "Make_Zone_Id should succeed for UTC");
+      declare
+         Zone_Id : constant Zone_Id_Type :=
+           TZif.Domain.Value_Object.Zone_Id.Result.Value (Id_Result);
+         Result : constant Zone_Result := Find_By_Id (Zone_Id);
+      begin
+         Assert (Is_Ok (Result), "API.Find_By_Id should find UTC");
+      end;
    end;
 
    declare
-      Zone_Id : constant Zone_Id_Type := Make_Zone_Id ("America/New_York");
-      Result  : constant Zone_Result := Find_By_Id (Zone_Id);
+      Id_Result : constant Zone_Id_Result := Make_Zone_Id ("America/New_York");
    begin
-      Assert (Is_Ok (Result), "API.Find_By_Id should find America/New_York");
+      Assert
+        (TZif.Domain.Value_Object.Zone_Id.Result.Is_Ok (Id_Result),
+         "Make_Zone_Id should succeed for America/New_York");
+      declare
+         Zone_Id : constant Zone_Id_Type :=
+           TZif.Domain.Value_Object.Zone_Id.Result.Value (Id_Result);
+         Result : constant Zone_Result := Find_By_Id (Zone_Id);
+      begin
+         Assert (Is_Ok (Result), "Find_By_Id should find America/New_York");
+      end;
    end;
 
-   --  Test invalid zone
+   --  Test invalid zone (valid ID, but zone doesn't exist in database)
    declare
-      Zone_Id : constant Zone_Id_Type := Make_Zone_Id ("Invalid/Zone");
-      Result  : constant Zone_Result := Find_By_Id (Zone_Id);
+      Id_Result : constant Zone_Id_Result := Make_Zone_Id ("Invalid/Zone");
    begin
-      Assert (Is_Error (Result), "API.Find_By_Id errors on invalid zone");
+      Assert
+        (TZif.Domain.Value_Object.Zone_Id.Result.Is_Ok (Id_Result),
+         "Make_Zone_Id should succeed for Invalid/Zone string");
+      declare
+         Zone_Id : constant Zone_Id_Type :=
+           TZif.Domain.Value_Object.Zone_Id.Result.Value (Id_Result);
+         Result : constant Zone_Result := Find_By_Id (Zone_Id);
+      begin
+         Assert (Is_Error (Result), "Find_By_Id errors on invalid zone");
+      end;
    end;
 
    Put_Line ("Test: TZif.API.Find_My_Id");

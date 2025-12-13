@@ -1,5 +1,5 @@
 name = "tzif"
-description = "Parsing and querying of IANA's compiled timezone information"
+description = "Parsing and querying of IANA's Timezone Information File Library (tzif)"
 version = "99.99.99"
 authors = ["Michael Gardner"]
 maintainers = ["Michael Gardner <mike@abitofhelp.com>"]
@@ -31,7 +31,7 @@ gnat = ">=13"
 gnatcoll = "^25.0.0"
 
 [[depends-on]]
-functional = "^3.0.0"
+functional = "^4.0.0"
 
 [[pins]]
 functional = { path = '../functional' }

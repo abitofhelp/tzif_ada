@@ -8,14 +8,9 @@ pragma Ada_2022;
 --  Purpose:
 --    Cpu interface and type definitions.
 --
---  Dependencies:
---    Preelaborate
---
 --  ===========================================================================
 
-package TZif.Infrastructure.CPU with
-  Preelaborate
-is
+package TZif.Infrastructure.CPU is
 
    --  Get number of CPU cores available
    function Get_CPU_Count return Natural;

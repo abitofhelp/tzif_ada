@@ -46,14 +46,16 @@ is
    --  Constructor Functions
    --  ========================================================================
 
-   --  Create a zone entity
+   --  Create a zone entity (primary constructor)
    function Make_Zone
      (Id : Zone_Id_Type; Data : TZif_Data_Type) return Zone_Type is
      (Id => Id, Data => Data);
 
-   --  Create a zone entity from string ID
+   --  Create a zone entity from string ID (convenience for internal use)
+   --  Precondition enforces validity; for public API use Make_Zone_Id
    function Make_Zone (Id : String; Data : TZif_Data_Type) return Zone_Type is
-     (Id => Make_Zone_Id (Id), Data => Data);
+     (Id => Make_Zone_Id (Id), Data => Data)
+     with Pre => Is_Valid (Id);
 
    --  ========================================================================
    --  Query Functions

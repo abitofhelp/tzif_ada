@@ -8,14 +8,9 @@ pragma Ada_2022;
 --  Purpose:
 --    Windows platform-specific operations.
 --
---  Dependencies:
---    Preelaborate
---
 --  ===========================================================================
 
-package TZif.Infrastructure.Platform.Windows with
-  Preelaborate
-is
+package TZif.Infrastructure.Platform.Windows is
 
    --  ========================================================================
    --  Read_Symbolic_Link

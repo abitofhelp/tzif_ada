@@ -78,14 +78,11 @@ is
       Mask   : constant Unsigned_64 := 16#1F#;  --  5 bits
    begin
       for I in reverse Result'Range loop
-         --  Add explicit bounds check before array indexing
          declare
             Index : constant Natural := Natural (Temp and Mask) + 1;
          begin
-            if Index not in Base32_Alphabet'Range then
-               raise Program_Error with
-                 "Invalid Base32 index: " & Index'Image;
-            end if;
+            --  Invariant: 5-bit mask + 1 always yields 1..32
+            pragma Assert (Index in Base32_Alphabet'Range);
             Result (I) := Base32_Alphabet (Index);
          end;
          Temp := Shift_Right (Temp, 5);
@@ -95,6 +92,24 @@ is
 
    --  ========================================================================
    --  Protected Type Implementation
+   --  ========================================================================
+   --
+   --  ARCHITECTURAL EXCEPTION TO RULE 2 (Mandatory Functional.Try)
+   --
+   --  Protected bodies in Ada cannot use Functional.Try because:
+   --  1. Protected operations cannot make potentially blocking calls
+   --  2. Functional.Try uses Ada.Finalization which may be blocking
+   --  3. This is an Ada language constraint, not a design choice
+   --
+   --  The manual exception handlers below are the CORRECT pattern for
+   --  protected bodies. They provide deterministic fallback behavior:
+   --  - RNG reset failure: Mark as initialized, avoid repeated failures
+   --  - RNG byte generation failure: Use deterministic counter
+   --  - Encoding failure: Use all-zero string (valid ULID)
+   --  - Ultimate failure: Return Null_ULID (postcondition violation)
+   --
+   --  This ensures ULID generation never fails, even under degraded
+   --  conditions - the design intent for this fault-tolerant component.
    --  ========================================================================
 
    protected body ULID_Generator_Type is
@@ -106,21 +121,14 @@ is
          --  Get timestamp (uses Functional.Try internally, returns 0 on error)
          Current_Ms := Get_Timestamp_Milliseconds;
 
-         --  Initialize RNG on first use (with exception handling)
-         --  DESIGN DECISION: Protected bodies cannot use Functional.Try
-         --  because protected operations cannot make potentially blocking
-         --  calls and Functional.Try uses Ada.Finalization. Exception
-         --  handlers here provide deterministic fallback for fault
-         --  tolerance in RNG operations.
+         --  Initialize RNG on first use (see ARCHITECTURAL EXCEPTION above)
          if not Initialized then
             begin
                Reset (RNG);
                Initialized := True;
             exception
                when others =>
-                  --  If RNG reset fails, mark as initialized anyway
-                  --  to avoid repeated failures
-                  Initialized := True;
+                  Initialized := True;  --  Avoid repeated failures
             end;
          end if;
 

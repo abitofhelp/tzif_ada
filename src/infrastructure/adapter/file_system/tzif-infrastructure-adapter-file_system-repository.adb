@@ -19,6 +19,7 @@ with Ada.Text_IO;
 with Ada.Exceptions;
 with Ada.Characters.Handling;
 with Ada.Strings.Fixed;
+with Functional.Option;
 with Functional.Scoped;
 with Functional.Try;
 with Functional.Try.Map_To_Result;
@@ -1008,25 +1009,65 @@ package body TZif.Infrastructure.Adapter.File_System.Repository is
 
       Data : Discovery_Data_Type;
 
-      --  Helper: Read VERSION file
-      function Read_Version (Dir_Path : String) return String is
+      --  ================================================================
+      --  Read_Version - Read VERSION file using Functional.Try
+      --  ================================================================
+      Max_Version_Len : constant := 32;
+      subtype Version_Buffer is String (1 .. Max_Version_Len);
+      package Version_Option is new Functional.Option (T => Version_Buffer);
+
+      function Raw_Read_Version (Dir_Path : String) return Version_Buffer is
          use Ada.Text_IO;
          Version_File : constant String := Dir_Path & "/+VERSION";
-         File         : File_Type;
-         Line         : String (1 .. 32);
+         File         : aliased File_Type;
+         Buffer       : Version_Buffer := [others => ' '];
          Last         : Natural;
+
+         --  Scoped guard for file cleanup
+         procedure Close_File (F : in out File_Type) renames Close;
+         function File_Is_Open (F : File_Type) return Boolean renames Is_Open;
+         package Text_Guard is new Functional.Scoped.Conditional_Guard_For
+           (Resource       => File_Type,
+            Should_Release => File_Is_Open,
+            Release        => Close_File);
+         Guard : Text_Guard.Guard (File'Access);
+         pragma Unreferenced (Guard);
       begin
-         if Exists (Version_File) and then Kind (Version_File) = Ordinary_File
+         if not Exists (Version_File)
+           or else Kind (Version_File) /= Ordinary_File
          then
-            Open (File, In_File, Version_File);
-            Get_Line (File, Line, Last);
-            Close (File);
-            return Line (1 .. Last);
+            --  Return "unknown" as buffer (will be trimmed)
+            Buffer (1 .. 7) := "unknown";
+            return Buffer;
          end if;
-         return "unknown";
-      exception
-         when others =>
+         Open (File, In_File, Version_File);
+         Get_Line (File, Buffer, Last);
+         return Buffer;
+      end Raw_Read_Version;
+
+      function Try_Read_Version is new Functional.Try.Try_To_Option_With_Param
+        (T          => Version_Buffer,
+         Param      => String,
+         Option_Pkg => Version_Option,
+         Action     => Raw_Read_Version);
+
+      function Read_Version (Dir_Path : String) return String is
+         Default_Version : Version_Buffer := [others => ' '];
+         Opt : constant Version_Option.Option :=
+           Try_Read_Version (Dir_Path);
+         Buffer : Version_Buffer;
+         Len    : Natural := Max_Version_Len;
+      begin
+         Default_Version (1 .. 7) := "unknown";
+         Buffer := Version_Option.Unwrap_Or (Opt, Default => Default_Version);
+         --  Trim trailing spaces
+         while Len > 0 and then Buffer (Len) = ' ' loop
+            Len := Len - 1;
+         end loop;
+         if Len = 0 then
             return "unknown";
+         end if;
+         return Buffer (1 .. Len);
       end Read_Version;
 
       --  Helper: Count zone files recursively (with limits)

@@ -15,16 +15,13 @@ pragma Ada_2022;
 --
 --  Dependencies:
 --    TZif.Domain.Error.Result
---    Preelaborate
 --
 --  ===========================================================================
 
 with Ada.Strings.Bounded;
 with TZif.Domain.Error.Result;
 
-package TZif.Infrastructure.Platform with
-  Preelaborate
-is
+package TZif.Infrastructure.Platform is
 
    --  ========================================================================
    --  Bounded String for Platform Operations

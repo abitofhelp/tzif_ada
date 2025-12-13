@@ -59,13 +59,25 @@ is
      Inline;
 
    --  ========================================================================
+   --  Validation (Single Source of Truth for Business Rules)
+   --  ========================================================================
+
+   --  Check if string is a valid Zone_Id.
+   --  Business Rules:
+   --    - Must not be empty
+   --    - Must not exceed Max_Zone_ID_Length
+   function Is_Valid (Id : String) return Boolean is
+     (Id'Length > 0 and then Id'Length <= TZif_Config.Max_Zone_ID_Length);
+
+   --  ========================================================================
    --  Constructor Functions
    --  ========================================================================
 
-   --  Create zone ID from string (simple constructor - no validation).
-   --  May raise Ada.Strings.Length_Error if the string exceeds the
-   --  configured maximum length.
-   function Make_Zone_Id (Id : String) return Zone_Id_Type;
+   --  Unchecked constructor (precondition enforces validity).
+   --  Use for internal/trusted code where caller has already validated.
+   --  For public API, use Make_Zone_Id from Zone_Id.Result package.
+   function Make_Zone_Id (Id : String) return Zone_Id_Type
+     with Pre => Is_Valid (Id);
 
    --  Create zone ID with truncation (no exception, no validation).
    --  Extra characters on the right are dropped to fit within the

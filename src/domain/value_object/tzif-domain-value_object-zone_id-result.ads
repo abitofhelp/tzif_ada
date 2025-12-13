@@ -69,11 +69,14 @@ is
    --  Smart Constructor
    --  ========================================================================
 
-   --  Validate and create zone ID using Result monad (functional error
-   --  handling). Returns Ok(Zone_Id) if valid, Error if empty or exceeds
-   --  max length.
+   --  Create zone ID with validation using Result monad.
+   --  Returns Ok(Zone_Id) if valid, Error with details if validation fails.
    --
-   --  NO EXCEPTIONS: Uses pure functional validation via length checks.
-   function Validate_Zone_Id (Id : String) return Result;
+   --  Business Rules:
+   --    - Must not be empty
+   --    - Must not exceed Max_Zone_ID_Length
+   --
+   --  NO EXCEPTIONS: Pure functional validation.
+   function Make_Zone_Id (Id : String) return Result;
 
 end TZif.Domain.Value_Object.Zone_Id.Result;

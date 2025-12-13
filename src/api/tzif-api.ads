@@ -59,8 +59,10 @@ package TZif.API is
    --  Result type for validated Zone_Id construction
    subtype Zone_Id_Result is TZif.Domain.Value_Object.Zone_Id.Result.Result;
 
-   function Make_Zone_Id (Id : String) return Zone_Id_Type renames
-     TZif.Domain.Value_Object.Zone_Id.Make_Zone_Id;
+   --  Smart constructor: validates and creates Zone_Id, returns Result with
+   --  error details on failure. Validation logic is in the value object.
+   function Make_Zone_Id (Id : String) return Zone_Id_Result renames
+     TZif.Domain.Value_Object.Zone_Id.Result.Make_Zone_Id;
 
    function To_String (Id : Zone_Id_Type) return String renames
      TZif.Domain.Value_Object.Zone_Id.To_String;

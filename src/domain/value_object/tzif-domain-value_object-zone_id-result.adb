@@ -16,32 +16,27 @@ package body TZif.Domain.Value_Object.Zone_Id.Result is
 
    use TZif.Domain.Error;
 
-   function Validate_Zone_Id (Id : String) return Result is
+   function Make_Zone_Id (Id : String) return Result is
    begin
-      --  Railway-oriented programming: pure functional validation
-
-      --  Validate: empty string
-      if Id'Length = 0 then
-         return
-           Error
-             (Kind => Validation_Error, Message => "Zone ID cannot be empty");
+      --  Validate using value object's business rules (single source of truth)
+      if not Is_Valid (Id) then
+         if Id'Length = 0 then
+            return
+              Error
+                (Kind    => Validation_Error,
+                 Message => "Zone ID cannot be empty");
+         else
+            return
+              Error
+                (Kind    => Validation_Error,
+                 Message =>
+                   "Zone ID exceeds maximum length of" &
+                   TZif_Config.Max_Zone_ID_Length'Image & " characters");
+         end if;
       end if;
 
-      --  Validate: length exceeds maximum
-      --  FUNCTIONAL: Check BEFORE calling bounded string constructor
-      --  NO EXCEPTIONS: Pre-validate instead of catch
-      if Id'Length > TZif_Config.Max_Zone_ID_Length then
-         return
-           Error
-             (Kind    => Validation_Error,
-              Message =>
-                "Zone ID exceeds maximum length of " &
-                TZif_Config.Max_Zone_ID_Length'Image & " characters");
-      end if;
-
-      --  All validations passed: construct value object
-      --  Safe to call Make_Unchecked because we validated length
+      --  Validation passed: construct value object
       return Ok (Make_Unchecked (Id));
-   end Validate_Zone_Id;
+   end Make_Zone_Id;
 
 end TZif.Domain.Value_Object.Zone_Id.Result;

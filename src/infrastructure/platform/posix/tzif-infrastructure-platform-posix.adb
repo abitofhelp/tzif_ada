@@ -13,8 +13,14 @@ pragma Ada_2022;
 --    - macOS (all versions)
 --    - BSD variants (FreeBSD, OpenBSD, NetBSD)
 --
+--  Implementation Notes:
+--    Uses Functional.Try.Map_To_Result_With_Param to wrap exception-prone
+--    C FFI operations, converting exceptions to Result types for
+--    railway-oriented error handling.
+--
 --  ===========================================================================
 
+with Functional.Try.Map_To_Result_With_Param;
 with Interfaces.C;
 with Interfaces.C.Strings;
 with TZif.Domain.Error;
@@ -52,10 +58,25 @@ package body TZif.Infrastructure.Platform.POSIX is
    PATH_MAX : constant := 4_096;  --  POSIX PATH_MAX
 
    --  ========================================================================
-   --  Read_Symbolic_Link
+   --  Make Error (used by Map_To_Result)
    --  ========================================================================
 
-   function Read_Symbolic_Link (Path : String) return Platform_String_Result is
+   function Make_Readlink_Error
+     (Kind : Error_Kind; Message : String) return Platform_String_Result
+   is
+   begin
+      return String_Result.Error (Kind, Message);
+   end Make_Readlink_Error;
+
+   --  ========================================================================
+   --  Raw_Read_Symbolic_Link
+   --
+   --  Raw action that may raise exceptions - wrapped by Map_To_Result
+   --  ========================================================================
+
+   function Raw_Read_Symbolic_Link
+     (Path : String) return Platform_String_Result
+   is
       --  Allocate buffer for readlink result
       Buffer : aliased char_array := [0 .. PATH_MAX - 1 => nul];
       Result : ptrdiff_t;
@@ -93,18 +114,31 @@ package body TZif.Infrastructure.Platform.POSIX is
             return String_Result.Ok (Target_Bounded);
          end;
       end;
+   end Raw_Read_Symbolic_Link;
 
-   exception
-      when others =>
-         --  DESIGN DECISION: This package is Preelaborate (required for
-         --  low-level C bindings). Functional.Try cannot be used here as it
-         --  is not preelaborable. The exception handler at this C FFI boundary
-         --  converts any unexpected exception to a Result error, which is the
-         --  correct railway-oriented pattern for boundary code.
-         return
-           String_Result.Error
-             (IO_Error,
-              "Unexpected error reading symbolic link: " & Path);
+   --  ========================================================================
+   --  Map_To_Result wrapper for C FFI boundary
+   --  ========================================================================
+
+   package Try_Readlink is new Functional.Try.Map_To_Result_With_Param
+     (Error_Kind_Type    => Error_Kind,
+      Param_Type         => String,
+      Result_Type        => Platform_String_Result,
+      Make_Error         => Make_Readlink_Error,
+      Default_Error_Kind => IO_Error,
+      Action             => Raw_Read_Symbolic_Link);
+
+   --  Empty mappings: all exceptions map to IO_Error (default)
+   Readlink_Mappings : constant Try_Readlink.Mapping_Array :=
+     Try_Readlink.Empty_Mappings;
+
+   --  ========================================================================
+   --  Read_Symbolic_Link (public API)
+   --  ========================================================================
+
+   function Read_Symbolic_Link (Path : String) return Platform_String_Result is
+   begin
+      return Try_Readlink.Run (Path, Readlink_Mappings);
    end Read_Symbolic_Link;
 
 end TZif.Infrastructure.Platform.POSIX;

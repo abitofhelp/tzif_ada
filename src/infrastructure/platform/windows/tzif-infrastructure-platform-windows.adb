@@ -11,12 +11,17 @@ pragma Ada_2022;
 --  Requirements:
 --    Windows 10 / Windows Server 2022 or later
 --
---  Implementation:
+--  Implementation Notes:
 --    Uses GetDynamicTimeZoneInformation Win32 API to get the Windows
 --    timezone key name, then maps it to an IANA zone ID using CLDR data.
 --
+--    Uses Functional.Try.Map_To_Result_With_Param to wrap exception-prone
+--    Win32 FFI operations, converting exceptions to Result types for
+--    railway-oriented error handling.
+--
 --  ===========================================================================
 
+with Functional.Try.Map_To_Result_With_Param;
 with Interfaces.C;
 with TZif.Domain.Error;
 
@@ -234,17 +239,27 @@ package body TZif.Infrastructure.Platform.Windows is
    end Map_Windows_To_IANA;
 
    --  ========================================================================
-   --  Read_Symbolic_Link
-   --  ========================================================================
-   --
-   --  On Windows, this doesn't read a symlink. Instead, it queries the
-   --  Windows timezone and maps it to an IANA zone ID that can be used
-   --  to locate TZif files in the user-provided tzdata directory.
-   --
-   --  The Path parameter is ignored on Windows.
+   --  Make Error (used by Map_To_Result)
    --  ========================================================================
 
-   function Read_Symbolic_Link (Path : String) return Platform_String_Result is
+   function Make_Timezone_Error
+     (Kind : Error_Kind; Message : String) return Platform_String_Result
+   is
+   begin
+      return String_Result.Error (Kind, Message);
+   end Make_Timezone_Error;
+
+   --  ========================================================================
+   --  Raw_Read_Symbolic_Link
+   --
+   --  Raw action that may raise exceptions - wrapped by Map_To_Result.
+   --  On Windows, this doesn't read a symlink. Instead, it queries the
+   --  Windows timezone and maps it to an IANA zone ID.
+   --  ========================================================================
+
+   function Raw_Read_Symbolic_Link
+     (Path : String) return Platform_String_Result
+   is
       pragma Unreferenced (Path);
       TZ_Info : aliased DYNAMIC_TIME_ZONE_INFORMATION;
       Result  : DWORD;
@@ -275,17 +290,31 @@ package body TZif.Infrastructure.Platform.Windows is
          return
            String_Result.Ok (Platform_Strings.To_Bounded_String (IANA_Zone));
       end;
+   end Raw_Read_Symbolic_Link;
 
-   exception
-      when others =>
-         --  DESIGN DECISION: This package is Preelaborate (required for
-         --  low-level Win32 API bindings). Functional.Try cannot be used here
-         --  as it is not preelaborable. The exception handler at this Win32 FFI
-         --  boundary converts any unexpected exception to a Result error, which
-         --  is the correct railway-oriented pattern for boundary code.
-         return
-           String_Result.Error
-             (IO_Error, "Unexpected error querying Windows timezone");
+   --  ========================================================================
+   --  Map_To_Result wrapper for Win32 FFI boundary
+   --  ========================================================================
+
+   package Try_Timezone is new Functional.Try.Map_To_Result_With_Param
+     (Error_Kind_Type    => Error_Kind,
+      Param_Type         => String,
+      Result_Type        => Platform_String_Result,
+      Make_Error         => Make_Timezone_Error,
+      Default_Error_Kind => IO_Error,
+      Action             => Raw_Read_Symbolic_Link);
+
+   --  Empty mappings: all exceptions map to IO_Error (default)
+   Timezone_Mappings : constant Try_Timezone.Mapping_Array :=
+     Try_Timezone.Empty_Mappings;
+
+   --  ========================================================================
+   --  Read_Symbolic_Link (public API)
+   --  ========================================================================
+
+   function Read_Symbolic_Link (Path : String) return Platform_String_Result is
+   begin
+      return Try_Timezone.Run (Path, Timezone_Mappings);
    end Read_Symbolic_Link;
 
 end TZif.Infrastructure.Platform.Windows;

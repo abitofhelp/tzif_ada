@@ -17,6 +17,8 @@ pragma Ada_2022;
 with Ada.Directories;
 with Ada.Exceptions;
 with Ada.Text_IO;
+with Functional.Option;
+with Functional.Scoped;
 with Functional.Try;
 with Functional.Try.Map_To_Result;
 with TZif_Config;
@@ -555,28 +557,64 @@ package body TZif.Infrastructure.Adapter.File_System.Zone_Repository is
       Sources : Source_Info_List;
 
       --  ===========================================================
-      --  Read version from VERSION file in zoneinfo directory
+      --  Read_Version - Read VERSION file using Functional.Try
       --  ===========================================================
-      function Read_Version (Dir_Path : String) return String is
-         Version_File : constant String := Dir_Path & "/+VERSION";
+      Max_Version_Len : constant := 32;
+      subtype Version_Buffer is String (1 .. Max_Version_Len);
+      package Version_Option is new Functional.Option (T => Version_Buffer);
+
+      function Raw_Read_Version (Dir_Path : String) return Version_Buffer is
          use Ada.Text_IO;
-         File        : File_Type;
-         Version_Str : String (1 .. 32);
-         Last        : Natural;
+         Version_File : constant String := Dir_Path & "/+VERSION";
+         File         : aliased File_Type;
+         Buffer       : Version_Buffer := [others => ' '];
+         Last         : Natural;
+
+         --  Scoped guard for file cleanup
+         procedure Close_File (F : in out File_Type) renames Close;
+         function File_Is_Open (F : File_Type) return Boolean renames Is_Open;
+         package Text_Guard is new Functional.Scoped.Conditional_Guard_For
+           (Resource       => File_Type,
+            Should_Release => File_Is_Open,
+            Release        => Close_File);
+         Guard : Text_Guard.Guard (File'Access);
+         pragma Unreferenced (Guard);
       begin
-         if Exists (Version_File) and then Kind (Version_File) = Ordinary_File
+         if not Exists (Version_File)
+           or else Kind (Version_File) /= Ordinary_File
          then
-            Open (File, In_File, Version_File);
-            Get_Line (File, Version_Str, Last);
-            Close (File);
-            return Version_Str (1 .. Last);
-         else
-            --  Fallback: use modification time as version indicator
+            --  Return "unknown" as buffer (will be trimmed)
+            Buffer (1 .. 7) := "unknown";
+            return Buffer;
+         end if;
+         Open (File, In_File, Version_File);
+         Get_Line (File, Buffer, Last);
+         return Buffer;
+      end Raw_Read_Version;
+
+      function Try_Read_Version is new Functional.Try.Try_To_Option_With_Param
+        (T          => Version_Buffer,
+         Param      => String,
+         Option_Pkg => Version_Option,
+         Action     => Raw_Read_Version);
+
+      function Read_Version (Dir_Path : String) return String is
+         Default_Version : Version_Buffer := [others => ' '];
+         Opt : constant Version_Option.Option :=
+           Try_Read_Version (Dir_Path);
+         Buffer : Version_Buffer;
+         Len    : Natural := Max_Version_Len;
+      begin
+         Default_Version (1 .. 7) := "unknown";
+         Buffer := Version_Option.Unwrap_Or (Opt, Default => Default_Version);
+         --  Trim trailing spaces
+         while Len > 0 and then Buffer (Len) = ' ' loop
+            Len := Len - 1;
+         end loop;
+         if Len = 0 then
             return "unknown";
          end if;
-      exception
-         when others =>
-            return "unknown";
+         return Buffer (1 .. Len);
       end Read_Version;
 
       --  ===========================================================
