@@ -9,35 +9,22 @@ pragma Ada_2022;
 --    Cpu implementation.
 --
 --  Implementation Notes:
---    Uses Functional.Try to convert potential exceptions from
---    System.Multiprocessors to Option type, with safe default fallback.
+--    Uses simple exception handler for System.Multiprocessors since this
+--    package must be Preelaborate (cannot depend on Functional.Try).
+--    Returns safe default (1 CPU) on any exception.
 --
 --  ===========================================================================
 
-with Functional.Option;
-with Functional.Try;
 with System.Multiprocessors;
 
 package body TZif.Infrastructure.CPU is
 
-   --  Option type for CPU count
-   package Natural_Option is new Functional.Option (T => Natural);
-
-   --  Raw action that may raise
-   function Raw_Get_CPU_Count return Natural is
-   begin
-      return Natural (System.Multiprocessors.Number_Of_CPUs);
-   end Raw_Get_CPU_Count;
-
-   --  Wrap with Try - returns None on any exception
-   function Try_Get_CPU_Count is new Functional.Try.Try_To_Functional_Option
-     (T          => Natural,
-      Option_Pkg => Natural_Option,
-      Action     => Raw_Get_CPU_Count);
-
    function Get_CPU_Count return Natural is
    begin
-      return Natural_Option.Unwrap_Or (Try_Get_CPU_Count, Default => 1);
+      return Natural (System.Multiprocessors.Number_Of_CPUs);
+   exception
+      when others =>
+         return 1;  --  Safe default: assume single CPU
    end Get_CPU_Count;
 
    function Get_Optimal_Task_Count return Natural is

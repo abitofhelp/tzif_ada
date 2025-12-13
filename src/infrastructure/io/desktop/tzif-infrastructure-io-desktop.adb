@@ -11,14 +11,13 @@ pragma Ada_2022;
 --  Implementation Notes:
 --    Uses Functional.Try and Functional.Scoped for exception boundary handling.
 --    All I/O operations that may raise exceptions are wrapped with
---    Functional.Try.Try_To_Any_Result_With_Param, and file handles use
+--    Functional.Try.Map_To_Result, and file handles use
 --    Functional.Scoped.Conditional_Guard_For for automatic cleanup.
 --
 --  ===========================================================================
 
 with Ada.Streams.Stream_IO;
 with Ada.Directories;
-with Ada.Exceptions;
 with Ada.Strings.Fixed;
 with Ada.Text_IO;
 with Ada.Characters.Handling;
@@ -203,7 +202,6 @@ is
         .Discovery_Result_Package
         .Result)
    is
-      use Ada.Exceptions;
       use Ada.Strings.Fixed;
       use Ada.Directories;
       package Discover renames TZif.Application.Port.Inbound.Discover_Sources;
@@ -476,21 +474,22 @@ is
          end if;
       end Process_Single_Path;
 
-      --  Map exception to error for a given path
-      Current_Path : access String;  --  For error messages
+      --  Result package for internal exception handling
+      package Path_Result_Pkg is new Functional.Result
+        (T => Path_Result, E => TZif.Domain.Error.Error_Type);
 
-      function Map_Path_Exception
-        (Occ : Ada.Exceptions.Exception_Occurrence)
-         return TZif.Domain.Error.Error_Type
+      --  Make error Result from kind and message
+      function Make_Path_Error
+        (Kind : TZif.Domain.Error.Error_Kind; Message : String)
+         return Path_Result_Pkg.Result
       is
-         Path_Str : constant String :=
-           (if Current_Path /= null then Current_Path.all else "<unknown>");
+         pragma Unreferenced (Kind);
       begin
-         return (Kind    => TZif.Domain.Error.IO_Error,
-                 Message => TZif.Domain.Error.Error_Strings.To_Bounded_String
-                   ("Error scanning: " & Path_Str & ": " &
-                    Exception_Message (Occ)));
-      end Map_Path_Exception;
+         return Path_Result_Pkg.New_Error
+           ((Kind    => TZif.Domain.Error.IO_Error,
+             Message => TZif.Domain.Error.Error_Strings.To_Bounded_String
+               (Message)));
+      end Make_Path_Error;
 
    begin
       --  Process each search path using index-based iteration
@@ -498,36 +497,31 @@ is
          declare
             Path_Elem : constant Discover.Path_String :=
               Discover.Path_Vectors.Unchecked_Element (Search_Paths, I);
-            Dir_Path  : aliased String :=
+            Dir_Path  : constant String :=
               Discover.Path_Strings.To_String (Path_Elem);
 
-            --  Wrapper for Functional.Try
-            function Raw_Process return Path_Result is
+            --  Raw action wrapped in Result for Map_To_Result
+            function Raw_Process return Path_Result_Pkg.Result is
             begin
-               return Process_Single_Path (Dir_Path);
+               return Path_Result_Pkg.Ok (Process_Single_Path (Dir_Path));
             end Raw_Process;
 
-            package Path_Result_Pkg is new Functional.Result
-              (T => Path_Result, E => TZif.Domain.Error.Error_Type);
-
-            function Try_Process is new Functional.Try.Try_To_Result
-              (T             => Path_Result,
-               E             => TZif.Domain.Error.Error_Type,
-               Result_Type   => Path_Result_Pkg.Result,
-               Ok            => Path_Result_Pkg.Ok,
-               New_Error     => Path_Result_Pkg.From_Error,
-               Map_Exception => Map_Path_Exception,
-               Action        => Raw_Process);
+            --  Declarative exception-to-Result mapping
+            package Try_Process is new Functional.Try.Map_To_Result
+              (Error_Kind_Type    => TZif.Domain.Error.Error_Kind,
+               Result_Type        => Path_Result_Pkg.Result,
+               Make_Error         => Make_Path_Error,
+               Default_Error_Kind => TZif.Domain.Error.IO_Error,
+               Action             => Raw_Process);
 
             Path_Res : Path_Result_Pkg.Result;
          begin
-            Current_Path := Dir_Path'Unchecked_Access;
-            Path_Res := Try_Process;
-            Current_Path := null;
+            Path_Res := Try_Process.Run_Catch_All;
 
             if Path_Result_Pkg.Is_Ok (Path_Res) then
                declare
-                  Inner : constant Path_Result := Path_Result_Pkg.Value (Path_Res);
+                  Inner : constant Path_Result :=
+                    Path_Result_Pkg.Value (Path_Res);
                begin
                   case Inner.Kind is
                      when Source_Found =>

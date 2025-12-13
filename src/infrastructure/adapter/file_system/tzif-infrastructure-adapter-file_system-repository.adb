@@ -19,7 +19,9 @@ with Ada.Text_IO;
 with Ada.Exceptions;
 with Ada.Characters.Handling;
 with Ada.Strings.Fixed;
+with Functional.Scoped;
 with Functional.Try;
+with Functional.Try.Map_To_Result;
 with GNAT.Regpat;
 with TZif.Infrastructure.TZif_Parser;
 with TZif.Infrastructure.ULID;
@@ -101,7 +103,7 @@ package body TZif.Infrastructure.Adapter.File_System.Repository is
    end To_String;
 
    --  ========================================================================
-   --  1. Find_By_Id (GPT-5 Pattern: Uses port's canonical Result type)
+   --  1. Find_By_Id (Uses port's canonical Result type)
    --  ========================================================================
 
    function Find_By_Id
@@ -111,17 +113,21 @@ package body TZif.Infrastructure.Adapter.File_System.Repository is
       use TZif.Application.Port.Inbound.Find_By_Id;
       Zone_Id_Str : constant String := To_String (Id);
 
-      --  Map exception to error
-      function Map_Find_Exception
-        (Occ : Ada.Exceptions.Exception_Occurrence)
+      --  Make_Error for find operation
+      function Make_Find_Error
+        (Kind : Error_Kind; Message : String)
          return Find_By_Id_Result_Type
       is
       begin
-         return
-           Find_By_Id_Result.Error
-             (IO_Error,
-              "Unexpected error: " & Ada.Exceptions.Exception_Message (Occ));
-      end Map_Find_Exception;
+         case Kind is
+            when Not_Found_Error =>
+               return Find_By_Id_Result.Error
+                 (Not_Found_Error, "Zone not found: " & Message);
+            when others =>
+               return Find_By_Id_Result.Error
+                 (IO_Error, "Find error: " & Message);
+         end case;
+      end Make_Find_Error;
 
       --  Core lookup logic
       function Raw_Find return Find_By_Id_Result_Type is
@@ -169,13 +175,18 @@ package body TZif.Infrastructure.Adapter.File_System.Repository is
          end;
       end Raw_Find;
 
-      --  Try wrapper
-      function Try_Find is new Functional.Try.Try_To_Any_Result
-        (Result_Type   => Find_By_Id_Result_Type,
-         Map_Exception => Map_Find_Exception,
-         Action        => Raw_Find);
+      --  Map_To_Result wrapper
+      package Try_Find is new Functional.Try.Map_To_Result
+        (Error_Kind_Type    => Error_Kind,
+         Result_Type        => Find_By_Id_Result_Type,
+         Make_Error         => Make_Find_Error,
+         Default_Error_Kind => IO_Error,
+         Action             => Raw_Find);
+
+      Find_Mappings : constant Try_Find.Mapping_Array :=
+        Try_Find.Empty_Mappings;
    begin
-      return Try_Find;
+      return Try_Find.Run (Find_Mappings);
    end Find_By_Id;
 
    --  ========================================================================
@@ -185,42 +196,39 @@ package body TZif.Infrastructure.Adapter.File_System.Repository is
    function Exists_By_Id (Id : Zone_Id_String) return Exists_Result is
       Zone_Id_Str : constant String := To_String (Id);
 
-      --  Map exception to error
-      function Map_Exists_Exception
-        (Occ : Ada.Exceptions.Exception_Occurrence)
-         return Error_Type
+      --  Make_Error for exists check
+      function Make_Exists_Error
+        (Kind : Error_Kind; Message : String) return Exists_Result
       is
+         pragma Unreferenced (Kind);
       begin
-         return (Kind    => IO_Error,
-                 Message => Error_Strings.To_Bounded_String
-                   ("Error checking existence: " &
-                    Ada.Exceptions.Exception_Message (Occ)));
-      end Map_Exists_Exception;
+         return Boolean_Result.Error (IO_Error, Message);
+      end Make_Exists_Error;
 
-      --  Raw check
-      function Raw_Check return Boolean is
+      --  Raw check - returns Result for Map_To_Result
+      function Raw_Check return Exists_Result is
          File_Path_Opt : constant Path_String_Option :=
            Find_TZif_File (Zone_Id_Str);
       begin
-         return Path_String_Options.Is_Some (File_Path_Opt);
+         return Boolean_Result.Ok (Path_String_Options.Is_Some (File_Path_Opt));
       end Raw_Check;
 
-      --  Try wrapper
-      function Try_Check is new Functional.Try.Try_To_Result
-        (T             => Boolean,
-         E             => Error_Type,
-         Result_Type   => Exists_Result,
-         Ok            => Boolean_Result.Ok,
-         New_Error     => Boolean_Result.From_Error,
-         Map_Exception => Map_Exists_Exception,
-         Action        => Raw_Check);
+      --  Map_To_Result wrapper
+      package Try_Check is new Functional.Try.Map_To_Result
+        (Error_Kind_Type    => Error_Kind,
+         Result_Type        => Exists_Result,
+         Make_Error         => Make_Exists_Error,
+         Default_Error_Kind => IO_Error,
+         Action             => Raw_Check);
+
+      Exists_Mappings : constant Try_Check.Mapping_Array :=
+        Try_Check.Empty_Mappings;
    begin
-      return Try_Check;
+      return Try_Check.Run (Exists_Mappings);
    end Exists_By_Id;
 
    --  ===================================================================
-   --  3. Get_Transition_At_Epoch (GPT-5 Pattern: Uses port's canonical
-   --     Result type)
+   --  3. Get_Transition_At_Epoch (Uses port's canonical Result type)
    --  ===================================================================
 
    function Get_Transition_At_Epoch
@@ -233,20 +241,25 @@ package body TZif.Infrastructure.Adapter.File_System.Repository is
       use TZif.Application.Port.Inbound.Get_Transition_At_Epoch;
       Zone_Id_Str : constant String :=
         Application.Port.Inbound.Get_Transition_At_Epoch.Zone_Id_Strings
-          .To_String
-          (Id);
+          .To_String (Id);
 
-      --  Map exception to error
-      function Map_Transition_Exception
-        (Occ : Ada.Exceptions.Exception_Occurrence)
-         return Get_Transition_Result
+      --  Make_Error for transition operation
+      function Make_Transition_Error
+        (Kind : Error_Kind; Message : String) return Get_Transition_Result
       is
       begin
-         return
-           Get_Transition_Result_Package.Error
-             (IO_Error,
-              "Unexpected error: " & Ada.Exceptions.Exception_Message (Occ));
-      end Map_Transition_Exception;
+         case Kind is
+            when Not_Found_Error =>
+               return Get_Transition_Result_Package.Error
+                 (Not_Found_Error, "Zone not found: " & Message);
+            when Parse_Error =>
+               return Get_Transition_Result_Package.Error
+                 (Parse_Error, "Parse error: " & Message);
+            when others =>
+               return Get_Transition_Result_Package.Error
+                 (IO_Error, "Transition error: " & Message);
+         end case;
+      end Make_Transition_Error;
 
       --  Core logic
       function Raw_Get_Transition return Get_Transition_Result is
@@ -330,13 +343,18 @@ package body TZif.Infrastructure.Adapter.File_System.Repository is
          end;
       end Raw_Get_Transition;
 
-      --  Try wrapper
-      function Try_Get_Transition is new Functional.Try.Try_To_Any_Result
-        (Result_Type   => Get_Transition_Result,
-         Map_Exception => Map_Transition_Exception,
-         Action        => Raw_Get_Transition);
+      --  Map_To_Result wrapper
+      package Try_Get_Transition is new Functional.Try.Map_To_Result
+        (Error_Kind_Type    => Error_Kind,
+         Result_Type        => Get_Transition_Result,
+         Make_Error         => Make_Transition_Error,
+         Default_Error_Kind => IO_Error,
+         Action             => Raw_Get_Transition);
+
+      Transition_Mappings : constant Try_Get_Transition.Mapping_Array :=
+        Try_Get_Transition.Empty_Mappings;
    begin
-      return Try_Get_Transition;
+      return Try_Get_Transition.Run (Transition_Mappings);
    end Get_Transition_At_Epoch;
 
    --  ========================================================================
@@ -361,18 +379,13 @@ package body TZif.Infrastructure.Adapter.File_System.Repository is
          Should_Release => Is_Open,
          Release        => Close_File);
 
-      --  Map exception to error
-      function Map_Version_Exception
-        (Occ : Ada.Exceptions.Exception_Occurrence)
-         return Version_Result
+      --  Make error Result from kind and message
+      function Make_Version_Error
+        (Kind : Error_Kind; Message : String) return Version_Result
       is
       begin
-         return
-           Version_Result_Package.Error
-             (IO_Error,
-              "Error reading version: " &
-              Ada.Exceptions.Exception_Message (Occ));
-      end Map_Version_Exception;
+         return Version_Result_Package.Error (Kind, Message);
+      end Make_Version_Error;
 
       --  Core logic
       function Raw_Get_Version return Version_Result is
@@ -400,13 +413,19 @@ package body TZif.Infrastructure.Adapter.File_System.Repository is
                 (Line (1 .. Last)));
       end Raw_Get_Version;
 
-      --  Try wrapper
-      function Try_Get_Version is new Functional.Try.Try_To_Any_Result
-        (Result_Type   => Version_Result,
-         Map_Exception => Map_Version_Exception,
-         Action        => Raw_Get_Version);
+      --  Declarative exception-to-Result mapping
+      package Try_Get_Version is new Functional.Try.Map_To_Result
+        (Error_Kind_Type    => Error_Kind,
+         Result_Type        => Version_Result,
+         Make_Error         => Make_Version_Error,
+         Default_Error_Kind => IO_Error,
+         Action             => Raw_Get_Version);
+
+      --  Name_Error -> Not_Found, all others -> IO_Error (default)
+      Version_Mappings : constant Try_Get_Version.Mapping_Array :=
+        [(Ada.Text_IO.Name_Error'Identity, Not_Found_Error)];
    begin
-      return Try_Get_Version;
+      return Try_Get_Version.Run (Version_Mappings);
    end Get_Version;
 
    --  ========================================================================
@@ -417,69 +436,94 @@ package body TZif.Infrastructure.Adapter.File_System.Repository is
       use Ada.Directories;
       use TZif.Application.Port.Inbound.Find_My_Id;
       Localtime_Path : constant String := "/etc/localtime";
-   begin
-      if not Exists (Localtime_Path) then
-         return
-           Result_Zone_Id.Error
-             (Not_Found_Error, "/etc/localtime not found");
-      end if;
 
-      --  Try to resolve symlink using readlink
-      declare
-         Link_Result :
-           constant Infrastructure.Platform.Platform_String_Result :=
-           Platform_Ops.Read_Link (Localtime_Path);
+      --  Make error Result from kind and message
+      function Make_Find_My_Id_Error
+        (Kind : Error_Kind; Message : String)
+         return Application.Port.Inbound.Find_My_Id.Result
+      is
       begin
-         if not Infrastructure.Platform.String_Result.Is_Ok (Link_Result) then
+         return Result_Zone_Id.Error (Kind, Message);
+      end Make_Find_My_Id_Error;
+
+      --  Core logic
+      function Raw_Find_My_Id
+         return Application.Port.Inbound.Find_My_Id.Result
+      is
+      begin
+         if not Exists (Localtime_Path) then
             return
               Result_Zone_Id.Error
-                (IO_Error, "/etc/localtime is not a symlink");
+                (Not_Found_Error, "/etc/localtime not found");
          end if;
 
+         --  Try to resolve symlink using readlink
          declare
-            Link_Target_Bounded :
-              constant Infrastructure.Platform.Platform_String :=
-              Infrastructure.Platform.String_Result.Value (Link_Result);
-            Link_Target         : constant String :=
-              Infrastructure.Platform.Platform_Strings.To_String
-                (Link_Target_Bounded);
-            Marker              : constant String := "zoneinfo/";
-            Marker_Pos          : Natural := 0;
+            Link_Result :
+              constant Infrastructure.Platform.Platform_String_Result :=
+              Platform_Ops.Read_Link (Localtime_Path);
          begin
-            --  Find "zoneinfo/" marker
-            for I in Link_Target'First .. Link_Target'Last - Marker'Length + 1
-            loop
-               if Link_Target (I .. I + Marker'Length - 1) = Marker then
-                  Marker_Pos := I;
-                  exit;
-               end if;
-            end loop;
-
-            if Marker_Pos = 0 then
+            if not Infrastructure.Platform.String_Result.Is_Ok (Link_Result)
+            then
                return
                  Result_Zone_Id.Error
-                   (IO_Error,
-                    "Cannot extract zone ID from: " & Link_Target);
+                   (IO_Error, "/etc/localtime is not a symlink");
             end if;
 
             declare
-               Zone_Id_Start : constant Positive := Marker_Pos + Marker'Length;
-               Zone_Id_Str   : constant String   :=
-                 Link_Target (Zone_Id_Start .. Link_Target'Last);
+               Link_Target_Bounded :
+                 constant Infrastructure.Platform.Platform_String :=
+                 Infrastructure.Platform.String_Result.Value (Link_Result);
+               Link_Target         : constant String :=
+                 Infrastructure.Platform.Platform_Strings.To_String
+                   (Link_Target_Bounded);
+               Marker              : constant String := "zoneinfo/";
+               Marker_Pos          : Natural := 0;
             begin
-               return
-                 Result_Zone_Id.Ok
-                   (Domain.Value_Object.Zone_Id.Make_Zone_Id (Zone_Id_Str));
+               --  Find "zoneinfo/" marker
+               for I in
+                 Link_Target'First .. Link_Target'Last - Marker'Length + 1
+               loop
+                  if Link_Target (I .. I + Marker'Length - 1) = Marker then
+                     Marker_Pos := I;
+                     exit;
+                  end if;
+               end loop;
+
+               if Marker_Pos = 0 then
+                  return
+                    Result_Zone_Id.Error
+                      (IO_Error,
+                       "Cannot extract zone ID from: " & Link_Target);
+               end if;
+
+               declare
+                  Zone_Id_Start : constant Positive :=
+                    Marker_Pos + Marker'Length;
+                  Zone_Id_Str   : constant String   :=
+                    Link_Target (Zone_Id_Start .. Link_Target'Last);
+               begin
+                  return
+                    Result_Zone_Id.Ok
+                      (Domain.Value_Object.Zone_Id.Make_Zone_Id (Zone_Id_Str));
+               end;
             end;
          end;
-      end;
-   exception
-      when E : others =>
-         return
-           Result_Zone_Id.Error
-             (IO_Error,
-              "Error detecting timezone: " &
-              Ada.Exceptions.Exception_Message (E));
+      end Raw_Find_My_Id;
+
+      --  Declarative exception handling
+      package Try_Find_My_Id is new Functional.Try.Map_To_Result
+        (Error_Kind_Type    => Error_Kind,
+         Result_Type        => Application.Port.Inbound.Find_My_Id.Result,
+         Make_Error         => Make_Find_My_Id_Error,
+         Default_Error_Kind => IO_Error,
+         Action             => Raw_Find_My_Id);
+
+      --  All exceptions map to IO_Error (default), so empty mappings
+      Find_My_Id_Mappings : constant Try_Find_My_Id.Mapping_Array :=
+        Try_Find_My_Id.Empty_Mappings;
+   begin
+      return Try_Find_My_Id.Run (Find_My_Id_Mappings);
    end Find_My_Id;
 
    --  ========================================================================
@@ -566,28 +610,47 @@ package body TZif.Infrastructure.Adapter.File_System.Repository is
       procedure Sort_Zones is new Zone_Id_Vectors.Generic_Sort
         ("<" => Less_Than);
 
+      --  Make error Result from kind and message
+      function Make_List_Zones_Error
+        (Kind : Error_Kind; Message : String)
+         return List_All_Zones_Result
+      is
+      begin
+         return List_All_Zones_Result_Package.Error (Kind, Message);
+      end Make_List_Zones_Error;
+
+      --  Core logic
+      function Raw_List_All_Zones return List_All_Zones_Result is
+      begin
+         if not Exists (Path_Str) or else Kind (Path_Str) /= Directory then
+            return
+              List_All_Zones_Result_Package.Error
+                (Not_Found_Error, "Source path not found: " & Path_Str);
+         end if;
+
+         Scan_Directory (Path_Str);
+
+         Sort_Zones (Zones);
+         if Descending then
+            Zone_Id_Vectors.Reverse_Elements (Zones);
+         end if;
+
+         return List_All_Zones_Result_Package.Ok (Zones);
+      end Raw_List_All_Zones;
+
+      --  Declarative exception handling
+      package Try_List_All_Zones is new Functional.Try.Map_To_Result
+        (Error_Kind_Type    => Error_Kind,
+         Result_Type        => List_All_Zones_Result,
+         Make_Error         => Make_List_Zones_Error,
+         Default_Error_Kind => IO_Error,
+         Action             => Raw_List_All_Zones);
+
+      --  All exceptions map to IO_Error (default), so empty mappings
+      List_Zones_Mappings : constant Try_List_All_Zones.Mapping_Array :=
+        Try_List_All_Zones.Empty_Mappings;
    begin
-      if not Exists (Path_Str) or else Kind (Path_Str) /= Directory then
-         return
-           List_All_Zones_Result_Package.Error
-             (Not_Found_Error, "Source path not found: " & Path_Str);
-      end if;
-
-      Scan_Directory (Path_Str);
-
-      Sort_Zones (Zones);
-      if Descending then
-         Zone_Id_Vectors.Reverse_Elements (Zones);
-      end if;
-
-      return List_All_Zones_Result_Package.Ok (Zones);
-
-   exception
-      when E : others =>
-         return
-           List_All_Zones_Result_Package.Error
-             (IO_Error,
-              "Error listing zones: " & Ada.Exceptions.Exception_Message (E));
+      return Try_List_All_Zones.Run (List_Zones_Mappings);
    end List_All_Zones;
 
    --  ========================================================================
@@ -668,23 +731,42 @@ package body TZif.Infrastructure.Adapter.File_System.Repository is
             null;
       end Scan_Directory;
 
-   begin
-      --  Scan all search paths
-      for Path of Search_Paths loop
-         if Exists (Path.all) and then Kind (Path.all) = Directory then
-            Scan_Directory (Path.all);
-         end if;
-      end loop;
+      --  Make error Result from kind and message
+      function Make_Find_Pattern_Error
+        (Kind : Error_Kind; Message : String)
+         return Find_By_Pattern_Result
+      is
+      begin
+         return Find_By_Pattern_Result_Package.Error (Kind, Message);
+      end Make_Find_Pattern_Error;
 
-      return Find_By_Pattern_Result_Package.Ok (Domain.Value_Object.Unit.Unit);
+      --  Core logic
+      function Raw_Find_By_Pattern return Find_By_Pattern_Result is
+      begin
+         --  Scan all search paths
+         for Path of Search_Paths loop
+            if Exists (Path.all) and then Kind (Path.all) = Directory then
+               Scan_Directory (Path.all);
+            end if;
+         end loop;
 
-   exception
-      when E : others =>
          return
-           Find_By_Pattern_Result_Package.Error
-             (IO_Error,
-              "Error searching pattern: " &
-              Ada.Exceptions.Exception_Message (E));
+           Find_By_Pattern_Result_Package.Ok (Domain.Value_Object.Unit.Unit);
+      end Raw_Find_By_Pattern;
+
+      --  Declarative exception handling
+      package Try_Find_By_Pattern is new Functional.Try.Map_To_Result
+        (Error_Kind_Type    => Error_Kind,
+         Result_Type        => Find_By_Pattern_Result,
+         Make_Error         => Make_Find_Pattern_Error,
+         Default_Error_Kind => IO_Error,
+         Action             => Raw_Find_By_Pattern);
+
+      --  All exceptions map to IO_Error (default), so empty mappings
+      Find_Pattern_Mappings : constant Try_Find_By_Pattern.Mapping_Array :=
+        Try_Find_By_Pattern.Empty_Mappings;
+   begin
+      return Try_Find_By_Pattern.Run (Find_Pattern_Mappings);
    end Find_By_Pattern;
 
    --  ========================================================================
@@ -761,22 +843,41 @@ package body TZif.Infrastructure.Adapter.File_System.Repository is
             null;
       end Scan_Directory;
 
-   begin
-      for Path of Search_Paths loop
-         if Exists (Path.all) and then Kind (Path.all) = Directory then
-            Scan_Directory (Path.all);
-         end if;
-      end loop;
+      --  Make error Result from kind and message
+      function Make_Find_Region_Error
+        (Kind : Error_Kind; Message : String)
+         return Find_By_Region_Result
+      is
+      begin
+         return Find_By_Region_Result_Package.Error (Kind, Message);
+      end Make_Find_Region_Error;
 
-      return Find_By_Region_Result_Package.Ok (Domain.Value_Object.Unit.Unit);
+      --  Core logic
+      function Raw_Find_By_Region return Find_By_Region_Result is
+      begin
+         for Path of Search_Paths loop
+            if Exists (Path.all) and then Kind (Path.all) = Directory then
+               Scan_Directory (Path.all);
+            end if;
+         end loop;
 
-   exception
-      when E : others =>
          return
-           Find_By_Region_Result_Package.Error
-             (IO_Error,
-              "Error searching region: " &
-              Ada.Exceptions.Exception_Message (E));
+           Find_By_Region_Result_Package.Ok (Domain.Value_Object.Unit.Unit);
+      end Raw_Find_By_Region;
+
+      --  Declarative exception handling
+      package Try_Find_By_Region is new Functional.Try.Map_To_Result
+        (Error_Kind_Type    => Error_Kind,
+         Result_Type        => Find_By_Region_Result,
+         Make_Error         => Make_Find_Region_Error,
+         Default_Error_Kind => IO_Error,
+         Action             => Raw_Find_By_Region);
+
+      --  All exceptions map to IO_Error (default), so empty mappings
+      Find_Region_Mappings : constant Try_Find_By_Region.Mapping_Array :=
+        Try_Find_By_Region.Empty_Mappings;
+   begin
+      return Try_Find_By_Region.Run (Find_Region_Mappings);
    end Find_By_Region;
 
    --  ========================================================================
@@ -794,8 +895,6 @@ package body TZif.Infrastructure.Adapter.File_System.Repository is
 
       Regex_Str : constant String :=
         Application.Port.Inbound.Find_By_Regex.Regex_Strings.To_String (Regex);
-
-      --  Pattern_Matcher will be declared in the begin block after validation
 
       procedure Scan_Directory
         (Dir_Path : String; Prefix : String := ""; Pattern : Pattern_Matcher)
@@ -850,9 +949,17 @@ package body TZif.Infrastructure.Adapter.File_System.Repository is
             null;
       end Scan_Directory;
 
-   begin
-      --  Validate regex - exceptions in declarative part propagate to here
-      declare
+      --  Make error Result from kind and message
+      function Make_Find_Regex_Error
+        (Kind : Error_Kind; Message : String)
+         return Find_By_Regex_Result
+      is
+      begin
+         return Find_By_Regex_Result_Package.Error (Kind, Message);
+      end Make_Find_Regex_Error;
+
+      --  Core logic
+      function Raw_Find_By_Regex return Find_By_Regex_Result is
          Pattern : constant Pattern_Matcher := Compile (Regex_Str);
       begin
          for Path of Search_Paths loop
@@ -863,19 +970,21 @@ package body TZif.Infrastructure.Adapter.File_System.Repository is
 
          return
            Find_By_Regex_Result_Package.Ok (Domain.Value_Object.Unit.Unit);
-      end;
+      end Raw_Find_By_Regex;
 
-   exception
-      when Expression_Error =>
-         return
-           Find_By_Regex_Result_Package.Error
-             (Validation_Error, "Invalid regex pattern: " & Regex_Str);
-      when E : others       =>
-         return
-           Find_By_Regex_Result_Package.Error
-             (IO_Error,
-              "Error searching regex: " &
-              Ada.Exceptions.Exception_Message (E));
+      --  Declarative exception handling
+      package Try_Find_By_Regex is new Functional.Try.Map_To_Result
+        (Error_Kind_Type    => Error_Kind,
+         Result_Type        => Find_By_Regex_Result,
+         Make_Error         => Make_Find_Regex_Error,
+         Default_Error_Kind => IO_Error,
+         Action             => Raw_Find_By_Regex);
+
+      --  Expression_Error maps to Validation_Error; others to IO_Error (default)
+      Find_Regex_Mappings : constant Try_Find_By_Regex.Mapping_Array :=
+        [(Expression_Error'Identity, Validation_Error)];
+   begin
+      return Try_Find_By_Regex.Run (Find_Regex_Mappings);
    end Find_By_Regex;
 
    --  ========================================================================
@@ -1100,36 +1209,58 @@ package body TZif.Infrastructure.Adapter.File_System.Repository is
       return Application.Port.Inbound.Load_Source.Load_Source_Result
    is
       use Ada.Directories;
+      use Ada.Text_IO;
       use TZif.Application.Port.Inbound.Load_Source;
       Path_Str : constant String :=
         Application.Port.Inbound.Load_Source.Path_Strings.To_String (Path);
-   begin
-      if not Exists (Path_Str) then
-         return
-           Load_Source_Result_Package.Error
-             (Not_Found_Error, "Path not found: " & Path_Str);
-      end if;
 
-      if Kind (Path_Str) /= Directory then
-         return
-           Load_Source_Result_Package.Error
-             (Validation_Error, "Path is not a directory: " & Path_Str);
-      end if;
+      --  Scoped guard for file cleanup
+      procedure Close_File (F : in out File_Type) renames Close;
+      package Text_File_Guard is new Functional.Scoped.Conditional_Guard_For
+        (Resource       => File_Type,
+         Should_Release => Is_Open,
+         Release        => Close_File);
 
-      declare
-         use Ada.Text_IO;
-         ULID : constant ULID_Type        := TZif.Infrastructure.ULID.Generate;
-         Path_Val     : constant Path_String_Type := Make_Path (Path_Str);
-         Version_File : constant String           := Path_Str & "/+VERSION";
+      --  Make error Result from kind and message
+      function Make_Load_Source_Error
+        (Kind : Error_Kind; Message : String)
+         return Load_Source_Result
+      is
+      begin
+         return Load_Source_Result_Package.Error (Kind, Message);
+      end Make_Load_Source_Error;
+
+      --  Core logic
+      function Raw_Load_Source return Load_Source_Result is
+         ULID         : ULID_Type;
+         Path_Val     : Path_String_Type;
+         Version_File : constant String := Path_Str & "/+VERSION";
          Version_Str  : String (1 .. 32);
          Last         : Natural;
-         File         : File_Type;
+         File         : aliased File_Type;
+         Guard        : Text_File_Guard.Guard (File'Access);
+         pragma Unreferenced (Guard);
       begin
+         if not Exists (Path_Str) then
+            return
+              Load_Source_Result_Package.Error
+                (Not_Found_Error, "Path not found: " & Path_Str);
+         end if;
+
+         if Kind (Path_Str) /= Directory then
+            return
+              Load_Source_Result_Package.Error
+                (Validation_Error, "Path is not a directory: " & Path_Str);
+         end if;
+
+         ULID     := TZif.Infrastructure.ULID.Generate;
+         Path_Val := Make_Path (Path_Str);
+
          if Exists (Version_File) and then Kind (Version_File) = Ordinary_File
          then
             Open (File, In_File, Version_File);
             Get_Line (File, Version_Str, Last);
-            Close (File);
+            --  Guard handles Close on exit
          else
             Version_Str (1 .. 7) := "unknown";
             Last                 := 7;
@@ -1200,24 +1331,21 @@ package body TZif.Infrastructure.Adapter.File_System.Repository is
             Source := Make_Source_Info (ULID, Path_Val, Version, Zone_Count);
             return Load_Source_Result_Package.Ok (Source);
          end;
-      exception
-         when E : others =>
-            if Is_Open (File) then
-               Close (File);
-            end if;
-            return
-              Load_Source_Result_Package.Error
-                (IO_Error,
-                 "Error loading source: " &
-                 Ada.Exceptions.Exception_Message (E));
-      end;
+      end Raw_Load_Source;
 
-   exception
-      when E : others =>
-         return
-           Load_Source_Result_Package.Error
-             (IO_Error,
-              "Unexpected error: " & Ada.Exceptions.Exception_Message (E));
+      --  Declarative exception handling
+      package Try_Load_Source is new Functional.Try.Map_To_Result
+        (Error_Kind_Type    => Error_Kind,
+         Result_Type        => Load_Source_Result,
+         Make_Error         => Make_Load_Source_Error,
+         Default_Error_Kind => IO_Error,
+         Action             => Raw_Load_Source);
+
+      --  All exceptions map to IO_Error (default), so empty mappings
+      Load_Source_Mappings : constant Try_Load_Source.Mapping_Array :=
+        Try_Load_Source.Empty_Mappings;
+   begin
+      return Try_Load_Source.Run (Load_Source_Mappings);
    end Load_Source;
 
    --  ========================================================================
@@ -1232,44 +1360,64 @@ package body TZif.Infrastructure.Adapter.File_System.Repository is
       use TZif.Application.Port.Inbound.Validate_Source;
       Path_Str : constant String :=
         Application.Port.Inbound.Validate_Source.Path_Strings.To_String (Path);
-   begin
-      if not Exists (Path_Str) then
-         return Validation_Result_Package.Ok (False);
-      end if;
 
-      if Kind (Path_Str) /= Directory then
-         return Validation_Result_Package.Ok (False);
-      end if;
-
-      --  Check for at least one TZif file
-      declare
-         Search : Search_Type;
-         pragma Warnings (Off, Search);
-         Item       : Directory_Entry_Type;
-         Found_TZif : Boolean := False;
+      --  Make error Result from kind and message
+      function Make_Validate_Error
+        (Kind : Error_Kind; Message : String)
+         return Validation_Result
+      is
       begin
-         Start_Search (Search, Path_Str, "*");
-         while More_Entries (Search) and then not Found_TZif loop
-            Get_Next_Entry (Search, Item);
-            if Kind (Item) = Ordinary_File then
-               Found_TZif := True;
-            end if;
-         end loop;
-         End_Search (Search);
+         return Validation_Result_Package.Error (Kind, Message);
+      end Make_Validate_Error;
 
-         return Validation_Result_Package.Ok (Found_TZif);
-      exception
-         when Name_Error | Use_Error =>
+      --  Core logic
+      function Raw_Validate_Source return Validation_Result is
+      begin
+         if not Exists (Path_Str) then
             return Validation_Result_Package.Ok (False);
-      end;
+         end if;
 
-   exception
-      when E : others =>
-         return
-           Validation_Result_Package.Error
-             (IO_Error,
-              "Error validating source: " &
-              Ada.Exceptions.Exception_Message (E));
+         if Kind (Path_Str) /= Directory then
+            return Validation_Result_Package.Ok (False);
+         end if;
+
+         --  Check for at least one TZif file
+         declare
+            Search : Search_Type;
+            pragma Warnings (Off, Search);
+            Item       : Directory_Entry_Type;
+            Found_TZif : Boolean := False;
+         begin
+            Start_Search (Search, Path_Str, "*");
+            while More_Entries (Search) and then not Found_TZif loop
+               Get_Next_Entry (Search, Item);
+               if Kind (Item) = Ordinary_File then
+                  Found_TZif := True;
+               end if;
+            end loop;
+            End_Search (Search);
+
+            return Validation_Result_Package.Ok (Found_TZif);
+         exception
+            when Name_Error | Use_Error =>
+               --  DESIGN DECISION: Inaccessible directories are invalid
+               return Validation_Result_Package.Ok (False);
+         end;
+      end Raw_Validate_Source;
+
+      --  Declarative exception handling
+      package Try_Validate_Source is new Functional.Try.Map_To_Result
+        (Error_Kind_Type    => Error_Kind,
+         Result_Type        => Validation_Result,
+         Make_Error         => Make_Validate_Error,
+         Default_Error_Kind => IO_Error,
+         Action             => Raw_Validate_Source);
+
+      --  All exceptions map to IO_Error (default), so empty mappings
+      Validate_Mappings : constant Try_Validate_Source.Mapping_Array :=
+        Try_Validate_Source.Empty_Mappings;
+   begin
+      return Try_Validate_Source.Run (Validate_Mappings);
    end Validate_Source;
 
 end TZif.Infrastructure.Adapter.File_System.Repository;

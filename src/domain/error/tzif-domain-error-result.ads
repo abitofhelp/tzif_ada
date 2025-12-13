@@ -55,7 +55,7 @@ is
       --  =====================================================================
       --  Convenience constructor from Error_Type record.
       --  Used primarily at infrastructure boundaries when converting
-      --  exceptions to Results via Functional.Try.Try_To_Result.
+      --  exceptions to Results via Functional.Try.Map_To_Result.
       --
       --  Example:
       --    Err => Int32_Result.From_Error

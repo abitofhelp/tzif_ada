@@ -14,17 +14,17 @@ pragma Ada_2022;
 --    Pure parsing logic lives in TZif.Domain.Parser.
 --
 --  Implementation Notes:
---    Uses Functional.Try.Try_To_Any_Result_With_Param to wrap exception-prone
+--    Uses Functional.Try.Map_To_Result_With_Param to wrap exception-prone
 --    file I/O operations, converting exceptions to Result types for
 --    railway-oriented error handling. This is the ONLY place exceptions are
 --    caught in the infrastructure layer.
 --
 --  ===========================================================================
 
-with Ada.Exceptions;
 with Ada.Streams;
 with Functional.Scoped;
 with Functional.Try;
+with Functional.Try.Map_To_Result_With_Param;
 with Interfaces;
 with TZif.Domain.Error;
 with TZif.Domain.Parser;
@@ -37,53 +37,15 @@ package body TZif.Infrastructure.TZif_Parser is
    use TZif.Domain.Error.Error_Strings;
 
    --  ========================================================================
-   --  Exception Mapping for I/O Errors (used by Functional.Try)
+   --  Make Error Result (used by Map_To_Result)
    --  ========================================================================
 
-   function Map_Exception
-     (Occ : Ada.Exceptions.Exception_Occurrence) return Error_Type
+   function Make_Parse_Error
+     (Kind : Error_Kind; Message : String) return Parse_Result.Result
    is
-      use Ada.Exceptions;
-      Exc_Name : constant String := Exception_Name (Occ);
    begin
-      if Exc_Name = "STORAGE_ERROR" then
-         return
-           (Kind    => Resource_Error,
-            Message =>
-              To_Bounded_String
-                ("Out of memory during file I/O: " & Exception_Message (Occ)));
-      elsif Exc_Name = "ADA.IO_EXCEPTIONS.END_ERROR" then
-         return
-           (Kind    => Parse_Error,
-            Message =>
-              To_Bounded_String
-                ("Unexpected end of file: " & Exception_Message (Occ)));
-      elsif Exc_Name = "ADA.IO_EXCEPTIONS.DATA_ERROR" then
-         return
-           (Kind    => Parse_Error,
-            Message =>
-              To_Bounded_String
-                ("Corrupted or malformed data: " & Exception_Message (Occ)));
-      elsif Exc_Name = "ADA.IO_EXCEPTIONS.NAME_ERROR" then
-         return
-           (Kind    => Not_Found_Error,
-            Message =>
-              To_Bounded_String
-                ("File not found: " & Exception_Message (Occ)));
-      elsif Exc_Name = "ADA.IO_EXCEPTIONS.USE_ERROR" then
-         return
-           (Kind    => IO_Error,
-            Message =>
-              To_Bounded_String
-                ("Cannot open file: " & Exception_Message (Occ)));
-      else
-         return
-           (Kind    => IO_Error,
-            Message =>
-              To_Bounded_String
-                ("File I/O error: " & Exception_Message (Occ)));
-      end if;
-   end Map_Exception;
+      return Parse_Result.Error (Kind, Message);
+   end Make_Parse_Error;
 
    --  ========================================================================
    --  Parse_From_Stream
@@ -97,7 +59,7 @@ package body TZif.Infrastructure.TZif_Parser is
    end record;
 
    --  Raw action that may raise exceptions - wrapped by Functional.Try
-   function Raw_Parse_Stream (Ctx : Stream_Context) return TZif_Data_Type is
+   function Raw_Parse_Stream (Ctx : Stream_Context) return Parse_Result.Result is
       Max_Size   : constant := 65_536;
       Buffer     : TZif.Domain.Parser.Byte_Array (1 .. Max_Size);
       Total_Read : Natural := 0;
@@ -122,41 +84,44 @@ package body TZif.Infrastructure.TZif_Parser is
 
       --  Validate we read data
       if Total_Read = 0 then
-         raise Constraint_Error with "No data read from stream";
+         return Parse_Result.Error (IO_Error, "No data read from stream");
       end if;
 
       --  Delegate to Domain.Parser
       TZif.Domain.Parser.Parse_From_Bytes (Buffer, Total_Read, Domain_Res);
 
-      --  Extract result or re-raise as exception for Try to catch
+      --  Convert Domain.Parser result to our result
       if TZif.Domain.Parser.Parse_Result.Is_Ok (Domain_Res) then
-         return TZif.Domain.Parser.Parse_Result.Value (Domain_Res);
+         return Parse_Result.Ok
+           (TZif.Domain.Parser.Parse_Result.Value (Domain_Res));
       else
          declare
             Err : constant Error_Type :=
               TZif.Domain.Parser.Parse_Result.Error_Info (Domain_Res);
          begin
-            raise Constraint_Error with To_String (Err.Message);
+            return Parse_Result.Error (Err.Kind, To_String (Err.Message));
          end;
       end if;
    end Raw_Parse_Stream;
 
-   --  Instantiate Functional.Try for stream parsing
-   function Try_Parse_Stream is new Functional.Try.Try_To_Any_Result_With_Param
-     (T             => TZif_Data_Type,
-      E             => Error_Type,
-      Param         => Stream_Context,
-      Result_Type   => Parse_Result.Result,
-      Ok            => Parse_Result.Ok,
-      New_Error     => Parse_Result.From_Error,
-      Map_Exception => Map_Exception,
-      Action        => Raw_Parse_Stream);
+   --  Declarative exception-to-Result mapping for stream parsing
+   package Try_Parse_Stream is new Functional.Try.Map_To_Result_With_Param
+     (Error_Kind_Type    => Error_Kind,
+      Param_Type         => Stream_Context,
+      Result_Type        => Parse_Result.Result,
+      Make_Error         => Make_Parse_Error,
+      Default_Error_Kind => IO_Error,
+      Action             => Raw_Parse_Stream);
+
+   --  Exception mappings: Name_Error -> Not_Found, others -> default (IO_Error)
+   Stream_Mappings : constant Try_Parse_Stream.Mapping_Array :=
+     [(Ada.Streams.Stream_IO.Name_Error'Identity, Not_Found_Error)];
 
    function Parse_From_Stream
      (Stream : not null Stream_Access) return Parse_Result_Type
    is
    begin
-      return Try_Parse_Stream ((Stream => Stream));
+      return Try_Parse_Stream.Run ((Stream => Stream), Stream_Mappings);
    end Parse_From_Stream;
 
    --  ========================================================================
@@ -173,9 +138,10 @@ package body TZif.Infrastructure.TZif_Parser is
       Release        => Close);
 
    --  Raw action that may raise exceptions - wrapped by Functional.Try
-   function Raw_Parse_File (File_Path : String) return TZif_Data_Type is
+   function Raw_Parse_File (File_Path : String) return Parse_Result.Result is
       File   : aliased File_Type;
       Guard  : File_Guard.Guard (File'Access);  --  Auto-close on scope exit
+      pragma Unreferenced (Guard);  --  RAII: releases via Finalize
       Stream : Stream_Access;
    begin
       Open (File, In_File, File_Path);
@@ -184,20 +150,22 @@ package body TZif.Infrastructure.TZif_Parser is
       --  Guard.Finalize called here - closes file if open
    end Raw_Parse_File;
 
-   --  Instantiate Functional.Try for file parsing
-   function Try_Parse_File is new Functional.Try.Try_To_Any_Result_With_Param
-     (T             => TZif_Data_Type,
-      E             => Error_Type,
-      Param         => String,
-      Result_Type   => Parse_Result.Result,
-      Ok            => Parse_Result.Ok,
-      New_Error     => Parse_Result.From_Error,
-      Map_Exception => Map_Exception,
-      Action        => Raw_Parse_File);
+   --  Declarative exception-to-Result mapping for file parsing
+   package Try_Parse_File is new Functional.Try.Map_To_Result_With_Param
+     (Error_Kind_Type    => Error_Kind,
+      Param_Type         => String,
+      Result_Type        => Parse_Result.Result,
+      Make_Error         => Make_Parse_Error,
+      Default_Error_Kind => IO_Error,
+      Action             => Raw_Parse_File);
+
+   --  Exception mappings: Name_Error -> Not_Found, others -> default (IO_Error)
+   File_Mappings : constant Try_Parse_File.Mapping_Array :=
+     [(Ada.Streams.Stream_IO.Name_Error'Identity, Not_Found_Error)];
 
    function Parse_From_File (File_Path : String) return Parse_Result_Type is
    begin
-      return Try_Parse_File (File_Path);
+      return Try_Parse_File.Run (File_Path, File_Mappings);
    end Parse_From_File;
 
 end TZif.Infrastructure.TZif_Parser;

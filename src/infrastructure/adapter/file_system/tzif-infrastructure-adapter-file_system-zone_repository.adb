@@ -18,6 +18,7 @@ with Ada.Directories;
 with Ada.Exceptions;
 with Ada.Text_IO;
 with Functional.Try;
+with Functional.Try.Map_To_Result;
 with TZif_Config;
 with TZif.Infrastructure.TZif_Parser;
 with TZif.Infrastructure.ULID;
@@ -139,36 +140,31 @@ package body TZif.Infrastructure.Adapter.File_System.Zone_Repository is
    function Exists (Id : Zone_Id_Type) return Repository_Boolean_Result is
       Zone_Id_Str : constant String := To_String (Id);
 
-      --  Map exception to Error_Type
-      function Map_Exists_Exception
-        (Occ : Ada.Exceptions.Exception_Occurrence)
-         return Error_Type
+      --  Make error Result from kind and message
+      function Make_Exists_Error
+        (Kind : Error_Kind; Message : String) return Repository_Boolean_Result
       is
       begin
-         return (Kind    => IO_Error,
-                 Message => Error_Strings.To_Bounded_String
-                   ("Error checking existence of " & Zone_Id_Str & ": " &
-                    Ada.Exceptions.Exception_Message (Occ)));
-      end Map_Exists_Exception;
+         return Boolean_Result.Error (Kind, Message);
+      end Make_Exists_Error;
 
-      --  Raw action that may raise exceptions
-      function Raw_Check_Exists return Boolean is
+      --  Raw action that may raise exceptions - returns Result
+      function Raw_Check_Exists return Repository_Boolean_Result is
          File_Path : constant String := Find_TZif_File (Zone_Id_Str);
       begin
-         return File_Path'Length > 0;
+         return Boolean_Result.Ok (File_Path'Length > 0);
       end Raw_Check_Exists;
 
-      --  Instantiate Functional.Try
-      function Try_Check_Exists is new Functional.Try.Try_To_Result
-        (T             => Boolean,
-         E             => Error_Type,
-         Result_Type   => Repository_Boolean_Result,
-         Ok            => Boolean_Result.Ok,
-         New_Error     => Boolean_Result.From_Error,
-         Map_Exception => Map_Exists_Exception,
-         Action        => Raw_Check_Exists);
+      --  Declarative exception-to-Result mapping
+      package Try_Check_Exists is new Functional.Try.Map_To_Result
+        (Error_Kind_Type    => Error_Kind,
+         Result_Type        => Repository_Boolean_Result,
+         Make_Error         => Make_Exists_Error,
+         Default_Error_Kind => IO_Error,
+         Action             => Raw_Check_Exists);
+
    begin
-      return Try_Check_Exists;
+      return Try_Check_Exists.Run_Catch_All;
    end Exists;
 
    --  ===========================================================
@@ -326,18 +322,15 @@ package body TZif.Infrastructure.Adapter.File_System.Zone_Repository is
    function Find_My_Id return Repository_Zone_Id_Result is
       Localtime_Path : constant String := "/etc/localtime";
 
-      --  Map exception to error
-      function Map_Find_My_Id_Exception
-        (Occ : Ada.Exceptions.Exception_Occurrence)
-         return Repository_Zone_Id_Result
+      --  Make error Result from kind and message
+      function Make_Find_My_Id_Error
+        (Kind : Error_Kind; Message : String) return Repository_Zone_Id_Result
       is
+         pragma Unreferenced (Kind);
       begin
-         return
-           Zone_Id_Result.Error
-             (IO_Error,
-              "/etc/localtime is not a symlink-cannot determine zone ID: " &
-              Ada.Exceptions.Exception_Message (Occ));
-      end Map_Find_My_Id_Exception;
+         --  All errors use IO_Error - Message contains full context
+         return Zone_Id_Result.Error (IO_Error, Message);
+      end Make_Find_My_Id_Error;
 
       --  Core logic
       function Raw_Find_My_Id return Repository_Zone_Id_Result is
@@ -412,13 +405,16 @@ package body TZif.Infrastructure.Adapter.File_System.Zone_Repository is
          end;
       end Raw_Find_My_Id;
 
-      --  Try wrapper
-      function Try_Find_My_Id is new Functional.Try.Try_To_Any_Result
-        (Result_Type   => Repository_Zone_Id_Result,
-         Map_Exception => Map_Find_My_Id_Exception,
-         Action        => Raw_Find_My_Id);
+      --  Declarative exception-to-Result mapping
+      package Try_Find_My_Id is new Functional.Try.Map_To_Result
+        (Error_Kind_Type    => Error_Kind,
+         Result_Type        => Repository_Zone_Id_Result,
+         Make_Error         => Make_Find_My_Id_Error,
+         Default_Error_Kind => IO_Error,
+         Action             => Raw_Find_My_Id);
+
    begin
-      return Try_Find_My_Id;
+      return Try_Find_My_Id.Run_Catch_All;
    end Find_My_Id;
 
    --  ===========================================================
