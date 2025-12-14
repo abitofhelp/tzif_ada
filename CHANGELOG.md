@@ -28,7 +28,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [2.0.0] - 2025-12-07
 
-**Test Coverage:** 0 unit + 0 integration + 11 examples = 11 total
+**Test Coverage:** 424 unit + 134 integration + 11 examples = 569 total
 
 ### Breaking Changes
 
