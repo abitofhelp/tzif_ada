@@ -9,15 +9,26 @@
 **Copyright:** © 2025 Michael Gardner, A Bit of Help, Inc.<br>
 **Status:** Released
 
-## Important
-In a few days, I will release a library that provides higher level 
-functions for working with timezones and durations in Ada 2022.
+> **Note**: A companion library providing higher-level functions for working with timezones and durations in Ada 2022 will be released soon.
 
 ## Overview
 
 TZif is an Ada 2022 library for parsing and querying IANA's compiled timezone information (TZif format, RFC 9636) files. It provides a clean, functional API with Result monad error handling, hexagonal architecture, and embedded-safe patterns.
 
 Designed for safety-critical, embedded, and high-assurance applications with full SPARK compatibility.
+
+## Features
+
+- Parse IANA TZif binary files (versions 1, 2, and 3)
+- Query timezone transitions at any Unix epoch time
+- Discover and validate timezone data sources
+- Find zones by ID, pattern, region, or regex
+- Detect the system's local timezone
+- Cross-platform: Linux, macOS, BSD, Windows 11, Embedded
+- 4-layer hexagonal architecture (Domain, Application, Infrastructure, API)
+- Result monad error handling (via `functional` ^4.0.0)
+- Generic I/O plugin pattern for platform portability
+- Smart constructor pattern with `Functional.Try.Map_To_Result`
 
 ## SPARK Formal Verification
 
@@ -63,18 +74,6 @@ make spark-prove    # Run full SPARK proof verification
 | Infrastructure | Off | I/O operations (file system, platform) |
 | API | Off | Facade over infrastructure |
 
-## Features
-
-- Parse IANA TZif binary files (versions 1, 2, and 3)
-- Query timezone transitions at any Unix epoch time
-- Discover and validate timezone data sources
-- Find zones by ID, pattern, region, or regex
-- Detect the system's local timezone
-- Cross-platform: Linux, macOS, BSD, Windows 11, Embedded
-- 4-layer hexagonal architecture (Domain, Application, Infrastructure, API)
-- Result monad error handling (via `functional` crate)
-- Generic I/O plugin pattern for platform portability
-
 ## Getting Started
 
 ### Clone with Submodules
@@ -105,12 +104,13 @@ Add to your `alire.toml`:
 
 ```toml
 [[depends-on]]
-tzif = "^2.0.0"
+tzif = "^3.0.0"
 ```
 
 ## Quick Example
 
 ```ada
+with Ada.Text_IO; use Ada.Text_IO;
 with TZif.API;
 
 procedure Show_Local_Timezone is
@@ -174,7 +174,7 @@ TZif provides 11 operations through `TZif.API`:
 | **Linux** | Full | `/usr/share/zoneinfo` |
 | **macOS** | Full | `/var/db/timezone/zoneinfo` |
 | **BSD** | Full | `/usr/share/zoneinfo` |
-| **Windows** | Full | User-provided IANA tzdata |
+| **Windows** | Full | User-provided IANA tzdata + Win32 API |
 | **Embedded** | Stub | Custom adapter required |
 
 ## Testing
@@ -204,14 +204,21 @@ make test-integration
 
 ## Examples
 
-The `examples/` directory contains working programs:
+The `examples/` directory contains 11 working programs:
 
 | Example | Description |
 |---------|-------------|
+| `discover_sources` | Find timezone sources |
 | `find_by_id` | Find timezone by exact ID |
-| `find_my_id` | Detect system's local timezone |
 | `find_by_pattern` | Search zones by substring |
+| `find_by_region` | Search zones by region |
+| `find_by_regex` | Search zones by regex |
+| `find_my_id` | Detect system's local timezone |
 | `get_transition_at_epoch` | Query offset at specific time |
+| `get_version` | Query database version |
+| `list_all_zones` | Enumerate all zones |
+| `load_source` | Load timezone source |
+| `validate_source` | Validate source integrity |
 
 ```bash
 # Build and run examples
@@ -223,7 +230,7 @@ make build-examples
 
 | Package | Version | Purpose |
 |---------|---------|---------|
-| `functional` | ^3.0.0 | Result/Option monads |
+| `functional` | ^4.0.0 | Result/Option monads, Functional.Try |
 | `gnatcoll` | ^25.0.0 | GNAT Components Collection |
 
 **Note:** Domain layer has zero external dependencies (pure Ada 2022).
@@ -273,12 +280,14 @@ https://github.com/abitofhelp
 
 ## Project Status
 
-**Status:** Released (v2.0.0)
+**Status:** Released (v3.0.0)
 
-- TZif v1/v2/v3 binary parsing (RFC 9636)
-- 4-layer hexagonal architecture
-- Public API facade with stable interface
-- Cross-platform: POSIX and Windows
-- Comprehensive test coverage (90%+)
-- Comprehensive documentation
-- 11 example programs
+- [x] TZif v1/v2/v3 binary parsing (RFC 9636)
+- [x] 4-layer hexagonal architecture
+- [x] Public API facade with stable interface
+- [x] Cross-platform: POSIX and Windows
+- [x] SPARK formal verification (87% proved)
+- [x] Comprehensive test coverage (569 tests)
+- [x] Comprehensive documentation
+- [x] 11 example programs
+- [x] Smart constructor pattern with Functional.Try

@@ -224,6 +224,8 @@ is
             return Magic = "TZif";
          exception
             when others =>
+               --  DESIGN DECISION: Return False on any file access error.
+               --  This is a predicate function - errors mean "not a TZif file".
                if SIO.Is_Open (File) then
                   SIO.Close (File);
                end if;
@@ -253,6 +255,8 @@ is
             return Trim (Buffer (1 .. Len), Ada.Strings.Both);
          exception
             when others =>
+               --  DESIGN DECISION: Return "unknown" on any file access error.
+               --  This is a utility function - errors mean version is unknown.
                if SIO.Is_Open (File) then
                   SIO.Close (File);
                end if;
@@ -296,6 +300,8 @@ is
 
       exception
          when others =>
+            --  DESIGN DECISION: Continue-on-error pattern.
+            --  Return partial count on directory access error.
             return Count;
       end Count_TZif_Files;
 
@@ -411,6 +417,8 @@ is
 
          exception
             when E : others =>
+               --  DESIGN DECISION: Continue-on-error pattern.
+               --  Add error to list and continue processing other paths.
                Add_Error
                  (TZif.Domain.Error.IO_Error,
                   "Error scanning: " & Dir_Path & ": " &
@@ -492,6 +500,8 @@ is
 
       exception
          when E : others =>
+            --  DESIGN DECISION: Inner cleanup handler.
+            --  Ensure file is closed before returning error result.
             if SIO.Is_Open (File) then
                SIO.Close (File);
             end if;
@@ -503,6 +513,8 @@ is
 
    exception
       when E : others =>
+         --  DESIGN DECISION: Outer catch-all for unexpected errors.
+         --  Converts any exception to Result.Error for caller.
          Result :=
            Get_Version.Version_Result_Package.Error
              (TZif.Domain.Error.IO_Error,
@@ -558,6 +570,8 @@ is
       end;
    exception
       when E : others =>
+         --  DESIGN DECISION: Outer catch-all for unexpected errors.
+         --  Converts any exception to Result.Error for caller.
          Result :=
            Find_My_Id.Result_Zone_Id.Error
              (TZif.Domain.Error.IO_Error,
@@ -623,6 +637,8 @@ is
                                  end if;
                               exception
                                  when Constraint_Error =>
+                                    --  DESIGN DECISION: Continue-on-error.
+                                    --  Skip invalid zone names, continue scan.
                                     null;
                               end;
                            end if;
@@ -638,6 +654,8 @@ is
          End_Search (Search);
       exception
          when Ada.Directories.Name_Error | Ada.Directories.Use_Error =>
+            --  DESIGN DECISION: Continue-on-error pattern.
+            --  Skip inaccessible directories during recursive scan.
             null;
       end Scan_Directory;
 
@@ -667,6 +685,8 @@ is
 
    exception
       when E : others =>
+         --  DESIGN DECISION: Outer catch-all for unexpected errors.
+         --  Converts any exception to Result.Error for caller.
          Result :=
            List_All.List_All_Zones_Result_Package.Error
              (TZif.Domain.Error.IO_Error,
@@ -772,6 +792,8 @@ is
                exception
                   when Ada.Directories.Name_Error
                      | Ada.Directories.Use_Error =>
+                     --  DESIGN DECISION: Continue-on-error pattern.
+                     --  Skip inaccessible directories when counting zones.
                      null;
                end Count_Recursive;
 
@@ -787,6 +809,8 @@ is
          end;
       exception
          when E : others =>
+            --  DESIGN DECISION: Inner cleanup handler.
+            --  Ensure file is closed before returning error result.
             if Is_Open (File) then
                Close (File);
             end if;
@@ -798,6 +822,8 @@ is
 
    exception
       when E : others =>
+         --  DESIGN DECISION: Outer catch-all for unexpected errors.
+         --  Converts any exception to Result.Error for caller.
          Result :=
            Load_Source.Load_Source_Result_Package.Error
              (TZif.Domain.Error.IO_Error,
@@ -848,11 +874,15 @@ is
          Result := Validate_Source.Validation_Result_Package.Ok (Found_TZif);
       exception
          when Name_Error | Use_Error =>
+            --  DESIGN DECISION: Predicate-like behavior.
+            --  Directory access error means "not a valid source".
             Result := Validate_Source.Validation_Result_Package.Ok (False);
       end;
 
    exception
       when E : others =>
+         --  DESIGN DECISION: Outer catch-all for unexpected errors.
+         --  Converts any exception to Result.Error for caller.
          Result :=
            Validate_Source.Validation_Result_Package.Error
              (TZif.Domain.Error.IO_Error,
@@ -930,6 +960,8 @@ is
          End_Search (Search);
       exception
          when Ada.Directories.Name_Error | Ada.Directories.Use_Error =>
+            --  DESIGN DECISION: Continue-on-error pattern.
+            --  Skip inaccessible directories during pattern search.
             null;
       end Scan_Directory;
 
@@ -947,6 +979,8 @@ is
 
    exception
       when E : others =>
+         --  DESIGN DECISION: Outer catch-all for unexpected errors.
+         --  Converts any exception to Result.Error for caller.
          Result :=
            Find_By_Pattern.Find_By_Pattern_Result_Package.Error
              (TZif.Domain.Error.IO_Error,
@@ -1021,6 +1055,8 @@ is
          End_Search (Search);
       exception
          when Ada.Directories.Name_Error | Ada.Directories.Use_Error =>
+            --  DESIGN DECISION: Continue-on-error pattern.
+            --  Skip inaccessible directories during region search.
             null;
       end Scan_Directory;
 
@@ -1038,6 +1074,8 @@ is
 
    exception
       when E : others =>
+         --  DESIGN DECISION: Outer catch-all for unexpected errors.
+         --  Converts any exception to Result.Error for caller.
          Result :=
            Find_By_Region.Find_By_Region_Result_Package.Error
              (TZif.Domain.Error.IO_Error,
@@ -1108,6 +1146,8 @@ is
          End_Search (Search);
       exception
          when Ada.Directories.Name_Error | Ada.Directories.Use_Error =>
+            --  DESIGN DECISION: Continue-on-error pattern.
+            --  Skip inaccessible directories during regex search.
             null;
       end Scan_Directory;
 
@@ -1129,11 +1169,15 @@ is
 
    exception
       when Expression_Error =>
+         --  DESIGN DECISION: User input validation error.
+         --  Invalid regex pattern is converted to Result.Error.
          Result :=
            Find_By_Regex.Find_By_Regex_Result_Package.Error
              (TZif.Domain.Error.Validation_Error,
               "Invalid regex pattern: " & Regex_Str);
       when E : others       =>
+         --  DESIGN DECISION: Outer catch-all for unexpected errors.
+         --  Converts any exception to Result.Error for caller.
          Result :=
            Find_By_Regex.Find_By_Regex_Result_Package.Error
              (TZif.Domain.Error.IO_Error,

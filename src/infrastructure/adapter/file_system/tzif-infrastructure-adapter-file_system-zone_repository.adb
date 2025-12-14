@@ -538,6 +538,8 @@ package body TZif.Infrastructure.Adapter.File_System.Zone_Repository is
 
    exception
       when E : others =>
+         --  DESIGN DECISION: Outer handler for unexpected errors during
+         --  zone enumeration. Inner Scan_Directory uses continue-on-error.
          return
            Zone_List_Result.Error
              (IO_Error,
@@ -553,8 +555,6 @@ package body TZif.Infrastructure.Adapter.File_System.Zone_Repository is
 
    function List_Sources return Repository_Source_List_Result is
       use TZif.Domain.Value_Object.Source_Info;
-
-      Sources : Source_Info_List;
 
       --  ===========================================================
       --  Read_Version - Read VERSION file using Functional.Try
@@ -664,6 +664,8 @@ package body TZif.Infrastructure.Adapter.File_System.Zone_Repository is
             End_Search (Sub_Search);
          exception
             when Name_Error | Use_Error =>
+               --  DESIGN DECISION: Skip inaccessible directories.
+               --  Continue-on-error for recursive directory traversal.
                null;
          end Count_Recursive;
 
@@ -672,39 +674,73 @@ package body TZif.Infrastructure.Adapter.File_System.Zone_Repository is
          return Count;
       end Count_Zones;
 
+      --  ===========================================================
+      --  Raw_List_Sources - Action that may raise exceptions
+      --  ===========================================================
+      function Raw_List_Sources return Repository_Source_List_Result is
+         Sources : Source_Info_List;
+      begin
+         --  Scan all search paths and create Source_Info for each
+         for Path of Search_Paths loop
+            if Exists (Path.all) and then Kind (Path.all) = Directory then
+               declare
+                  ULID : constant ULID_Type :=
+                    TZif.Infrastructure.ULID.Generate;
+                  Path_Str    : constant Path_String_Type :=
+                    Make_Path (Path.all);
+                  Version_Str : constant String := Read_Version (Path.all);
+                  Version     : constant Version_String_Type :=
+                    Make_Version (Version_Str);
+                  Zone_Count  : constant Natural := Count_Zones (Path.all);
+
+                  Source : constant Source_Info_Type :=
+                    Make_Source_Info
+                      (ULID       => ULID,
+                       Path       => Path_Str,
+                       Version    => Version,
+                       Zone_Count => Zone_Count);
+               begin
+                  if not Source_Info_Vectors.Is_Full (Sources) then
+                     Source_Info_Vectors.Unchecked_Append (Sources, Source);
+                  end if;
+               end;
+            end if;
+         end loop;
+
+         return Source_List_Result.Ok (Sources);
+      end Raw_List_Sources;
+
+      --  Make_Error for list sources operation
+      function Make_Listsources_Error
+        (Kind : TZif.Domain.Error.Error_Kind; Message : String)
+         return Repository_Source_List_Result
+      is
+      begin
+         case Kind is
+            when Not_Found_Error =>
+               return Source_List_Result.Error
+                 (Not_Found_Error, "Source not found: " & Message);
+            when others =>
+               return Source_List_Result.Error
+                 (IO_Error, "Failed to list sources: " & Message);
+         end case;
+      end Make_Listsources_Error;
+
+      --  Instantiate Functional.Try.Map_To_Result
+      package Try_List_Sources is new Functional.Try.Map_To_Result
+        (Error_Kind_Type    => TZif.Domain.Error.Error_Kind,
+         Result_Type        => Repository_Source_List_Result,
+         Make_Error         => Make_Listsources_Error,
+         Default_Error_Kind => TZif.Domain.Error.IO_Error,
+         Action             => Raw_List_Sources);
+
+      Listsources_Mappings : constant Try_List_Sources.Mapping_Array :=
+        [(Ada.Directories.Name_Error'Identity,
+          TZif.Domain.Error.Not_Found_Error),
+         (Ada.Directories.Use_Error'Identity, TZif.Domain.Error.IO_Error)];
+
    begin
-      --  Scan all search paths and create Source_Info for each existing source
-      for Path of Search_Paths loop
-         if Exists (Path.all) and then Kind (Path.all) = Directory then
-            declare
-               ULID : constant ULID_Type := TZif.Infrastructure.ULID.Generate;
-               Path_Str    : constant Path_String_Type := Make_Path (Path.all);
-               Version_Str : constant String := Read_Version (Path.all);
-               Version     : constant Version_String_Type :=
-                 Make_Version (Version_Str);
-               Zone_Count  : constant Natural := Count_Zones (Path.all);
-
-               Source : constant Source_Info_Type :=
-                 Make_Source_Info
-                   (ULID       => ULID, Path => Path_Str, Version => Version,
-                    Zone_Count => Zone_Count);
-            begin
-               if not Source_Info_Vectors.Is_Full (Sources) then
-                  Source_Info_Vectors.Unchecked_Append (Sources, Source);
-               end if;
-            end;
-         end if;
-      end loop;
-
-      return Source_List_Result.Ok (Sources);
-
-   exception
-      when E : others =>
-         return
-           Source_List_Result.Error
-             (IO_Error,
-              "Failed to list sources: " &
-              Ada.Exceptions.Exception_Message (E));
+      return Try_List_Sources.Run (Listsources_Mappings);
    end List_Sources;
 
 end TZif.Infrastructure.Adapter.File_System.Zone_Repository;

@@ -327,8 +327,9 @@ Community feedback shapes TZif's development. If you have suggestions for the ro
 |---------|-------------|------------|
 | v1.0.0  | Dec 2025    | Initial release (Linux, macOS, BSD) |
 | v2.0.0  | Dec 2025    | SPARK verification, Windows support, functional ^3.0.0 |
-| v2.1.0  | Q1 2026     | Testing & quality enhancements |
-| v3.0.0  | Q2 2026     | API evolution and advanced features |
+| v3.0.0  | Dec 2025    | Smart constructor pattern, functional ^4.0.0 |
+| v3.1.0  | Q1 2026     | Testing & quality enhancements |
+| v4.0.0  | Q2 2026     | API evolution and advanced features |
 
 ---
 

@@ -128,6 +128,8 @@ is
                Initialized := True;
             exception
                when others =>
+                  --  DESIGN DECISION: Protected body cannot use Functional.Try
+                  --  (Ada language constraint - potentially blocking calls)
                   Initialized := True;  --  Avoid repeated failures
             end;
          end if;
@@ -151,7 +153,8 @@ is
                         end loop;
                      exception
                         when others =>
-                           --  If RNG fails, use deterministic increment
+                           --  DESIGN DECISION: Protected body.
+                           --  RNG fail: deterministic fallback.
                            Last_Random_Bytes (Last_Random_Bytes'Last) := 1;
                      end;
                      exit;
@@ -167,8 +170,9 @@ is
                end loop;
             exception
                when others =>
-                  --  If RNG fails, use deterministic fallback
-                  --  (not ideal, but ensures ULID generation succeeds)
+                  --  DESIGN DECISION: Protected body - no Functional.Try.
+                  --  RNG failure: use deterministic fallback (ensures ULID
+                  --  generation succeeds, though not ideal).
                   for I in Last_Random_Bytes'Range loop
                      Last_Random_Bytes (I) := Unsigned_8 (I);
                   end loop;
@@ -204,6 +208,7 @@ is
             end;
          exception
             when others =>
+               --  DESIGN DECISION: Protected body cannot use Functional.Try.
                --  Encoding failed - use all zeros (will become valid ULID)
                ULID_Str := [others => '0'];
          end;
@@ -213,6 +218,7 @@ is
          Result := Make_ULID (ULID_Str);
       exception
          when others =>
+            --  DESIGN DECISION: Protected body cannot use Functional.Try.
             --  Ultimate fallback: return null ULID
             --  Note: This violates the postcondition, but protects against
             --  complete failure. In practice, should never reach here.

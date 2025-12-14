@@ -497,6 +497,8 @@ is
 
          exception
             when E : others =>
+               --  DESIGN DECISION: Continue-on-error for multi-path scanning.
+               --  Collect errors rather than abort to discover other sources.
                Add_Error
                  (TZif.Domain.Error.IO_Error,
                   "Error scanning: " & Dir_Path & ": " &
@@ -776,7 +778,9 @@ is
             End_Search (Search);
          exception
             when Ada.Directories.Name_Error | Ada.Directories.Use_Error =>
-               --  Skip inaccessible directories silently (intentional)
+               --  DESIGN DECISION: Skip inaccessible directories during scan.
+               --  Continue-on-error semantics within Raw function wrapped by
+               --  Functional.Try.Map_To_Result_With_Param (Try_Scan_And_Sort).
                null;
          end Scan_Directory;
 
@@ -922,7 +926,8 @@ is
             exception
                when Ada.Directories.Name_Error
                   | Ada.Directories.Use_Error =>
-                  --  Skip inaccessible directories (intentional)
+                  --  DESIGN DECISION: Continue-on-error pattern.
+                  --  Skip inaccessible directories when counting zones.
                   null;
             end Count_Recursive;
 
@@ -1034,7 +1039,8 @@ is
          return Validate_Source.Validation_Result_Package.Ok (Found_TZif);
       exception
          when Name_Error | Use_Error =>
-            --  Inaccessible directory = not valid (intentional)
+            --  DESIGN DECISION: Predicate-like behavior inside Raw_Validate.
+            --  Inaccessible directory = not valid, return Ok(False).
             return Validate_Source.Validation_Result_Package.Ok (False);
       end Raw_Validate;
 
@@ -1154,7 +1160,8 @@ is
             End_Search (Search);
          exception
             when Ada.Directories.Name_Error | Ada.Directories.Use_Error =>
-               --  Skip inaccessible directories (intentional)
+               --  DESIGN DECISION: Continue-on-error inside Raw_Scan.
+               --  Skip inaccessible directories during pattern search.
                null;
          end Scan_Directory;
 
@@ -1277,7 +1284,8 @@ is
             End_Search (Search);
          exception
             when Ada.Directories.Name_Error | Ada.Directories.Use_Error =>
-               --  Skip inaccessible directories (intentional)
+               --  DESIGN DECISION: Continue-on-error inside Raw_Scan.
+               --  Skip inaccessible directories during region search.
                null;
          end Scan_Directory;
 
@@ -1394,7 +1402,8 @@ is
          End_Search (Search);
       exception
          when Ada.Directories.Name_Error | Ada.Directories.Use_Error =>
-            --  Skip inaccessible directories (intentional)
+            --  DESIGN DECISION: Continue-on-error pattern.
+            --  Skip inaccessible directories during regex search.
             null;
       end Scan_Directory;
 

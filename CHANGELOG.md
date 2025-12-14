@@ -24,7 +24,42 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-## [99.99.99] - 2025-12-12
+## [3.0.0] - 2025-12-13
+
+**Test Coverage:** 424 unit + 134 integration + 11 examples = 569 total
+
+### Breaking Changes
+
+- **Dependency**: `functional` upgraded from ^3.0.0 to ^4.0.0
+  - `Functional.Try.Map_To_Result` pattern replaces manual exception handlers
+  - `Functional.Try.Map_To_Result_With_Param` for parameterized operations
+  - Smart constructor pattern with declarative exception mapping
+
+### Changed
+
+- Refactored all infrastructure adapters to use `Map_To_Result` pattern
+- Desktop adapter: 12 I/O operations converted to `Map_To_Result`
+- Windows adapter: Win32 API calls wrapped with `Map_To_Result`
+- Embedded adapter: Stub implementations updated for new pattern
+- Platform operations: `Read_Symbolic_Link` uses `Map_To_Result`
+- Zone repository: All file operations use declarative exception mapping
+- Improved exception handling consistency across all I/O boundaries
+- All docs regenerated with v3.0.0 structure and accurate test counts
+
+### Added
+
+- Windows platform tests: Win32 GetDynamicTimeZoneInformation + CLDR mapping
+- Windows CI workflow with URL pin to functional v4.0.0
+- Exception mapping arrays for declarative error categorization
+- Resource_Error kind added to Error_Kind enumeration
+
+### Fixed
+
+- Windows CI: functional v4.0.0 not in Alire index, using URL pin
+- Style warnings: Line length > 79 chars in Windows adapter code
+- Test counts in documentation: 569 total (was incorrectly showing 11)
+
+---
 
 ## [2.0.0] - 2025-12-07
 

@@ -33,7 +33,7 @@ alr with tzif
 
 # Or get TZif standalone
 alr get tzif
-cd tzif_2.0.0_*
+cd tzif_3.0.0_*
 alr build
 ```
 
@@ -44,6 +44,13 @@ git clone --recurse-submodules https://github.com/abitofhelp/tzif.git
 cd tzif
 alr build
 ```
+
+### Dependencies
+
+TZif requires:
+- `functional` ^4.0.0 (Result monad, Functional.Try)
+- `gnatcoll` ^25.0.0 (GNAT Components Collection)
+- GNAT FSF 13+ or GNAT Pro
 
 ---
 
@@ -91,19 +98,27 @@ with TZif.API;
 procedure Find_Zone_Example is
    use TZif.API;
 
-   Zone_Id : constant Zone_Id_Type := Make_Zone_Id ("America/New_York");
-   Result  : constant Zone_Result := Find_By_Id (Zone_Id);
+   Zone_Id_Result : constant Zone_Id_Result := Make_Zone_Id ("America/New_York");
 begin
-   if Is_Ok (Result) then
-      Put_Line ("Found timezone: " & To_String (Zone_Id));
+   if Is_Ok (Zone_Id_Result) then
+      declare
+         Zone_Id : constant Zone_Id_Type := Value (Zone_Id_Result);
+         Result  : constant Zone_Result := Find_By_Id (Zone_Id);
+      begin
+         if Is_Ok (Result) then
+            Put_Line ("Found timezone: " & To_String (Zone_Id));
+         else
+            Put_Line ("Timezone not found in data source");
+         end if;
+      end;
    else
-      Put_Line ("Timezone not found");
+      Put_Line ("Invalid zone ID format");
    end if;
 end Find_Zone_Example;
 ```
 
 **Common Zone IDs:**
-- `UTC` - Coordinated Universal Time
+- `Etc/UTC` - Coordinated Universal Time
 - `America/New_York` - Eastern Time (US)
 - `America/Los_Angeles` - Pacific Time (US)
 - `America/Phoenix` - Arizona (no DST)
@@ -135,7 +150,7 @@ end Find_Local_Example;
 **Platform Implementation:**
 - **Linux/BSD**: Reads `/etc/localtime` symlink
 - **macOS**: Reads system timezone configuration
-- **Windows**: Uses Win32 API with CLDR mapping to IANA zone ID
+- **Windows**: Uses Win32 GetDynamicTimeZoneInformation API with CLDR mapping to IANA zone ID
 
 ---
 
@@ -156,8 +171,10 @@ procedure Query_Transition is
 begin
    if Is_Ok (Result) then
       Put_Line ("Transition info retrieved successfully");
+      --  Access transition details via Get_Transition_Port
    else
-      Put_Line ("Could not get transition info");
+      Put_Line ("Could not get transition info: " &
+        Error_Strings.To_String (Error_Info (Result).Message));
    end if;
 end Query_Transition;
 ```
@@ -166,7 +183,7 @@ end Query_Transition;
 
 ## Error Handling
 
-TZif uses the Result monad pattern - no exceptions are raised.
+TZif uses the Result monad pattern - no exceptions are raised by the library.
 
 ### Pattern 1: Check Success/Failure
 
@@ -200,15 +217,20 @@ end if;
 
 ```ada
 function Process_Zone (Id : String) return Boolean is
-   Zone_Id : constant Zone_Id_Type := Make_Zone_Id (Id);
-   Result  : constant Zone_Result := Find_By_Id (Zone_Id);
+   Zone_Id_Res : constant Zone_Id_Result := Make_Zone_Id (Id);
 begin
-   if Is_Error (Result) then
-      return False;  --  Early exit on error
+   if Is_Error (Zone_Id_Res) then
+      return False;  --  Invalid zone ID format
    end if;
 
-   --  Continue with success path
-   return True;
+   declare
+      Result : constant Zone_Result := Find_By_Id (Value (Zone_Id_Res));
+   begin
+      if Is_Error (Result) then
+         return False;  --  Zone not found
+      end if;
+      return True;
+   end;
 end Process_Zone;
 ```
 
@@ -217,6 +239,14 @@ end Process_Zone;
 - SPARK compatible for formal verification
 - Deterministic timing (no stack unwinding)
 - Errors are values that can be passed and transformed
+
+**Error Kinds:**
+- `Validation_Error` - Invalid input data
+- `Parse_Error` - Malformed TZif file
+- `Not_Found_Error` - Zone or file not found
+- `IO_Error` - Filesystem failures
+- `Resource_Error` - Memory exhaustion
+- `Internal_Error` - Precondition violations
 
 ---
 
@@ -231,14 +261,24 @@ make test-all
 ### Specific Test Suites
 
 ```bash
-# Unit tests only
+# Unit tests only (424 tests)
 make test-unit
 
-# Integration tests only
+# Integration tests only (134 tests)
 make test-integration
 
-# Examples only
+# Examples only (11 programs)
 make test-examples
+```
+
+### SPARK Verification
+
+```bash
+# Legality check
+make spark-check
+
+# Full proof analysis
+make spark-prove
 ```
 
 ---
@@ -261,17 +301,17 @@ make build-examples
 
 | Example | Description |
 |---------|-------------|
+| `discover_sources` | Find timezone sources |
 | `find_by_id` | Find timezone by exact ID |
-| `find_my_id` | Detect local timezone |
 | `find_by_pattern` | Search zones by substring |
 | `find_by_region` | Search zones by region |
 | `find_by_regex` | Search zones by regex |
+| `find_my_id` | Detect local timezone |
 | `get_transition_at_epoch` | Query timezone at time |
+| `get_version` | Query database version |
 | `list_all_zones` | Enumerate all zones |
-| `discover_sources` | Find timezone sources |
 | `load_source` | Load timezone source |
 | `validate_source` | Validate source integrity |
-| `get_version` | Query library version |
 
 ---
 
@@ -282,13 +322,13 @@ make build-examples
 **A:** Standard locations by platform:
 - **Linux/BSD**: `/usr/share/zoneinfo`
 - **macOS**: `/var/db/timezone/zoneinfo`
-- **Windows**: User must provide IANA tzdata directory
+- **Windows**: Set `TZIF_DATA_PATH` environment variable to IANA tzdata directory
 
 ### Q: Why does `Find_My_Id` return an error?
 
 **A:** Common causes:
 - **Linux/BSD/macOS**: `/etc/localtime` symlink not configured
-- **Windows**: Windows timezone may not have IANA mapping
+- **Windows**: Windows timezone may not have IANA mapping in CLDR data
 - This is expected behavior - handle with `Is_Error(Result)`
 
 ### Q: What TZif versions are supported?
@@ -297,7 +337,14 @@ make build-examples
 
 ### Q: Can I use TZif without the functional library?
 
-**A:** The `functional` library is only used in the infrastructure layer. The domain layer has zero external dependencies. For minimal builds, you can use domain types directly.
+**A:** The `functional` library is only used in the infrastructure layer for `Functional.Try.Map_To_Result`. The domain layer has zero external dependencies. For minimal builds, you can use domain types directly.
+
+### Q: Build fails with "functional-scoped.ads not found"
+
+**A:** You need functional ^4.0.0. Update your dependency:
+```bash
+alr with functional^4.0.0
+```
 
 ---
 

@@ -1200,6 +1200,8 @@ package body TZif.Infrastructure.Adapter.File_System.Repository is
 
       exception
          when E : others =>
+            --  DESIGN DECISION: Continue-on-error for multi-path scanning.
+            --  Collect errors rather than abort to discover other sources.
             if not Error_Vectors.Is_Full (Data.Errors) then
                Error_Vectors.Unchecked_Append
                  (Data.Errors,

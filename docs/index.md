@@ -19,7 +19,12 @@ TZif is an Ada 2022 library for parsing and querying IANA's compiled timezone in
 - Discover and validate timezone data sources
 - Find zones by ID, pattern, region, or regex
 - Detect the system's local timezone
-- Cross-platform: Linux, macOS, BSD, Windows
+- Cross-platform: Linux, macOS, BSD, Windows, Embedded
+
+**Project Status:**
+- 569 tests passing (424 unit + 134 integration + 11 examples)
+- SPARK verified: 87% proof rate (1179 proved, 171 unproved)
+- Zero compiler warnings
 
 ---
 
@@ -82,6 +87,7 @@ TZif implements a 4-layer hexagonal architecture:
 - Infrastructure implements ports defined in Application
 - API provides stable public interface
 - Generic I/O plugin pattern enables platform portability
+- Functional.Try.Map_To_Result at all infrastructure boundaries
 
 ---
 
@@ -112,7 +118,7 @@ TZif provides 11 operations through `TZif.API`:
 | **Linux** | Full | `/usr/share/zoneinfo` |
 | **macOS** | Full | `/var/db/timezone/zoneinfo` |
 | **BSD** | Full | `/usr/share/zoneinfo` |
-| **Windows** | Full | User-provided IANA tzdata |
+| **Windows** | Full | User-provided IANA tzdata + Win32 API |
 | **Embedded** | Stub | Custom adapter required |
 
 ---
@@ -121,6 +127,7 @@ TZif provides 11 operations through `TZif.API`:
 
 ```ada
 with TZif.API;
+with Ada.Text_IO; use Ada.Text_IO;
 
 procedure Show_Local_Timezone is
    use TZif.API;
@@ -140,10 +147,21 @@ end Show_Local_Timezone;
 
 | Package | Version | Purpose |
 |---------|---------|---------|
-| `functional` | ^3.0.0 | Result/Option monads for infrastructure |
+| `functional` | ^4.0.0 | Result/Option monads, Functional.Try |
 | `gnatcoll` | ^25.0.0 | GNAT Components Collection |
 
 **Note:** Domain layer has zero external dependencies (pure Ada 2022).
+
+---
+
+## Test Results
+
+| Category | Count | Status |
+|----------|-------|--------|
+| Unit Tests | 424 | Passing |
+| Integration Tests | 134 | Passing |
+| Example Programs | 11 | Passing |
+| **Total** | **569** | **All Passing** |
 
 ---
 
