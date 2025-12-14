@@ -61,15 +61,15 @@ jobs:
           version: 2.0.2
 
       # -----------------------------------------------------------------------
-      # Remove local pin to let Alire resolve functional from index
+      # Replace local pin with GitHub URL pin for CI (functional v4.0.0)
       # -----------------------------------------------------------------------
-      - name: Remove local functional pin for CI
+      - name: Update functional pin for CI
         shell: bash
         run: |
-          # Remove local path pin - Alire will fetch functional ^4.0.0 from index
-          sed -i '/^\[\[pins\]\]/,/^$/d' alire.toml
-          echo "Removed local pin - Alire will resolve functional from index"
-          echo "--- alire.toml (pins removed) ---"
+          # Replace local path pin with GitHub URL pin (v4.0.0 tag commit)
+          sed -i "s|path = '../functional'|url = \"https://github.com/abitofhelp/functional.git\", commit = \"d429ad4534d3d19e76f6cf19b0f96fa008925658\"|" alire.toml
+          echo "Updated pin to use GitHub URL (functional v4.0.0)"
+          echo "--- alire.toml ---"
           tail -10 alire.toml
 
       # -----------------------------------------------------------------------
