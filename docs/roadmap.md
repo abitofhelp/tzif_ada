@@ -1,11 +1,11 @@
 # TZif Development Roadmap
 
-**Version:** 99.99.99  
-**Date:** December 12, 2025  
+**Version:** 99.99.99<br>
+**Date:** 2025-12-13<br>
 **SPDX-License-Identifier:** BSD-3-Clause<br>
 **License File:** See the LICENSE file in the project root<br>
-**Copyright:** © 2025 Michael Gardner, A Bit of Help, Inc.<br>  
-**Status:** Released  
+**Copyright:** © 2025 Michael Gardner, A Bit of Help, Inc.<br>
+**Status:** Released
 
 ---
 
@@ -33,7 +33,7 @@ The following roadmap items have been completed in v2.0.0:
 
 - Domain layer formally verified using SPARK Ada
 - Application layer formally verified (operations, inbound/outbound ports)
-- 1350 checks: 1155 proved, 195 unproved (in generic instantiations)
+- 1350 checks: 1179 proved, 171 unproved (in generic instantiations)
 - `make spark-check` and `make spark-prove` targets
 - Pre/postconditions proven correct
 - No runtime errors (overflow, range, division by zero)
@@ -332,5 +332,5 @@ Community feedback shapes TZif's development. If you have suggestions for the ro
 
 ---
 
-**Last Updated**: December 07, 2025
-**Next Review**: February 2026
+**Last Updated**: 2025-12-13
+**Next Review**: 2026-02

@@ -2,12 +2,12 @@
 
 [![License](https://img.shields.io/badge/license-BSD--3--Clause-blue.svg)](LICENSE) [![Ada](https://img.shields.io/badge/Ada-2022-blue.svg)](https://ada-lang.io) [![Alire](https://img.shields.io/badge/Alire-2.0+-blue.svg)](https://alire.ada.dev) [![SPARK](https://img.shields.io/badge/SPARK-Proved-green.svg)](https://www.adacore.com/about-spark)
 
-**Version:** 99.99.99  
-**Date:** December 12, 2025  
+**Version:** 99.99.99<br>
+**Date:** 2025-12-13<br>
 **SPDX-License-Identifier:** BSD-3-Clause<br>
 **License File:** See the LICENSE file in the project root<br>
-**Copyright:** 2025 Michael Gardner, A Bit of Help, Inc.<br>  
-**Status:** Released  
+**Copyright:** © 2025 Michael Gardner, A Bit of Help, Inc.<br>
+**Status:** Released
 
 ## Important
 In a few days, I will release a library that provides higher level 
@@ -36,7 +36,7 @@ Designed for safety-critical, embedded, and high-assurance applications with ful
 </tr>
 <tr>
 <td><strong>Results</strong></td>
-<td>1350 checks: 1155 proved, 195 unproved (in generic instantiations)</td>
+<td>1350 checks: 1179 proved, 171 unproved (in generic instantiations)</td>
 </tr>
 </table>
 
@@ -248,9 +248,16 @@ This project is not open to external contributions at this time.
 
 ## AI Assistance & Authorship
 
-This project is designed, implemented, and maintained by human developers, with Michael Gardner as the Principal Software Engineer and project lead.
+This project — including its source code, tests, documentation, and other deliverables — is designed, implemented, and maintained by human developers, with Michael Gardner as the Principal Software Engineer and project lead.
 
-AI coding assistants are used as tools to help with drafting code, exploring alternatives, and generating documentation. All changes are reviewed and integrated by human maintainers who remain fully responsible for the project.
+We use AI coding assistants (such as OpenAI GPT models and Anthropic Claude Code) as part of the development workflow to help with:
+
+- drafting and refactoring code and tests,
+- exploring design and implementation alternatives,
+- generating or refining documentation and examples,
+- and performing tedious and error-prone chores.
+
+AI systems are treated as tools, not authors. All changes are reviewed, adapted, and integrated by the human maintainers, who remain fully responsible for the architecture, correctness, and licensing of this project.
 
 ## License
 
@@ -266,7 +273,7 @@ https://github.com/abitofhelp
 
 ## Project Status
 
-**Status:** Released (v2.0.0)  
+**Status:** Released (v2.0.0)
 
 - TZif v1/v2/v3 binary parsing (RFC 9636)
 - 4-layer hexagonal architecture

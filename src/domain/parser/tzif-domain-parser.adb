@@ -65,6 +65,10 @@ is
    --  Read a 32-bit big-endian unsigned integer at position
    function Read_Unsigned_32_At
      (Bytes : Byte_Array; Pos : Positive) return Unsigned_32
+   with
+     Pre => Pos >= Bytes'First
+       and then Pos <= Bytes'Last - 3
+       and then Bytes'Last < Positive'Last - 3
    is
    begin
       return Shift_Left (Unsigned_32 (Bytes (Pos)), 24) or
@@ -76,6 +80,10 @@ is
    --  Read a 32-bit big-endian signed integer at position
    function Read_Int32_At
      (Bytes : Byte_Array; Pos : Positive) return Integer_32
+   with
+     Pre => Pos >= Bytes'First
+       and then Pos <= Bytes'Last - 3
+       and then Bytes'Last < Positive'Last - 3
    is
    begin
       return To_Integer_32 (Read_Unsigned_32_At (Bytes, Pos));
@@ -84,6 +92,10 @@ is
    --  Read a 64-bit big-endian unsigned integer at position
    function Read_Unsigned_64_At
      (Bytes : Byte_Array; Pos : Positive) return Unsigned_64
+   with
+     Pre => Pos >= Bytes'First
+       and then Pos <= Bytes'Last - 7
+       and then Bytes'Last < Positive'Last - 7
    is
    begin
       return Shift_Left (Unsigned_64 (Bytes (Pos)), 56) or
@@ -99,6 +111,10 @@ is
    --  Read a 64-bit big-endian signed integer at position
    function Read_Int64_At
      (Bytes : Byte_Array; Pos : Positive) return Integer_64
+   with
+     Pre => Pos >= Bytes'First
+       and then Pos <= Bytes'Last - 7
+       and then Bytes'Last < Positive'Last - 7
    is
    begin
       return To_Integer_64 (Read_Unsigned_64_At (Bytes, Pos));

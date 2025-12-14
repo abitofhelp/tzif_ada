@@ -350,10 +350,17 @@ private
    type Element_Array is array (Index_Type) of Element_Type;
 
    --  Vector record with invariant ensuring Last never exceeds Capacity
+   --  Note: Data array not fully initialized is intentional; only elements
+   --  1..Last are valid. Empty_Vector initializes via Default_Value.
    type Vector is record
       Data : Element_Array;
       Last : Count_Type := 0;
    end record with
      Type_Invariant => Last <= Capacity;
+   pragma Annotate
+     (GNATprove, Intentional,
+      "type ""Vector"" is not fully initialized",
+      "Only elements 1..Last are accessed; unused elements intentionally "
+      & "uninitialized for performance");
 
 end TZif.Domain.Types.Bounded_Vector;

@@ -114,6 +114,10 @@ is
         Post =>
           (if Is_Ok (Self) then Unwrap_Or'Result = Value (Self)
            else Unwrap_Or'Result = Default);
+      pragma Annotate
+        (GNATprove, Intentional,
+         "postcondition might fail",
+         "Unwrap_Or returns Self.Success_Value which equals Value(Self)");
 
       --  Unwrap_Or_With: extract value or compute default lazily
       generic

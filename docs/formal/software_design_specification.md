@@ -1,11 +1,11 @@
 # Software Design Specification (SDS)
 
-**Version:** 99.99.99  
-**Date:** December 12, 2025  
+**Version:** 99.99.99<br>
+**Date:** 2025-12-13<br>
 **SPDX-License-Identifier:** BSD-3-Clause<br>
 **License File:** See the LICENSE file in the project root<br>
-**Copyright:** 2025 Michael Gardner, A Bit of Help, Inc.<br>  
-**Status:** Released  
+**Copyright:** © 2025 Michael Gardner, A Bit of Help, Inc.<br>
+**Status:** Released
 
 ---
 
@@ -461,7 +461,7 @@ All fallible operations return `Result[T, Error_Type]`:
 
 **Document Control:**
 - Version: 1.0.0
-- Last Updated: December 07, 2025
+- Last Updated: 2025-12-13
 - Status: Released
 
 **Change History:**

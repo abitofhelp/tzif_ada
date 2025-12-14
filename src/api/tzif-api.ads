@@ -64,6 +64,20 @@ package TZif.API is
    function Make_Zone_Id (Id : String) return Zone_Id_Result renames
      TZif.Domain.Value_Object.Zone_Id.Result.Make_Zone_Id;
 
+   --  Zone_Id_Result operations
+   function Is_Ok (R : Zone_Id_Result) return Boolean renames
+     TZif.Domain.Value_Object.Zone_Id.Result.Is_Ok;
+
+   function Is_Error (R : Zone_Id_Result) return Boolean renames
+     TZif.Domain.Value_Object.Zone_Id.Result.Is_Error;
+
+   function Value (R : Zone_Id_Result) return Zone_Id_Type renames
+     TZif.Domain.Value_Object.Zone_Id.Result.Value;
+
+   function Error_Info
+     (R : Zone_Id_Result) return TZif.Domain.Error.Error_Type renames
+     TZif.Domain.Value_Object.Zone_Id.Result.Error_Info;
+
    function To_String (Id : Zone_Id_Type) return String renames
      TZif.Domain.Value_Object.Zone_Id.To_String;
 

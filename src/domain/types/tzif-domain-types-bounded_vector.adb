@@ -96,10 +96,18 @@ is
    is
    begin
       if V.Last >= Capacity then
+         pragma Annotate
+           (GNATprove, Intentional,
+            "discriminant check might fail",
+            "Assigning Err to mutable discriminant out parameter is safe");
          Result := Err (Vector_Full);
       else
          V.Last := V.Last + 1;
          V.Data (V.Last) := E;
+         pragma Annotate
+           (GNATprove, Intentional,
+            "discriminant check might fail",
+            "Assigning Ok to mutable discriminant out parameter is safe");
          Result := Ok;
       end if;
    end Append;
@@ -110,9 +118,17 @@ is
    is
    begin
       if V.Last = 0 then
+         pragma Annotate
+           (GNATprove, Intentional,
+            "discriminant check might fail",
+            "Assigning Err to mutable discriminant out parameter is safe");
          Result := Err (Vector_Empty);
       else
          V.Last := V.Last - 1;
+         pragma Annotate
+           (GNATprove, Intentional,
+            "discriminant check might fail",
+            "Assigning Ok to mutable discriminant out parameter is safe");
          Result := Ok;
       end if;
    end Delete_Last;
@@ -125,9 +141,17 @@ is
    is
    begin
       if Index > V.Last then
+         pragma Annotate
+           (GNATprove, Intentional,
+            "discriminant check might fail",
+            "Assigning Err to mutable discriminant out parameter is safe");
          Result := Err (Index_Out_Of_Bounds);
       else
          V.Data (Index) := E;
+         pragma Annotate
+           (GNATprove, Intentional,
+            "discriminant check might fail",
+            "Assigning Ok to mutable discriminant out parameter is safe");
          Result := Ok;
       end if;
    end Replace_Element;

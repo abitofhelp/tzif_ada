@@ -69,6 +69,10 @@ package body TZif.Domain.Error.Result is
 
       function Value (Self : Result) return T is
       begin
+         pragma Annotate
+           (GNATprove, Intentional,
+            "discriminant check might fail",
+            "Discriminant validated by Is_Ok precondition");
          return Self.Success_Value;
       end Value;
 
@@ -78,6 +82,10 @@ package body TZif.Domain.Error.Result is
 
       function Error_Info (Self : Result) return Error_Type is
       begin
+         pragma Annotate
+           (GNATprove, Intentional,
+            "discriminant check might fail",
+            "Discriminant validated by Is_Error precondition");
          return Self.Error_Value;
       end Error_Info;
 

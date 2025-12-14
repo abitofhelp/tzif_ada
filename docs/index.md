@@ -1,11 +1,11 @@
 # TZif Documentation
 
-**Version:** 99.99.99  
-**Date:** December 12, 2025  
+**Version:** 99.99.99<br>
+**Date:** 2025-12-13<br>
 **SPDX-License-Identifier:** BSD-3-Clause<br>
 **License File:** See the LICENSE file in the project root<br>
-**Copyright:** 2025 Michael Gardner, A Bit of Help, Inc.<br>  
-**Status:** Released  
+**Copyright:** © 2025 Michael Gardner, A Bit of Help, Inc.<br>
+**Status:** Released
 
 ---
 
@@ -155,5 +155,5 @@ end Show_Local_Timezone;
 
 ---
 
-**License:** BSD-3-Clause  
-**Copyright:** 2025 Michael Gardner, A Bit of Help, Inc.  
+**License:** BSD-3-Clause<br>
+**Copyright:** © 2025 Michael Gardner, A Bit of Help, Inc.

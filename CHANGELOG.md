@@ -1,11 +1,11 @@
 # Changelog
 
-**Version:** 99.99.99  
-**Date:** December 12, 2025  
+**Version:** 99.99.99<br>
+**Date:** 2025-12-13<br>
 **SPDX-License-Identifier:** BSD-3-Clause<br>
 **License File:** See the LICENSE file in the project root<br>
-**Copyright:** © 2025 Michael Gardner, A Bit of Help, Inc.<br>  
-**Status:** Released  
+**Copyright:** © 2025 Michael Gardner, A Bit of Help, Inc.<br>
+**Status:** Released
 
 All notable changes to this project will be documented in this file.
 
@@ -45,7 +45,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 #### SPARK Formal Verification
 - Domain layer formally verified using SPARK Ada (gnatprove --mode=prove --level=2)
 - Application layer formally verified (operations, inbound ports, outbound ports)
-- 1350 checks: 1155 proved, 195 unproved (in generic instantiations)
+- 1350 checks: 1179 proved, 171 unproved (in generic instantiations)
 - Mathematical guarantees: no runtime errors, no uninitialized data, contract compliance
 - `make spark-check` for legality verification
 - `make spark-prove` for full proof verification
