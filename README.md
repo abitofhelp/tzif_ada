@@ -190,7 +190,7 @@ make test-unit
 make test-integration
 ```
 
-**Test Results:** 0 unit + 0 integration + 11 examples = **11 tests passing**
+**Test Results:** 424 unit + 134 integration + 11 examples = **569 tests passing**
 
 ## Documentation
 
