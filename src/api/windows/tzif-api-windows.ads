@@ -6,8 +6,8 @@ pragma Ada_2022;
 --  SPDX-License-Identifier: BSD-3-Clause
 --
 --  Purpose:
---    Windows composition root - wires Windows I/O adapter to application ports.
---    This is the entry point for Windows applications using TZif.
+--    Windows composition root - wires Windows I/O adapter to
+--    application ports. Entry point for Windows applications using TZif.
 --
 --  Usage:
 --    Windows users should:

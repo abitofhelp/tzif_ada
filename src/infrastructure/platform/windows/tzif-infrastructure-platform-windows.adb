@@ -106,7 +106,7 @@ package body TZif.Infrastructure.Platform.Windows is
    --  ========================================================================
    --
    --  Based on Unicode CLDR windowsZones.xml
-   --  https://github.com/unicode-org/cldr/blob/main/common/supplemental/windowsZones.xml
+   --  URL: github.com/unicode-org/cldr -> common/supplemental/windowsZones.xml
    --
    --  This is a subset of common mappings. Full mapping has ~140 entries.
    --  The mapping returns the "default" IANA zone for each Windows zone.

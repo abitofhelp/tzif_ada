@@ -108,7 +108,8 @@ is
                  (Kind, "File data error: " & File_Path & ": " & Message);
             when others =>
                return Read_File_Result.Error
-                 (Kind, "File operation failed: " & File_Path & ": " & Message);
+                 (Kind,
+                  "File operation failed: " & File_Path & ": " & Message);
          end case;
       end Make_File_Error;
    begin
@@ -152,7 +153,9 @@ is
          begin
             Stream := SIO.Stream (File);
 
-            while not SIO.End_Of_File (File) and then Length < Bytes'Length loop
+            while not SIO.End_Of_File (File)
+              and then Length < Bytes'Length
+            loop
                Length := Length + 1;
                Unsigned_8'Read (Stream, Bytes (Length));
             end loop;
@@ -612,7 +615,8 @@ is
                              and then Name /= "+VERSION"
                            then
                               begin
-                                 if not List_All.Zone_Id_Vectors.Is_Full (Zones)
+                                 if not List_All.Zone_Id_Vectors.Is_Full
+                                   (Zones)
                                  then
                                     List_All.Zone_Id_Vectors.Unchecked_Append
                                       (Zones, Make_Zone_Id (Zone_Name));

@@ -24,13 +24,11 @@ with Ada.Command_Line;
 with Test_Framework;
 with TZif.Infrastructure.Platform;
 with TZif.Infrastructure.Platform.Windows;
-with TZif.Domain.Error;
 
 procedure Test_Windows_Platform is
 
    use TZif.Infrastructure.Platform;
    use TZif.Infrastructure.Platform.Windows;
-   use TZif.Domain.Error;
 
    Test_Count : Natural := 0;
    Pass_Count : Natural := 0;
@@ -114,7 +112,8 @@ procedure Test_Windows_Platform is
 
       --  Both calls should succeed
       Assert
-        (String_Result.Is_Ok (Result_1) and then String_Result.Is_Ok (Result_2),
+        (String_Result.Is_Ok (Result_1)
+           and then String_Result.Is_Ok (Result_2),
          "Both API calls should succeed");
 
       if String_Result.Is_Ok (Result_1) and then String_Result.Is_Ok (Result_2)
