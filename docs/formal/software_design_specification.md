@@ -1,6 +1,6 @@
 # Software Design Specification (SDS)
 
-**Version:** 99.99.99<br>
+**Version:** 3.0.0<br>
 **Date:** 2025-12-13<br>
 **SPDX-License-Identifier:** BSD-3-Clause<br>
 **License File:** See the LICENSE file in the project root<br>
