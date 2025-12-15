@@ -47,7 +47,7 @@ Designed for safety-critical, embedded, and high-assurance applications with ful
 </tr>
 <tr>
 <td><strong>Results</strong></td>
-<td>1350 checks: 1179 proved, 171 unproved (in generic instantiations)</td>
+<td>See <a href="CHANGELOG.md">CHANGELOG</a> for current proof statistics</td>
 </tr>
 </table>
 
@@ -190,7 +190,7 @@ make test-unit
 make test-integration
 ```
 
-**Test Results:** 424 unit + 134 integration + 11 examples = **569 tests passing**
+**Test Results:** All tests passing. See [CHANGELOG](CHANGELOG.md) for current counts.
 
 ## Documentation
 
