@@ -24,6 +24,19 @@ tags = [
 "*".Ada_Version = "Ada2022"
 "*".Style_Checks = "yes"
 
+# Platform-specific externals for OS detection
+[gpr-set-externals.'case(os)'.windows]
+TZIF_OS = "windows"
+
+[gpr-set-externals.'case(os)'.linux]
+TZIF_OS = "unix"
+
+[gpr-set-externals.'case(os)'.macos]
+TZIF_OS = "unix"
+
+[gpr-set-externals.'case(os)'.freebsd]
+TZIF_OS = "unix"
+
 [[depends-on]]
 gnat = ">=13"
 
