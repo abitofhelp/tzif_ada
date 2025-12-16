@@ -15,6 +15,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [3.0.1] - 2025-12-15
 
 **Test Coverage:** 434 unit + 134 integration + 11 examples = 579 total
+**SPARK Status:** Unchanged from v2.0.0 (1350 checks: 1179 proved, 171 unproved)
 
 ### Added
 
@@ -32,6 +33,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [3.0.0] - 2025-12-13
 
 **Test Coverage:** 434 unit + 134 integration + 11 examples = 579 total
+**SPARK Status:** Unchanged from v2.0.0 (1350 checks: 1179 proved, 171 unproved)
 
 ### Breaking Changes
 
