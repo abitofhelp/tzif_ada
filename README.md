@@ -104,7 +104,7 @@ Add to your `alire.toml`:
 
 ```toml
 [[depends-on]]
-tzif = "^3.0.0"
+tzif = "^3.0.1"
 ```
 
 ## Quick Example
@@ -280,14 +280,14 @@ https://github.com/abitofhelp
 
 ## Project Status
 
-**Status:** Released (v3.0.0)
+**Status:** Released (v3.0.1)
 
 - [x] TZif v1/v2/v3 binary parsing (RFC 9636)
 - [x] 4-layer hexagonal architecture
 - [x] Public API facade with stable interface
 - [x] Cross-platform: POSIX and Windows
-- [x] SPARK formal verification (87% proved)
-- [x] Comprehensive test coverage (569 tests)
+- [x] SPARK formal verification (see CHANGELOG)
+- [x] Comprehensive test coverage (see CHANGELOG)
 - [x] Comprehensive documentation
 - [x] 11 example programs
 - [x] Smart constructor pattern with Functional.Try
