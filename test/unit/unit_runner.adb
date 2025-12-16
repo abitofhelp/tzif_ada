@@ -15,6 +15,7 @@ with Test_Framework;
 
 --  Import all test procedures
 with Test_Bounded_Vector;
+with Test_Canonical;
 with Test_Option_Combinators;
 with Test_Result_Combinators;
 with Test_Timezone_Lookup;
@@ -50,6 +51,7 @@ begin
    --  Each test registers its results with Test_Framework
 
    Test_Bounded_Vector;
+   Test_Canonical;
    Test_Option_Combinators;
    Test_Result_Combinators;
    Test_Timezone_Lookup;
