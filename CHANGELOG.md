@@ -1,7 +1,7 @@
 # Changelog
 
-**Version:** 3.0.0<br>
-**Date:** 2025-12-13<br>
+**Version:** 3.0.1<br>
+**Date:** 2025-12-15<br>
 **SPDX-License-Identifier:** BSD-3-Clause<br>
 **License File:** See the LICENSE file in the project root<br>
 **Copyright:** © 2025 Michael Gardner, A Bit of Help, Inc.<br>
@@ -12,15 +12,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [3.0.1] - 2025-12-15
 
-### Changed
-
-### Added
-
-### Removed
+**Test Coverage:** 424 unit + 134 integration + 11 examples = 569 total
 
 ### Fixed
+
+- **Cross-platform path handling**: `Get_Zoneinfo_Base` in Windows and Embedded
+  IO adapters now uses `Canonicalize` to normalize paths, preventing mixed
+  separator issues (e.g., `D:\path/file`) when `TZIF_DATA_PATH` environment
+  variable contains backslashes on Windows
 
 ---
 
