@@ -244,7 +244,7 @@ make spark-prove
 | test_bounded_vector.adb | Bounded vector operations, capacity, indexing |
 | test_iana_releases.adb | IANA release metadata lookup |
 | test_option_combinators.adb | Option monad (Some/None, Map, And_Then) |
-| test_result_combinators.adb | Result monad (Ok/Error, combinators) |
+| test_result_combinators.adb | Result monad (Ok/Error, essential operations) |
 | test_source_cache.adb | Source cache add, find, eviction |
 | test_timezone_lookup.adb | Timezone lookup service |
 | test_tzif_data.adb | TZif data structure operations |
@@ -259,7 +259,8 @@ make spark-prove
 
 - Constructor validation (valid and invalid inputs)
 - Accessor correctness
-- Combinator behavior (And_Then, Map, Map_Error, Or_Else)
+- Result essential operations (Ok, Error, From_Error, Is_Ok, Is_Error, Value, Error_Info)
+- Option combinators (Map, And_Then, Or_Else)
 - Edge cases (empty strings, boundary values, max capacity)
 - Error path verification (Validation_Error, Parse_Error)
 

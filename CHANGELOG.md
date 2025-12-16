@@ -1,7 +1,7 @@
 # Changelog
 
-**Version:** 3.0.1<br>
-**Date:** 2025-12-15<br>
+**Version:** 3.0.2<br>
+**Date:** 2025-12-16<br>
 **SPDX-License-Identifier:** BSD-3-Clause<br>
 **License File:** See the LICENSE file in the project root<br>
 **Copyright:** © 2025 Michael Gardner, A Bit of Help, Inc.<br>
@@ -11,6 +11,28 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+## [3.0.2] - 2025-12-16
+
+**Test Coverage:** 361 unit + 134 integration + 11 examples = 506 total<br>
+**SPARK Status:** Domain + Application layers verified (--mode=check)
+
+### Changed
+
+- **Domain.Error.Result**: Slimmed to 7 essential operations for SPARK compatibility
+  - Kept: `Ok`, `Error`, `From_Error`, `Is_Ok`, `Is_Error`, `Value`, `Error_Info`
+  - Removed: `Map`, `And_Then`, `Fallback`, `Recover`, `Unwrap_Or`, `Bimap`, `Ensure`,
+    `With_Context`, `Tap`, `Map_Error`, `Fallback_With`, `Recover_With`, `Unwrap_Or_With`,
+    `And_Then_Into`
+  - Advanced combinators available via `Functional.Result` in infrastructure layer
+
+### Fixed
+
+- **SPARK prover crash**: Eliminated GNAT BUG DETECTED error that occurred in the
+  `Fallback` function due to nested generic with enum discriminant. The removed
+  combinators were unused in SPARK-proven layers (Domain/Application).
+
+---
 
 ## [3.0.1] - 2025-12-15
 
