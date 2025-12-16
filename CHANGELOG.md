@@ -14,7 +14,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [3.0.1] - 2025-12-15
 
-**Test Coverage:** 424 unit + 134 integration + 11 examples = 569 total
+**Test Coverage:** 434 unit + 134 integration + 11 examples = 579 total
+
+### Added
+
+- Unit tests for `Canonicalize` path normalization (10 tests)
 
 ### Fixed
 
