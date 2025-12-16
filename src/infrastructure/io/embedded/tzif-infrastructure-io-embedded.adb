@@ -27,6 +27,7 @@ with GNAT.Regpat;
 with TZif.Domain.Error;
 with TZif.Domain.Value_Object.Zone_Id;
 with TZif.Domain.Value_Object.Unit;
+with TZif.Infrastructure.Paths.Canonical;
 with TZif.Infrastructure.ULID;
 
 package body TZif.Infrastructure.IO.Embedded with
@@ -50,21 +51,14 @@ is
    --  ========================================================================
 
    function Get_Zoneinfo_Base return String is
+      use TZif.Infrastructure.Paths.Canonical;
    begin
       if Ada.Environment_Variables.Exists ("TZIF_DATA_PATH") then
-         declare
-            Path : constant String :=
-              Ada.Environment_Variables.Value ("TZIF_DATA_PATH");
-         begin
-            if Path'Length > 0
-              and then Path (Path'Last) /= '/'
-              and then Path (Path'Last) /= '\'
-            then
-               return Path & "/";
-            else
-               return Path;
-            end if;
-         end;
+         --  Canonicalize normalizes separators to forward slashes and
+         --  removes trailing separators. This prevents mixed separator
+         --  issues on Windows (e.g., D:\path/file).
+         return Canonicalize
+           (Ada.Environment_Variables.Value ("TZIF_DATA_PATH"));
       else
          return "";
       end if;
@@ -83,7 +77,7 @@ is
       Result : out Read_File_Result.Result)
    is
       Zoneinfo_Base : constant String := Get_Zoneinfo_Base;
-      File_Path     : constant String := Zoneinfo_Base & To_String (Id);
+      File_Path     : constant String := Zoneinfo_Base & "/" & To_String (Id);
 
       --  Scoped guard for file cleanup
       procedure Close_File (F : in out SIO.File_Type) renames SIO.Close;
