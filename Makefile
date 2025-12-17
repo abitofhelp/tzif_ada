@@ -410,7 +410,7 @@ test-windows: ## Trigger Windows CI validation on GitHub Actions
 build-examples: build check-arch prereqs
 	@echo "$(GREEN)Building example programs...$(NC)"
 	@if [ -f "examples/examples.gpr" ]; then \
-		$(ALR) exec -- $(GPRBUILD) -P examples/examples.gpr -p $(ALR_BUILD_FLAGS) $(BUILD_FILTER);; \
+		$(ALR) exec -- $(GPRBUILD) -P examples/examples.gpr -p $(ALR_BUILD_FLAGS) $(BUILD_FILTER); \
 		echo "$(GREEN)✓ Examples built$(NC)"; \
 	else \
 		echo "$(YELLOW)Examples project not found$(NC)"; \
