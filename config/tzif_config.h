@@ -2,7 +2,7 @@
 #ifndef TZIF_CONFIG_H
 #define TZIF_CONFIG_H
 
-#define CRATE_VERSION "99.99.99"
+#define CRATE_VERSION "3.0.3"
 #define CRATE_NAME "tzif"
 
 #define ALIRE_HOST_OS "macos"
@@ -15,6 +15,6 @@
 #define BUILD_PROFILE_VALIDATION 2
 #define BUILD_PROFILE_DEVELOPMENT 3
 
-#define BUILD_PROFILE  3
+#define BUILD_PROFILE  1
 
 #endif
