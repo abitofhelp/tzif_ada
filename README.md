@@ -2,7 +2,7 @@
 
 [![License](https://img.shields.io/badge/license-BSD--3--Clause-blue.svg)](LICENSE) [![Ada](https://img.shields.io/badge/Ada-2022-blue.svg)](https://ada-lang.io) [![Alire](https://img.shields.io/badge/Alire-2.0+-blue.svg)](https://alire.ada.dev) [![SPARK](https://img.shields.io/badge/SPARK-Proved-green.svg)](https://www.adacore.com/about-spark)
 
-**Version:** 3.0.2<br>
+**Version:** 3.0.3<br>
 **Date:** 2025-12-16<br>
 **SPDX-License-Identifier:** BSD-3-Clause<br>
 **License File:** See the LICENSE file in the project root<br>
@@ -104,7 +104,7 @@ Add to your `alire.toml`:
 
 ```toml
 [[depends-on]]
-tzif = "^3.0.2"
+tzif = "^3.0.3"
 ```
 
 ## Quick Example
@@ -281,7 +281,7 @@ https://github.com/abitofhelp
 
 ## Project Status
 
-**Status:** Released (v3.0.2)
+**Status:** Released (v3.0.3)
 
 - [x] TZif v1/v2/v3 binary parsing (RFC 9636)
 - [x] 4-layer hexagonal architecture

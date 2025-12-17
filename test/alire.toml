@@ -1,6 +1,6 @@
 name = "tzif_tests"
 description = "Test suite for tzif"
-version = "3.0.2"
+version = "3.0.3"
 authors = ["Michael Gardner"]
 maintainers = ["Michael Gardner <mike@abitofhelp.com>"]
 licenses = "BSD-3-Clause"

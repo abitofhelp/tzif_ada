@@ -1,7 +1,7 @@
 # Changelog
 
 **Version:** 3.0.3<br>
-**Date:** 2025-12-17<br>
+**Date:** 2025-12-16<br>
 **SPDX-License-Identifier:** BSD-3-Clause<br>
 **License File:** See the LICENSE file in the project root<br>
 **Copyright:** © 2025 Michael Gardner, A Bit of Help, Inc.<br>
