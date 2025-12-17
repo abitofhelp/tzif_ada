@@ -1,7 +1,7 @@
 # Changelog
 
-**Version:** 3.0.2<br>
-**Date:** 2025-12-16<br>
+**Version:** 3.0.3<br>
+**Date:** 2025-12-17<br>
 **SPDX-License-Identifier:** BSD-3-Clause<br>
 **License File:** See the LICENSE file in the project root<br>
 **Copyright:** © 2025 Michael Gardner, A Bit of Help, Inc.<br>
@@ -11,6 +11,17 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+## [3.0.3] - 2025-12-17
+
+**Tests:** 361 unit + 134 integration + 11 examples = 506 total - All passing<br>
+**SPARK Status:** 1248 checks: 48 flow, 999 proved, 201 unproved (~80% proved) (--mode=prove --level=2)<br>
+
+### Changed
+
+- **Domain.Error.Result**: Moved `Is_Ok`/`Is_Error` to expression functions in spec's private section for SPARK prover visibility
+
+---
 
 ## [3.0.2] - 2025-12-16
 
