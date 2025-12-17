@@ -86,10 +86,10 @@ is
       --  =====================================================================
 
       function Is_Ok (Self : Result) return Boolean
-      with Inline;
+      with Inline, Global => null;
 
       function Is_Error (Self : Result) return Boolean
-      with Inline;
+      with Inline, Global => null;
 
       --  =====================================================================
       --  Value extraction
@@ -115,6 +115,11 @@ is
                Error_Value : Error_Type;
          end case;
       end record;
+
+      --  Expression function completions for SPARK proof visibility
+      function Is_Ok (Self : Result) return Boolean is (Self.State = Ok_State);
+      function Is_Error (Self : Result) return Boolean is
+        (Self.State = Error_State);
 
    end Generic_Result;
 

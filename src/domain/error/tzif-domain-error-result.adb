@@ -45,23 +45,7 @@ package body TZif.Domain.Error.Result is
          return (State => Error_State, Error_Value => Err);
       end From_Error;
 
-      -----------
-      -- Is_Ok --
-      -----------
-
-      function Is_Ok (Self : Result) return Boolean is
-      begin
-         return Self.State = Ok_State;
-      end Is_Ok;
-
-      --------------
-      -- Is_Error --
-      --------------
-
-      function Is_Error (Self : Result) return Boolean is
-      begin
-         return Self.State = Error_State;
-      end Is_Error;
+      --  Is_Ok and Is_Error are expression functions in the spec (for SPARK)
 
       -----------
       -- Value --
