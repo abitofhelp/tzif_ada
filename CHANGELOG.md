@@ -14,8 +14,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [3.0.2] - 2025-12-16
 
-**Tests:** 361 unit + 134 integration + 11 examples = 506 total - All passing
-**SPARK Status:** 1248 checks: 48 flow, 999 proved, 201 unproved (~80% proved) (--mode=prove --level=2)
+**Tests:** 361 unit + 134 integration + 11 examples = 506 total - All passing<br>
+**SPARK Status:** 1248 checks: 48 flow, 999 proved, 201 unproved (~80% proved) (--mode=prove --level=2)<br>
 
 ### Changed
 
