@@ -237,9 +237,10 @@ make build-examples
 
 ## Submodule Management
 
-This project uses git submodules:
+This project uses git submodules for shared tooling:
+- `docs/common` - Shared documentation templates and guides
 - `scripts/python` - Build, release, and architecture scripts
-- `docs/common` - Shared documentation
+- `test/python` - Shared test fixtures and configuration
 
 ```bash
 # Initialize submodules
