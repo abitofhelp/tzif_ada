@@ -270,7 +270,7 @@ clean-coverage:
 
 clean-clutter: ## Remove temporary files, backups, and clutter
 	@echo "$(CYAN)Cleaning temporary files and clutter...$(NC)"
-	@$(PYTHON3) scripts/python/makefile/cleanup_temp_files.py
+	@$(PYTHON3) scripts/python/shared/makefile/cleanup_temp_files.py
 	@echo "$(GREEN)✓ Temporary files removed$(NC)"
 
 compress:
@@ -371,7 +371,7 @@ test-framework: test-unit test-integration ## Run all test suites
 
 test-coverage: ## Run tests with GNATcoverage analysis
 	@echo "$(GREEN)Running tests with GNATcoverage analysis...$(NC)"
-	@$(PYTHON3) scripts/python/makefile/coverage_ada.py
+	@$(PYTHON3) scripts/python/shared/makefile/coverage_ada.py
 
 test-windows: ## Trigger Windows CI validation on GitHub Actions
 	@echo "$(CYAN)Triggering Windows CI validation...$(NC)"
@@ -459,7 +459,7 @@ check:
 
 check-arch: ## Validate hexagonal architecture boundaries
 	@echo "$(GREEN)Validating architecture boundaries...$(NC)"
-	@PYTHONPATH=scripts/python $(PYTHON3) -m arch_guard
+	@PYTHONPATH=scripts/python/shared $(PYTHON3) -m arch_guard --project-root .
 	@if [ $$? -eq 0 ]; then \
 		echo "$(GREEN)✓ Architecture validation passed$(NC)"; \
 	else \
@@ -564,12 +564,12 @@ refresh: ## Refresh Alire dependencies
 
 install-tools: ## Install development tools (GMP, gcovr, gnatformat)
 	@echo "$(CYAN)Installing development tools...$(NC)"
-	@$(PYTHON3) scripts/python/makefile/install_tools.py
+	@$(PYTHON3) scripts/python/shared/makefile/install_tools.py
 	@echo "$(GREEN)✓ Tool installation complete$(NC)"
 
 build-coverage-runtime: ## Force rebuild GNATcoverage runtime library
 	@echo "$(CYAN)Rebuilding GNATcoverage runtime...$(NC)"
-	@$(PYTHON3) scripts/python/makefile/coverage_ada.py --rebuild-runtime --unit-only
+	@$(PYTHON3) scripts/python/shared/makefile/coverage_ada.py --rebuild-runtime --unit-only
 	@echo "$(GREEN)✓ GNATcov runtime rebuilt (run 'make test-coverage' for full analysis)$(NC)"
 
 .DEFAULT_GOAL := help
