@@ -197,3 +197,4 @@ venv/
 env/
 ENV/
 # Temporary
+*.tgz
