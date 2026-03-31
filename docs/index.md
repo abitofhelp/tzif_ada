@@ -39,7 +39,7 @@ TZif is an Ada 2022 library for parsing and querying IANA's compiled timezone in
 
 - **[Software Requirements Specification](formal/software_requirements_specification.md)** - Functional and non-functional requirements
 - **[Software Design Specification](formal/software_design_specification.md)** - Architecture and detailed design
-- **[Software Test Guide](formal/software_test_guide.md)** - Testing strategy and execution
+- **[Software Test Plan](formal/software_test_plan.md)** - Testing strategy and execution
 
 ### Developer Guides
 
@@ -168,7 +168,7 @@ end Show_Local_Timezone;
 ## Need Help?
 
 - Check the [Quick Start Guide](quick_start.md) for common issues
-- Review the [Software Test Guide](formal/software_test_guide.md) for testing help
+- Review the [Software Test Plan](formal/software_test_plan.md) for testing help
 - See [Error Handling Strategy](common/guides/error_handling_strategy.md) for Result monad usage
 
 ---

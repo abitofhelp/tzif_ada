@@ -1,4 +1,4 @@
-# Software Test Guide (STG)
+# Software Test Plan (STP)
 
 **Version:** 3.0.3<br>
 **Date:** 2025-12-16<br>
@@ -13,7 +13,7 @@
 
 ### 1.1 Purpose
 
-This Software Test Guide describes the testing strategy, test organization, and execution procedures for the TZif library.
+This Software Test Plan describes the testing strategy, test organization, and execution procedures for the TZif library.
 
 ### 1.2 Scope
 
