@@ -1,6 +1,3 @@
-[submodule "docs/common"]
-	path = docs/common
-	url = git@github.com:abitofhelp/hybrid_lib_docs.git
 [submodule "scripts/python/shared"]
 	path = scripts/python/shared
 	url = git@github.com:abitofhelp/hybrid_scripts_python.git
